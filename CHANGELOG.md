@@ -2,13 +2,15 @@
 
 Versions of the core and of each library are separate, and follow semantic versioning: from 1.0.0 on, a change that breaks the public API comes only with a new major version.
 
-## Unreleased
+## 2026-09-15: update notices
+
+Released together with Drag'n Wash Localization v1.1.0. The libraries stay at 1.0.0.
 
 ### Core 1.1.0
 
 - Update notices. A mod that names its GitHub repository (`ModInfo.UpdateRepository = "owner/name"`) is checked against the repository's latest release once a day. The Mods screen tags the mod with **Update**, shows the new version and opens its release page, and the title screen says how many updates are available. Nothing is downloaded or changed. Drafts and pre-releases are never offered. Players can switch it off in the framework's settings on the Mods screen (`[Updates] Check for updates`). The framework checks itself the same way.
 
-## 2026-09-15
+## 2026-09-15: first release
 
 First release, together with [Drag'n Wash Localization](https://github.com/TomXV/dragnwash-localization) v1.0.0, the first mod built on the framework.
 
