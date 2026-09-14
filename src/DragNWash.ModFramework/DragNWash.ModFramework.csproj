@@ -21,6 +21,7 @@
   <!-- The list of switched-off mods is shared with the preloader patcher. -->
   <ItemGroup>
     <Compile Include="..\DragNWash.ModFramework.Preloader\DisabledMods.cs" Link="Mods\DisabledMods.cs" />
+    <Compile Include="..\DragNWash.ModFramework.Preloader\PendingUninstalls.cs" Link="Mods\PendingUninstalls.cs" />
   </ItemGroup>
 
   <!--

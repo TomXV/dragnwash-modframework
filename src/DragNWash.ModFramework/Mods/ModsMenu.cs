@@ -39,6 +39,10 @@ namespace DragNWash.ModFramework.Mods
         internal const string TextUpdateTag = "Update";
         internal const string TextNewVersion = "New version available:";
         internal const string TextOpenReleasePage = "Open release page";
+        internal const string TextUninstall = "Uninstall";
+        internal const string TextCancelUninstall = "Cancel uninstall";
+        internal const string TextConfirmUninstall = "Press Uninstall again to remove this mod when the game next starts. Your settings for it are removed too.";
+        internal const string TextUninstallNextLaunch = "Removed when the game next starts";
 
         private static readonly Color WarnColor = new Color(1f, 0.75f, 0.5f, 1f);
         private static readonly Color UpdateColor = new Color(0.6f, 0.95f, 0.75f, 1f);
@@ -58,11 +62,13 @@ namespace DragNWash.ModFramework.Mods
         private readonly List<GameObject> _detailParts = new List<GameObject>();
         private ModCatalog.Entry _selected;
         private ModCatalog.Entry _confirming;
+        private ModCatalog.Entry _confirmingUninstall;
 
         protected override void OnShow(MenuResponseTransition response)
         {
             base.OnShow(response);
             _confirming = null;
+            _confirmingUninstall = null;
             _settingsFor = null;
             _page = null;
             try
@@ -125,6 +131,7 @@ namespace DragNWash.ModFramework.Mods
             }
             _selected = entry;
             _confirming = null;
+            _confirmingUninstall = null;
             RebuildDetails(false);
         }
 
@@ -201,8 +208,8 @@ namespace DragNWash.ModFramework.Mods
             float used = 20f;
             if (!entry.IsFramework && !entry.IsPatcher)
             {
-                TMP_Text state = UiText.Create(band.transform, "State", entry.WantOn ? TextOn : TextOff, UiText.BodySize);
-                state.color = entry.WantOn ? new Color(0.65f, 0.95f, 0.65f, 1f) : new Color(1f, 0.6f, 0.55f, 1f);
+                TMP_Text state = UiText.Create(band.transform, "State", entry.PendingUninstall ? TextUninstall : entry.WantOn ? TextOn : TextOff, UiText.BodySize);
+                state.color = entry.PendingUninstall ? WarnColor : entry.WantOn ? new Color(0.65f, 0.95f, 0.65f, 1f) : new Color(1f, 0.6f, 0.55f, 1f);
                 used += FitRight(state, used) + 16f;
             }
 
@@ -356,6 +363,10 @@ namespace DragNWash.ModFramework.Mods
             {
                 notes.Add(("UsedBy", TextNeededBy, string.Join(", ", entry.Dependents.Select(g => ModCatalog.NameOf(_entries, g))), false));
             }
+            if (_confirmingUninstall == entry && entry.Dependents.Count > 0)
+            {
+                notes.Add(("NeededBy", TextNeededBy, string.Join(", ", entry.Dependents.Select(g => ModCatalog.NameOf(_entries, g))), true));
+            }
             if (_confirming == entry)
             {
                 notes.Add(("NeededBy", TextNeededBy, string.Join(", ", entry.Dependents.Select(g => ModCatalog.NameOf(_entries, g))), false));
@@ -420,9 +431,11 @@ namespace DragNWash.ModFramework.Mods
                 }
             }
 
+            // Bottom row: On/Off, Settings and, for mods that can be uninstalled, Uninstall.
+            bool three = entry.CanUninstall;
             if (entry.CanSwitch)
             {
-                GameObject button = CreateSwitch(entry);
+                GameObject button = CreateSwitch(entry, three ? 0.32f : 0.4f);
                 if (focusSwitch && EventSystem.current != null)
                 {
                     EventSystem.current.SetSelectedGameObject(button);
@@ -431,7 +444,14 @@ namespace DragNWash.ModFramework.Mods
 
             if (entry.Loaded && ConfigItem.For(entry).Count > 0)
             {
-                MakeButton("Settings", TextSettings, 0.44f, 0.8f, 0.04f, 0.16f, SettingsColor, () => OpenSettings(entry));
+                MakeButton("Settings", TextSettings, three ? 0.35f : 0.44f, three ? 0.63f : 0.8f, 0.04f, 0.16f, SettingsColor, () => OpenSettings(entry));
+            }
+
+            if (three)
+            {
+                bool confirming = _confirmingUninstall == entry;
+                MakeButton("Uninstall", entry.PendingUninstall ? TextCancelUninstall : TextUninstall, 0.66f, 0.96f, 0.04f, 0.16f,
+                    confirming ? OffColor : UninstallColor, () => OnUninstall(entry));
             }
 
             // A row of up to two buttons above Switch and Settings: the release page
@@ -547,9 +567,9 @@ namespace DragNWash.ModFramework.Mods
             return text;
         }
 
-        private GameObject CreateSwitch(ModCatalog.Entry entry)
+        private GameObject CreateSwitch(ModCatalog.Entry entry, float right)
         {
-            GameObject go = Part("Switch", 0.04f, 0.4f, 0.04f, 0.16f);
+            GameObject go = Part("Switch", 0.04f, right, 0.04f, 0.16f);
             Image background = go.AddComponent<Image>();
             background.color = entry.WantOn ? OnColor : OffColor;
 
@@ -567,6 +587,34 @@ namespace DragNWash.ModFramework.Mods
 
             button.onClick.AddListener(() => OnSwitch(entry));
             return go;
+        }
+
+        private static readonly Color UninstallColor = new Color(0.3f, 0.3f, 0.3f, 1f);
+
+        // First press asks, second press records it; on a mod waiting to be
+        // uninstalled the button takes the wish back.
+        private void OnUninstall(ModCatalog.Entry entry)
+        {
+            try
+            {
+                if (!entry.PendingUninstall && _confirmingUninstall != entry)
+                {
+                    _confirming = null;
+                    _confirmingUninstall = entry;
+                    RebuildDetails(false);
+                    Focus("Uninstall");
+                    return;
+                }
+                _confirmingUninstall = null;
+                ModCatalog.SetUninstall(_entries, entry, !entry.PendingUninstall);
+                RebuildList();
+                RebuildDetails(false);
+                Focus("Uninstall");
+            }
+            catch (Exception ex)
+            {
+                ModFramework.Log.LogError($"Could not change the uninstall of {entry.Name}: {ex}");
+            }
         }
 
         private void OnSwitch(ModCatalog.Entry entry)
@@ -599,6 +647,14 @@ namespace DragNWash.ModFramework.Mods
             if (entry.IsFramework)
             {
                 return TextRequired;
+            }
+            if (_confirmingUninstall == entry)
+            {
+                return TextConfirmUninstall;
+            }
+            if (entry.PendingUninstall)
+            {
+                return TextUninstallNextLaunch;
             }
             if (_confirming == entry)
             {

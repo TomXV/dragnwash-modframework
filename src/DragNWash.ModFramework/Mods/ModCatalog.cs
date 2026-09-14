@@ -55,6 +55,13 @@ namespace DragNWash.ModFramework.Mods
             public List<KeyValuePair<string, Version>> Uses = new List<KeyValuePair<string, Version>>();
 
             public bool CanSwitch => RelativePath != null && !IsFramework && !IsPatcher;
+
+            // Uninstalling removes the mod's folder under BepInEx/plugins (or its DLL
+            // there) at the next launch. The framework and its libraries cannot be
+            // uninstalled from here.
+            public string Unit => RelativePath == null ? null : PendingUninstalls.UnitOf(RelativePath);
+            public bool CanUninstall => Unit != null && !IsFramework && !IsPatcher;
+            public bool PendingUninstall;
         }
 
         internal static List<Entry> Build()
@@ -218,6 +225,12 @@ namespace DragNWash.ModFramework.Mods
                 }
             }
 
+            var pending = new HashSet<string>(PendingUninstalls.Read(Paths.ConfigPath).Select(r => r.Unit), StringComparer.OrdinalIgnoreCase);
+            foreach (Entry e in entries)
+            {
+                e.PendingUninstall = e.CanUninstall && pending.Contains(e.Unit);
+            }
+
             return entries
                 .OrderBy(e => e.IsFramework ? 0 : 1)
                 .ThenBy(e => e.DisplayName, StringComparer.OrdinalIgnoreCase)
@@ -252,6 +265,37 @@ namespace DragNWash.ModFramework.Mods
             }
             DisabledMods.WriteDesired(Paths.ConfigPath, records);
             ModFramework.Log.LogInfo($"{entry.Name} will be switched {(on ? "on" : "off")} at the next launch.");
+        }
+
+        // Records what the player wants and writes it for the preloader. Every
+        // plugin in the same folder follows, since the folder is what gets removed.
+        internal static void SetUninstall(List<Entry> entries, Entry entry, bool uninstall)
+        {
+            if (!entry.CanUninstall)
+            {
+                return;
+            }
+            foreach (Entry e in entries)
+            {
+                if (e.CanUninstall && string.Equals(e.Unit, entry.Unit, StringComparison.OrdinalIgnoreCase))
+                {
+                    e.PendingUninstall = uninstall;
+                }
+            }
+
+            var records = new List<PendingUninstalls.Record>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (Entry e in entries)
+            {
+                if (e.PendingUninstall && seen.Add(e.Unit))
+                {
+                    records.Add(new PendingUninstalls.Record { Unit = e.Unit, Guid = e.Guid, Name = e.DisplayName, Version = e.Version });
+                }
+            }
+            PendingUninstalls.Write(Paths.ConfigPath, records);
+            ModFramework.Log.LogInfo(uninstall
+                ? $"{entry.Name} will be uninstalled at the next launch ({entry.Unit})."
+                : $"{entry.Name} will no longer be uninstalled.");
         }
 
         internal const string TextNeeds = "Not loaded. It needs";
