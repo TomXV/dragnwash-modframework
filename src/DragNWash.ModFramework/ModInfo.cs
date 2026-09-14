@@ -26,6 +26,17 @@ namespace DragNWash.ModFramework
         public string Website { get; set; }
 
         /// <summary>
+        /// The mod's GitHub repository as <c>"owner/name"</c>, e.g.
+        /// <c>"TomXV/dragnwash-localization"</c>. When set, the framework checks the
+        /// repository's latest release once a day and the Mods screen tells players
+        /// when it is newer than the installed version, with a button to its page.
+        /// Release tags must be the plugin's version, optionally with a leading
+        /// <c>v</c> (<c>v1.2.0</c>); drafts and pre-releases are never offered.
+        /// Players can switch checking off. Since 1.1.0.
+        /// </summary>
+        public string UpdateRepository { get; set; }
+
+        /// <summary>
         /// True for a library: a prerequisite mod other mods build on. The Mods
         /// screen shows it as a library and lists the mods that need it.
         /// </summary>

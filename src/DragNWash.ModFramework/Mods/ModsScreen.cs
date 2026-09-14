@@ -227,6 +227,7 @@ namespace DragNWash.ModFramework.Mods
                 menu.Details = SplitForDetails(panel);
                 menu.Details.gameObject.AddComponent<DetailsResizeWatcher>().Menu = menu;
                 menu.gameObject.AddComponent<PadSupport>().Menu = menu;
+                menu.gameObject.AddComponent<UpdateResultWatcher>().Menu = menu;
 
                 int index = options.transform.GetSiblingIndex();
                 copy.transform.SetParent(options.transform.parent, false);

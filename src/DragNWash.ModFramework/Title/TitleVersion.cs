@@ -18,6 +18,9 @@ namespace DragNWash.ModFramework.Title
         private const string Feature = "Version on the title screen";
         private const string LabelName = "ModFrameworkVersion";
 
+        private static TMP_Text _label;
+        private static int _shownRevision = -1;
+
         internal static void Install(Harmony harmony)
         {
             if (!GameHooks.Require(ModFramework.Guid, Feature, "VersionNumber", "Start"))
@@ -50,7 +53,41 @@ namespace DragNWash.ModFramework.Title
         internal static string Text()
         {
             int mods = Chainloader.PluginInfos.Count;
-            return $"Drag'n Wash ModFramework {ModFramework.Version}\n{mods} {(mods == 1 ? "mod" : "mods")} loaded";
+            string text = $"Drag'n Wash ModFramework {ModFramework.Version}\n{mods} {(mods == 1 ? "mod" : "mods")} loaded";
+            // Most players never open the Mods screen, so say it here too.
+            int updates = Updates.UpdateCheck.NewerCount();
+            if (updates > 0)
+            {
+                text += $"\n{updates} {(updates == 1 ? "update" : "updates")} available in Mods";
+            }
+            return text;
+        }
+
+        // From Plugin.Update: an update check finished while the title screen shows.
+        internal static void Tick()
+        {
+            if (_label == null || _shownRevision == Updates.UpdateCheck.Revision)
+            {
+                return;
+            }
+            _shownRevision = Updates.UpdateCheck.Revision;
+            try
+            {
+                SetText(_label, Text());
+            }
+            catch (Exception ex)
+            {
+                ModFramework.Log.LogWarning($"Could not update the title screen line: {ex.Message}");
+                _label = null;
+            }
+        }
+
+        // The label is pinned by its bottom-right corner, so it grows upwards.
+        private static void SetText(TMP_Text label, string text)
+        {
+            label.text = text;
+            Vector2 size = label.GetPreferredValues(text);
+            ((RectTransform)label.transform).sizeDelta = new Vector2(size.x + 4f, size.y);
         }
 
         private static void Add(MonoBehaviour versionNumber)
@@ -68,7 +105,6 @@ namespace DragNWash.ModFramework.Title
             UnityEngine.Object.DestroyImmediate(copy.GetComponent(versionNumber.GetType()));
 
             var label = copy.GetComponent<TMP_Text>();
-            label.text = Text();
             label.enableAutoSizing = false;
             label.fontSize = original.fontSize;
             label.textWrappingMode = TextWrappingModes.NoWrap;
@@ -81,13 +117,14 @@ namespace DragNWash.ModFramework.Title
             var from = (RectTransform)versionNumber.transform;
             var to = (RectTransform)copy.transform;
             label.alignment = TextAlignmentOptions.BottomRight;
-            Vector2 size = label.GetPreferredValues(label.text);
             to.anchorMin = from.anchorMin;
             to.anchorMax = from.anchorMax;
             to.pivot = new Vector2(1f, 0f);
-            to.sizeDelta = new Vector2(size.x + 4f, size.y);
+            _shownRevision = Updates.UpdateCheck.Revision;
+            SetText(label, Text());
             to.localPosition = new Vector3(from.localPosition.x + text.max.x, from.localPosition.y + text.max.y + 2f, from.localPosition.z);
             to.SetSiblingIndex(from.GetSiblingIndex() + 1);
+            _label = label;
         }
     }
 }

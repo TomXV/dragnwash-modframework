@@ -16,11 +16,13 @@ namespace DragNWash.ModFramework
             Mods.ModsScreen.Install(harmony);
             Options.OptionsRows.Install(harmony);
             Title.TitleVersion.Install(harmony);
+            Updates.UpdateCheck.Install(Config, this);
         }
 
         private void Update()
         {
             Options.OptionsRows.Tick();
+            Title.TitleVersion.Tick();
         }
     }
 }

@@ -28,7 +28,7 @@ namespace DragNWash.ModFramework
         /// may still change between minor versions; from 1.0 on, breaking changes
         /// only come with a new major version. Keep in sync with the csproj.
         /// </summary>
-        public const string Version = "1.0.0";
+        public const string Version = "1.1.0";
 
         private static ManualLogSource _log;
         private static readonly Dictionary<string, ModInfo> Infos = new Dictionary<string, ModInfo>(StringComparer.Ordinal);
@@ -110,6 +110,14 @@ namespace DragNWash.ModFramework
             }
         }
 
+        internal static List<ModInfo> AllInfos()
+        {
+            lock (Infos)
+            {
+                return Infos.Values.ToList();
+            }
+        }
+
         internal static ManualLogSource Log => _log;
 
         internal static void Initialize(ManualLogSource log)
@@ -129,6 +137,7 @@ namespace DragNWash.ModFramework
                 Description = "Shared tools for Drag'n Wash mods, including this Mods screen.",
                 Authors = new[] { "TomXV" },
                 Website = "https://github.com/TomXV/dragnwash-modframework",
+                UpdateRepository = "TomXV/dragnwash-modframework",
             });
 
             IsReady = true;

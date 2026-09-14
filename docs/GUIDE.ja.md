@@ -23,11 +23,14 @@ public class MyMod : BaseUnityPlugin
             Description = "One or two sentences on what it does.",
             Authors = new[] { "Me" },
             Website = "https://github.com/me/mymod",
+            UpdateRepository = "me/mymod",
             IconPath = Path.Combine(Path.GetDirectoryName(Info.Location), "icon.png"),
         });
     }
 }
 ```
+
+`UpdateRepository`（中核 1.1.0 以降）を書くと、GitHub リポジトリにプレイヤーが使っているものより新しいリリースがあるとき、Mods 画面がそれを知らせ、リリースページを開けるようにします。リリースのタグはプラグインのバージョン（`v1.2.0` や `1.2.0`）にし、テスト版はプレリリースにしてください。プレリリースは知らせません。GitHub でリリースを公開していなければ書かないでください。
 
 入っているものより新しいライブラリが必要なら `[BepInDependency(GameText.Guid, "0.1.1")]` のように書けます。Mods 画面では、ライブラリ名の横にそのバージョンが出ます。
 

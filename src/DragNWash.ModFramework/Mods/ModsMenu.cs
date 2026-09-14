@@ -36,8 +36,12 @@ namespace DragNWash.ModFramework.Mods
         internal const string TextConflictTag = "Conflict";
         internal const string TextSameCode = "Changes the same game code as:";
         internal const string TextSameCodeRisky = "Changes the same game code as, and may override:";
+        internal const string TextUpdateTag = "Update";
+        internal const string TextNewVersion = "New version available:";
+        internal const string TextOpenReleasePage = "Open release page";
 
         private static readonly Color WarnColor = new Color(1f, 0.75f, 0.5f, 1f);
+        private static readonly Color UpdateColor = new Color(0.6f, 0.95f, 0.75f, 1f);
         private List<PatchConflicts.Conflict> _conflicts = new List<PatchConflicts.Conflict>();
 
         // The Back button's pointing hand is drawn just right of the button,
@@ -202,11 +206,13 @@ namespace DragNWash.ModFramework.Mods
                 used += FitRight(state, used) + 16f;
             }
 
-            string tagText = entry.IsLibrary ? TextLibrary : ConflictsOf(entry).Count > 0 ? TextConflictTag : null;
+            bool conflict = ConflictsOf(entry).Count > 0;
+            bool update = entry.Loaded && Updates.UpdateCheck.NewerRelease(entry.Guid, entry.Version) != null;
+            string tagText = entry.IsLibrary ? TextLibrary : conflict ? TextConflictTag : update ? TextUpdateTag : null;
             if (tagText != null)
             {
-                TMP_Text tag = UiText.Create(band.transform, entry.IsLibrary ? "Library" : "Conflict", tagText, UiText.BodySize * 0.8f);
-                tag.color = entry.IsLibrary ? new Color(0.7f, 0.8f, 1f, 1f) : WarnColor;
+                TMP_Text tag = UiText.Create(band.transform, entry.IsLibrary ? "Library" : conflict ? "Conflict" : "Update", tagText, UiText.BodySize * 0.8f);
+                tag.color = entry.IsLibrary ? new Color(0.7f, 0.8f, 1f, 1f) : conflict ? WarnColor : UpdateColor;
                 used += FitRight(tag, used) + 16f;
             }
 
@@ -322,6 +328,11 @@ namespace DragNWash.ModFramework.Mods
 
             // Notes about the mod, one per line from the top of this band down.
             var notes = new List<(string Name, string Label, string Value, bool Warn)>();
+            Updates.UpdateCheck.Release newer = entry.Loaded ? Updates.UpdateCheck.NewerRelease(entry.Guid, entry.Version) : null;
+            if (newer != null && _confirming != entry)
+            {
+                notes.Add(("Update", TextNewVersion, newer.Tag, false));
+            }
             if (entry.ProblemGuids.Count > 0 && _confirming != entry)
             {
                 notes.Add(("ProblemMods", null, string.Join(", ", entry.ProblemGuids.Select(g => ModCatalog.NameOf(_entries, g))), false));
@@ -350,8 +361,9 @@ namespace DragNWash.ModFramework.Mods
                 notes.Add(("NeededBy", TextNeededBy, string.Join(", ", entry.Dependents.Select(g => ModCatalog.NameOf(_entries, g))), false));
             }
 
-            bool hasPages = entry.Loaded && entry.Guid != null && ModFramework.PagesFor(entry.Guid).Count > 0;
-            int maxLines = hasPages ? 2 : 3;
+            List<ModsScreenPage> pages = entry.Loaded && entry.Guid != null ? ModFramework.PagesFor(entry.Guid) : new List<ModsScreenPage>();
+            bool hasButtonRow = pages.Count > 0 || newer != null;
+            int maxLines = hasButtonRow ? 2 : 3;
             float size = UiText.BodySize * 0.9f;
             float width = Details.rect.width - 56f;
             int line = 0;
@@ -393,10 +405,18 @@ namespace DragNWash.ModFramework.Mods
                     {
                         head.color = WarnColor;
                     }
+                    else if (note.Name == "Update")
+                    {
+                        head.color = UpdateColor;
+                    }
                 }
                 if (note.Warn)
                 {
                     text.color = WarnColor;
+                }
+                else if (note.Name == "Update")
+                {
+                    text.color = UpdateColor;
                 }
             }
 
@@ -414,15 +434,63 @@ namespace DragNWash.ModFramework.Mods
                 MakeButton("Settings", TextSettings, 0.44f, 0.8f, 0.04f, 0.16f, SettingsColor, () => OpenSettings(entry));
             }
 
-            if (entry.Loaded && entry.Guid != null)
+            // A row of up to two buttons above Switch and Settings: the release page
+            // first, then the pages the mod added.
+            int slot = 0;
+            if (newer != null)
             {
-                List<ModsScreenPage> pages = ModFramework.PagesFor(entry.Guid);
-                for (int i = 0; i < pages.Count && i < 2; i++)
+                string url = newer.Url;
+                MakeButton("Release", TextOpenReleasePage, 0.04f, 0.4f, 0.18f, 0.26f, SettingsColor, () => OpenReleasePage(url));
+                slot++;
+            }
+            for (int i = 0; i < pages.Count && slot < 2; i++, slot++)
+            {
+                ModsScreenPage page = pages[i];
+                float left = 0.04f + slot * 0.4f;
+                MakeButton("Page" + i, page.Title, left, left + 0.36f, 0.18f, 0.26f, SettingsColor, () => OpenPage(entry, page));
+            }
+        }
+
+        private static void OpenReleasePage(string url)
+        {
+            try
+            {
+                Application.OpenURL(url);
+            }
+            catch (Exception ex)
+            {
+                ModFramework.Log.LogWarning($"Could not open {url}: {ex.Message}");
+            }
+        }
+
+        // An update check finished while the screen is open: show its result,
+        // keeping what the pad or keyboard had selected. Settings and pages are
+        // left alone until the player comes back to the list.
+        internal void OnUpdatesChanged()
+        {
+            if (!isActiveAndEnabled || _page != null || _settingsFor != null)
+            {
+                return;
+            }
+            GameObject focused = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
+            ModCatalog.Entry focusedRow = focused != null ? focused.GetComponent<ModRowSelect>()?.Entry : null;
+            string focusName = focused != null && _detailParts.Contains(focused) ? focused.name : null;
+            RebuildList();
+            RebuildDetails(false);
+            if (focusedRow != null && EventSystem.current != null)
+            {
+                ModRowSelect row = _rows
+                    .Where(r => r != null)
+                    .Select(r => r.GetComponentInChildren<ModRowSelect>())
+                    .FirstOrDefault(s => s != null && s.Entry == focusedRow);
+                if (row != null)
                 {
-                    ModsScreenPage page = pages[i];
-                    float left = 0.04f + i * 0.4f;
-                    MakeButton("Page" + i, page.Title, left, left + 0.36f, 0.18f, 0.26f, SettingsColor, () => OpenPage(entry, page));
+                    EventSystem.current.SetSelectedGameObject(row.gameObject);
                 }
+            }
+            else if (focusName != null)
+            {
+                Focus(focusName);
             }
         }
 
@@ -611,6 +679,35 @@ namespace DragNWash.ModFramework.Mods
             catch (System.Exception ex)
             {
                 ModFramework.Log.LogError($"Could not lay out the Mods screen again: {ex}");
+            }
+        }
+    }
+
+    // Tells the menu when an update check has a result.
+    internal sealed class UpdateResultWatcher : MonoBehaviour
+    {
+        internal ModsMenu Menu;
+        private int _seen = -1;
+
+        private void OnEnable()
+        {
+            _seen = Updates.UpdateCheck.Revision;
+        }
+
+        private void LateUpdate()
+        {
+            if (_seen == Updates.UpdateCheck.Revision)
+            {
+                return;
+            }
+            _seen = Updates.UpdateCheck.Revision;
+            try
+            {
+                Menu?.OnUpdatesChanged();
+            }
+            catch (Exception ex)
+            {
+                ModFramework.Log.LogError($"Could not show update check results: {ex}");
             }
         }
     }

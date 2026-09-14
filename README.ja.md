@@ -22,6 +22,10 @@
 
 ライブラリはそれぞれ独自のバージョンを持つ別のプラグインです。使う Mod が必要とするものを入れてください。バージョンは [CHANGELOG.md](CHANGELOG.md) を参照してください。
 
+### 更新のお知らせ
+
+中核 1.1.0 から、入れている Mod に新しいリリースがあると、Mods 画面とタイトル画面でお知らせします。確認するのは GitHub リポジトリを指定している Mod だけで、それぞれ 1 日に 1 回までです。GitHub の公開 API（`api.github.com`）にリポジトリの最新リリースを問い合わせるだけで、あなたやゲーム、ほかの Mod についての情報は送りません。ほかの Web ページを開くときと同じく、GitHub には IP アドレスが伝わります。ダウンロードやインストールはせず、Mods 画面からリリースページを開けるだけです。止めるには **Options → Mods → Drag'n Wash ModFramework → Settings** で **Check for updates** を Off にするか、`BepInEx/config/com.tomxv.dragnwash.modframework.cfg` の `Check for updates = false` にしてください。
+
 ## Mod を作る方へ
 
 `DragNWash.ModFramework.dll`（と使うライブラリの DLL）を参照し、BepInEx が先に読み込むようそれぞれを依存関係として宣言します。何に何を使うか、Mod 同士を一緒に動かすためのルールは [docs/GUIDE.ja.md](docs/GUIDE.ja.md) にあります。

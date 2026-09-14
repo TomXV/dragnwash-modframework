@@ -23,11 +23,14 @@ public class MyMod : BaseUnityPlugin
             Description = "One or two sentences on what it does.",
             Authors = new[] { "Me" },
             Website = "https://github.com/me/mymod",
+            UpdateRepository = "me/mymod",
             IconPath = Path.Combine(Path.GetDirectoryName(Info.Location), "icon.png"),
         });
     }
 }
 ```
+
+With `UpdateRepository` (core 1.1.0 and later) the Mods screen tells players when your GitHub repository has a newer release than the version they run, and opens its page. Tag releases with the plugin's version, like `v1.2.0` or `1.2.0`, and mark test builds as pre-releases: they are never offered. Leave it out if you do not publish releases on GitHub.
 
 A mod that needs a newer library than the one installed can say so with `[BepInDependency(GameText.Guid, "0.1.1")]`; the Mods screen shows the version next to the library's name.
 

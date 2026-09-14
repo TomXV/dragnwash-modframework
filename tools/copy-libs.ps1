@@ -32,6 +32,8 @@ $fromManaged = @(
     'UnityEngine.IMGUIModule.dll',
     'UnityEngine.AssetBundleModule.dll',
     'UnityEngine.TextCoreFontEngineModule.dll',
+    'UnityEngine.UnityWebRequestModule.dll',
+    'UnityEngine.JSONSerializeModule.dll',
     'Unity.TextMeshPro.dll',
     'Unity.InputSystem.dll',
     'Naelstrof.UnityScriptableSettings.dll',

@@ -110,6 +110,17 @@ ModFramework.Register(new ModInfo
 
 Settings shown on the Mods screen come from the mod's BepInEx config entries (`ConfigEntry<bool>` becomes an On/Off button, numbers, enums and lists of accepted values get `<` and `>` steps, and anything else is shown with a note to edit the config file), so a mod gets a settings page without writing UI. The Settings API can add rows to the game's own Options screen as well.
 
+### Update notices
+
+Players should not have to visit every mod's page to find out that it was updated. From core 1.1.0:
+
+- A mod opts in with `ModInfo.UpdateRepository = "owner/name"`. The repository is never guessed from `Website`: a guess could compare against releases that do not follow the mod's version numbers.
+- Once a day per repository, the framework reads `https://api.github.com/repos/<owner>/<name>/releases/latest` with `UnityWebRequest` (part of the game, so nothing extra ships). GitHub never returns a draft or a pre-release there. The tag, with or without a leading `v`, is compared with the installed plugin's version; a tag that is not a version number is ignored.
+- Results are kept in `BepInEx/config/com.tomxv.dragnwash.modframework.updates.txt`, so restarting does not ask again. A failed request is logged once and tried again an hour later; it never shows an error to the player.
+- The Mods screen tags the mod **Update**, shows the new version and has a button that opens `https://github.com/<owner>/<name>/releases/tag/<tag>`. The URL is built from the checked repository name, never taken from the answer. The title screen adds "N updates available in Mods".
+- Nothing is downloaded or replaced. On by default, with `[Updates] Check for updates` in the framework's settings to switch it off. The README says what is sent.
+- Later, if it proves needed: download the release, check it, and let the preloader patcher swap the files at the next launch, when they are not in use. That needs integrity checks designed first.
+
 ## Layers: a small core, and libraries on top
 
 The framework does not try to hold every API. It is a small core that other prerequisite mods, libraries, build on, the way the framework itself builds on BepInEx:
@@ -194,6 +205,6 @@ Things to settle first: whether the developers want code mods on their Workshop 
 ## Open questions
 
 - How mods show up in the tool window when several register tabs (order, naming).
-- Whether the installer lives here or stays in the localization repository.
+- The installer: decided (2026-09-15) to live here as one shared installer that every mod's zip ships, reading a small file each mod provides.
 - Distribution beyond GitHub Releases.
 - The developers' view on mods, which matters more for a framework than for a translation.
