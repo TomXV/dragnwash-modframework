@@ -119,6 +119,9 @@ namespace DragNWash.ModFramework.Updates
         {
             // Mods register in Awake or when the framework is ready; let them finish.
             yield return new WaitForSecondsRealtime(5f);
+            // Screens drawn before every mod registered (the title screen) show
+            // the saved results now, even when nothing is due.
+            Revision++;
             while (true)
             {
                 if (Enabled)
