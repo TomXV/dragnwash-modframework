@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Install.exe: the installer every Drag'n Wash mod ships next to its files. It reads
+    mod-install.json from its own folder, so the same file works for any mod.
+
+    No PowerShell and no scripts: Microsoft Defender's machine learning flagged the
+    earlier launcher, which started PowerShell with -ExecutionPolicy Bypass.
+
+    Built deterministically: the same sources give a byte-identical Install.exe on
+    every build with the same .NET SDK. Antivirus reputation is tied to the file's
+    hash, so the file must not change from release to release unless the code does.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>Install</AssemblyName>
+    <RootNamespace>DragNWash.Installer</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildProjectDirectory)=/installer</PathMap>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <!-- Versions come from AssemblyInfo.cs, never from the build: no commit is stamped in. -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- DataContract fields are filled by the JSON serializer. -->
+    <NoWarn>$(NoWarn);CS0649</NoWarn>
+    <GenerateSupportedRuntime>false</GenerateSupportedRuntime>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Runtime.Serialization" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>
