@@ -28,7 +28,7 @@ From core 1.1.0, the framework tells you on the Mods screen and the title screen
 
 ## For mod developers
 
-Reference `DragNWash.ModFramework.dll` (and the library DLLs you use) and declare each dependency so BepInEx loads them first. [docs/GUIDE.md](docs/GUIDE.md) has what to use for what, and the rules that keep mods working together.
+Reference `DragNWash.ModFramework.dll` (and the library DLLs you use) and declare each dependency so BepInEx loads them first. [docs/GUIDE.md](docs/GUIDE.md) has what to use for what, and the rules that keep mods working together. To give players a one-click install, ship the shared installer with a `mod-install.json`: [docs/INSTALLER.md](docs/INSTALLER.md).
 
 ```csharp
 [BepInPlugin("com.example.mymod", "MyMod", "1.0.0")]

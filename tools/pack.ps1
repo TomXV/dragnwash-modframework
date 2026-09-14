@@ -4,6 +4,7 @@
 #   BepInEx/plugins/DragNWash.ModFramework/DragNWash.ModFramework.dll (+ LICENSE.txt)
 #   BepInEx/plugins/DragNWash.ModFramework.<Library>/DragNWash.ModFramework.<Library>.dll
 #   BepInEx/patchers/DragNWash.ModFramework.Preloader.dll
+#   installer/Install.exe, installer/install-steamdeck.sh, installer/mod-install.example.json
 #   README.md, README.ja.md, CHANGELOG.md
 #
 # Players normally get the framework with a mod that needs it (Drag'n Wash
@@ -56,6 +57,20 @@ foreach ($name in $Plugins) {
 Copy-Item -LiteralPath (Join-Path $Root 'LICENSE') -Destination (Join-Path $Stage 'BepInEx/plugins/DragNWash.ModFramework/LICENSE.txt')
 New-Item -ItemType Directory -Force -Path (Join-Path $Stage 'BepInEx/patchers') | Out-Null
 Copy-Item -LiteralPath (Join-Path $Root "src/$Patcher/bin/Release/$Patcher.dll") -Destination (Join-Path $Stage 'BepInEx/patchers')
+# The shared installer, for mods to ship next to their files (docs/INSTALLER.md).
+# Built deterministically: the same sources give a byte-identical Install.exe.
+$InstallerProject = Join-Path $Root 'installer/DragNWash.Installer.csproj'
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue (Join-Path $Root 'installer/bin'), (Join-Path $Root 'installer/obj')
+dotnet build $InstallerProject -c Release
+if ($LASTEXITCODE -ne 0) { throw 'Build of the installer failed.' }
+$InstallerStage = Join-Path $Stage 'installer'
+New-Item -ItemType Directory -Force -Path $InstallerStage | Out-Null
+Copy-Item -LiteralPath (Join-Path $Root 'installer/bin/Release/Install.exe') -Destination $InstallerStage
+Copy-Item -LiteralPath (Join-Path $Root 'installer/install-steamdeck.sh') -Destination $InstallerStage
+Copy-Item -LiteralPath (Join-Path $Root 'installer/mod-install.example.json') -Destination $InstallerStage
+$InstallerHash = (Get-FileHash -LiteralPath (Join-Path $InstallerStage 'Install.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
+Write-Host "Install.exe sha256 $InstallerHash (unchanged unless installer/ or the .NET SDK changed)"
+
 foreach ($doc in 'README.md', 'README.ja.md', 'CHANGELOG.md') {
     Copy-Item -LiteralPath (Join-Path $Root $doc) -Destination $Stage
 }

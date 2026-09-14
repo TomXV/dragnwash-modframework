@@ -41,3 +41,17 @@ jobs:
           unzip -j -o bepinex.zip BepInEx/core/BepInEx.dll BepInEx/core/Mono.Cecil.dll -d src/DragNWash.ModFramework/libs
       - name: Build the preloader patcher
         run: dotnet build src/DragNWash.ModFramework.Preloader/DragNWash.ModFramework.Preloader.csproj -c Release -warnaserror
+
+  installer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Build Install.exe
+        run: dotnet build installer/DragNWash.Installer.csproj -c Release -warnaserror
+      - name: Check install-steamdeck.sh
+        run: |
+          bash -n installer/install-steamdeck.sh
+          python3 -c "import json; json.load(open('installer/mod-install.example.json', encoding='utf-8'))"

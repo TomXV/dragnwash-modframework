@@ -28,7 +28,7 @@
 
 ## Mod を作る方へ
 
-`DragNWash.ModFramework.dll`（と使うライブラリの DLL）を参照し、BepInEx が先に読み込むようそれぞれを依存関係として宣言します。何に何を使うか、Mod 同士を一緒に動かすためのルールは [docs/GUIDE.ja.md](docs/GUIDE.ja.md) にあります。
+`DragNWash.ModFramework.dll`（と使うライブラリの DLL）を参照し、BepInEx が先に読み込むようそれぞれを依存関係として宣言します。何に何を使うか、Mod 同士を一緒に動かすためのルールは [docs/GUIDE.ja.md](docs/GUIDE.ja.md) にあります。プレイヤーがワンクリックで入れられるようにするには、`mod-install.json` と一緒に共通インストーラーを同梱してください：[docs/INSTALLER.ja.md](docs/INSTALLER.ja.md)。
 
 ```csharp
 [BepInPlugin("com.example.mymod", "MyMod", "1.0.0")]

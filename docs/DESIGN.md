@@ -205,6 +205,6 @@ Things to settle first: whether the developers want code mods on their Workshop 
 ## Open questions
 
 - How mods show up in the tool window when several register tabs (order, naming).
-- The installer: decided (2026-09-15) to live here as one shared installer that every mod's zip ships, reading a small file each mod provides.
+- The installer: done. One shared installer lives here and every mod's zip ships it, reading the mod's `mod-install.json` ([INSTALLER.md](INSTALLER.md)). Mods can also be uninstalled from the Mods screen.
 - Distribution beyond GitHub Releases.
 - The developers' view on mods, which matters more for a framework than for a translation.

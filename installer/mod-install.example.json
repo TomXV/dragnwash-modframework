@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "name": "My Mod",
+  "version": "1.0.0",
+  "website": "https://github.com/me/mymod",
+  "plugins": [
+    "MyMod"
+  ],
+  "keep": [
+    "MyMod/UserData"
+  ],
+  "configFiles": [
+    "com.example.mymod.cfg"
+  ],
+  "choices": [
+    {
+      "id": "difficulty",
+      "label": {
+        "en": "Difficulty",
+        "ja": "難しさ",
+        "zh": "难度"
+      },
+      "config": {
+        "file": "com.example.mymod.cfg",
+        "section": "General",
+        "key": "Difficulty"
+      },
+      "options": [
+        {
+          "value": "Normal",
+          "name": "Normal"
+        },
+        {
+          "value": "Hard",
+          "name": "Hard"
+        }
+      ],
+      "default": "Normal"
+    }
+  ]
+}
