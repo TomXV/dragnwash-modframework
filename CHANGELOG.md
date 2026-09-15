@@ -2,6 +2,15 @@
 
 Versions of the core and of each library are separate, and follow semantic versioning: from 1.0.0 on, a change that breaks the public API comes only with a new major version.
 
+## 2026-09-15: icon
+
+Released together with Drag'n Wash Localization v1.1.1. The libraries stay at 1.0.0.
+
+### Core 1.1.1
+
+- The framework has its own icon on the Mods screen (`icon.png` next to the DLL), and the READMEs open with the logo.
+- The preloader patcher is unchanged; its version follows the core.
+
 ## 2026-09-15: update notices
 
 Released together with Drag'n Wash Localization v1.1.0. The libraries stay at 1.0.0.

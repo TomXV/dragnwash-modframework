@@ -7,7 +7,7 @@
 [Drag'n Wash](https://store.steampowered.com/app/4739660/) 用の前提 Mod（BepInEx 5）です。ゲームに入り込むためのコードを 1 か所にまとめた小さな中核で、ほかの Mod や、その上に乗るライブラリ（前提 Mod の上の前提 Mod）に安定した API を提供します。ゲームの Options 画面から開く Mods 画面（Minecraft Forge の Mod 一覧のようなもので、Mod のオン・オフもできる）、ゲームの Options 画面への設定の追加、テキストや会話のイベント、Direct3D 12 で安全なアセットの読み込みなどです。ゲームがアップデートされても、追従が必要なのはフレームワークだけになります。
 
 > [!NOTE]
-> **中核 1.1.0**（ライブラリは 1.0.0）で [更新のお知らせ](#更新のお知らせ) を追加しました。1.0.0 は、最初にこの上で動く Mod である [Drag'n Wash Localization](https://github.com/TomXV/dragnwash-localization) の v1.0.0 と一緒にリリースしました。1.0.0 以降、公開 API の互換性を壊す変更はメジャーバージョンを上げるときだけにします。[CHANGELOG.md](CHANGELOG.md) を参照してください。
+> **中核 1.1.1**（ライブラリは 1.0.0）です。1.1.0 で [更新のお知らせ](#更新のお知らせ)、共通インストーラー、Mods 画面からのアンインストールを追加し、1.1.1 でフレームワークのアイコンを追加しました。1.0.0 は、最初にこの上で動く Mod である [Drag'n Wash Localization](https://github.com/TomXV/dragnwash-localization) の v1.0.0 と一緒にリリースしました。1.0.0 以降、公開 API の互換性を壊す変更はメジャーバージョンを上げるときだけにします。[CHANGELOG.md](CHANGELOG.md) を参照してください。
 
 目標と作業の順番は [docs/DESIGN.ja.md](docs/DESIGN.ja.md)、この上での Mod の作り方は [docs/GUIDE.ja.md](docs/GUIDE.ja.md)、確認したゲームのビルドは [docs/GAME_BUILDS.md](docs/GAME_BUILDS.md) を参照してください。[Wiki](https://github.com/TomXV/dragnwash-modframework/wiki/Home-ja) には、プレイヤー向けのページ、はじめての Mod の手順、ライブラリごとのリファレンスがあります。
 

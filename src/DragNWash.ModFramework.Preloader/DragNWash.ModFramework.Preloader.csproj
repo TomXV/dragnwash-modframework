@@ -5,8 +5,8 @@
     <AssemblyName>DragNWash.ModFramework.Preloader</AssemblyName>
     <RootNamespace>DragNWash.ModFramework</RootNamespace>
     <LangVersion>latest</LangVersion>
-    <Version>1.1.0</Version>
-    <FileVersion>1.1.0</FileVersion>
+    <Version>1.1.1</Version>
+    <FileVersion>1.1.1</FileVersion>
     <Nullable>disable</Nullable>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>

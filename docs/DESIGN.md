@@ -2,7 +2,7 @@
 
 [日本語](DESIGN.ja.md)
 
-Status: September 2026. The core is released as 1.1.0 and the libraries as 1.0.0; parts marked planned or future are not done yet. Open an issue to discuss any part of it.
+Status: September 2026. The core is released as 1.1.1 and the libraries as 1.0.0; parts marked planned or future are not done yet. Open an issue to discuss any part of it.
 
 ## Why a framework
 
