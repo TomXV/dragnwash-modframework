@@ -18,6 +18,11 @@
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
   </ItemGroup>
 
+  <!-- The framework's icon on the Mods screen, next to the DLL. -->
+  <ItemGroup>
+    <None Include="icon.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <!-- The list of switched-off mods is shared with the preloader patcher. -->
   <ItemGroup>
     <Compile Include="..\DragNWash.ModFramework.Preloader\DisabledMods.cs" Link="Mods\DisabledMods.cs" />

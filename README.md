@@ -1,3 +1,5 @@
+<p align="center"><img src="images/readme-logo.png" alt="Drag'n Wash ModFramework" width="640"></p>
+
 # Drag'n Wash ModFramework
 
 [日本語](README.ja.md)

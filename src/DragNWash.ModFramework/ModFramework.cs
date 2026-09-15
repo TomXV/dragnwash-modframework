@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using BepInEx.Logging;
 
@@ -138,6 +139,7 @@ namespace DragNWash.ModFramework
                 Authors = new[] { "TomXV" },
                 Website = "https://github.com/TomXV/dragnwash-modframework",
                 UpdateRepository = "TomXV/dragnwash-modframework",
+                IconPath = Path.Combine(Path.GetDirectoryName(typeof(ModFramework).Assembly.Location) ?? "", "icon.png"),
             });
 
             IsReady = true;
