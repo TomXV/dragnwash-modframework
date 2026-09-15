@@ -253,6 +253,10 @@ namespace DragNWash.ModFramework.Mods
             button.colors = colors;
             TMP_Text label = UiText.Create(go.transform, "Label", text, UiText.ButtonSize);
             label.alignment = TextAlignmentOptions.Center;
+            // One line: a long label (Japanese, German) shrinks instead of breaking
+            // in the middle of a word.
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.overflowMode = TextOverflowModes.Ellipsis;
             ((RectTransform)label.transform).offsetMin = new Vector2(8f, 0f);
             ((RectTransform)label.transform).offsetMax = new Vector2(-8f, 0f);
             button.onClick.AddListener(onClick);

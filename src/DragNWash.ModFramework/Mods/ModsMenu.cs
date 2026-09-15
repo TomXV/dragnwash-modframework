@@ -584,6 +584,8 @@ namespace DragNWash.ModFramework.Mods
 
             TMP_Text label = UiText.Create(go.transform, "Label", entry.WantOn ? TextOn : TextOff, UiText.ButtonSize);
             label.alignment = TextAlignmentOptions.Center;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.overflowMode = TextOverflowModes.Ellipsis;
 
             button.onClick.AddListener(() => OnSwitch(entry));
             return go;
