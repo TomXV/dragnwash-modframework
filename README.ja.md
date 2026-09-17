@@ -1,4 +1,4 @@
-<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="images/logo-white.svg"><img src="images/logo.svg" alt="Drag'n Wash ModFramework" width="320"></picture></p>
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="images/logo-notagames.png"><img src="images/logo-notagames-panel.png" alt="Drag'n Wash ModFramework" width="420"></picture></p>
 
 # Drag'n Wash ModFramework
 
@@ -85,6 +85,7 @@ Actions の **Build** ワークフローが、リリース用の zip を GitHub 
 
 ## クレジット
 
+- 冒頭の**ロゴ**と、Mods 画面のフレームワークの**アイコン**は、**NotaGames** さん（[@NotaGames](https://github.com/NotaGames)）がゲームのロゴをもとに描いたものです。ゲームの開発元からも問題ないとの返事をいただいています（[#15](https://github.com/TomXV/dragnwash-modframework/issues/15)）。許可を得て使っており、MIT ライセンスの対象外です。
 - Options 画面の **Mods ボタン**（`ModsButton0.png`、`ModsButton1.png`）は、**Mister ERIO** さん（[@mistererio](https://github.com/mistererio)）がこのフレームワークのために描き、許可を得て使っています。ゲームの絵ではなく Mister ERIO さんの作品で、MIT ライセンスの対象外です。
 
 ## ライセンス

@@ -1,4 +1,4 @@
-<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="images/logo-white.svg"><img src="images/logo.svg" alt="Drag'n Wash ModFramework" width="320"></picture></p>
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="images/logo-notagames.png"><img src="images/logo-notagames-panel.png" alt="Drag'n Wash ModFramework" width="420"></picture></p>
 
 # Drag'n Wash ModFramework
 
@@ -85,6 +85,7 @@ This is an unofficial fan project and is not affiliated with Gator Dragon Games.
 
 ## Credits
 
+- The **logo** above and the framework's **icon** on the Mods screen were drawn by **NotaGames** ([@NotaGames](https://github.com/NotaGames)), after the game's own logo; the game's developers said that is fine ([#15](https://github.com/TomXV/dragnwash-modframework/issues/15)). Used with permission; not covered by the MIT license below.
 - The **Mods button** in the Options screen (`ModsButton0.png`, `ModsButton1.png`) was drawn for the framework by **Mister ERIO** ([@mistererio](https://github.com/mistererio)) and is used with permission. It is their artwork, not the game's, and is not covered by the MIT license below.
 
 ## License
