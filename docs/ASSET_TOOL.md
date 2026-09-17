@@ -8,9 +8,9 @@ The framework provides tools for the game's assets; what people make with them i
 
 1. **Browse**: what textures, materials, meshes and shaders are loaded.
 2. **Replace**: a mod ships its own files and they take the place of the game's, without touching the game's files.
-3. **Export** (not built yet): write a loaded asset to a file, in plain form, for people who want a template to work from.
+3. **Export and import** (not built yet): write a loaded object to a file in plain form, change it, and bring it back from a mod.
 
-Nothing here ships the game's assets. The framework's own rule, and this repository's CI, stay as they are: no game files in a repository or a release.
+Nothing here ships the game's assets. The game's data unchanged never goes into a repository or a release, and this repository's CI enforces it; material made by hand or changed follows [CONTENT_POLICY.md](CONTENT_POLICY.md).
 
 ## Browse
 
@@ -40,11 +40,26 @@ A reload uploads textures while the game runs, which on Direct3D 12 can crash it
 
 Failures the library can see are handled per file and never stop the rest: a PNG that is not an image, or that an editor is still saving (retried three times), keeps its previous texture and is listed under **Show replacements** with the reason.
 
-## Export
+## Export and import
 
-Planned: PNG for textures (read back from the GPU, so it works for the game's compressed textures too), OBJ for meshes, JSON for material and shader properties, written under `BepInEx/exports/<game build>/` with a `NOTICE.txt` that says what the files are and that they stay on your machine.
+Planned. Every kind the object explorer lists that has a plain form can be written to a file, changed, and brought back by a mod. What may go into a mod's release follows [CONTENT_POLICY.md](CONTENT_POLICY.md): made by hand or changed, never the game's data unchanged.
 
-Exports are deterministic, so their hashes can be published without their content: `ci/asset-fingerprints.json` will list them, and `pack.ps1` and CI will refuse a mod zip that contains an untouched export. That, rather than encryption, is the line between "a template on your disk" and "the game's art in a release".
+| Kind | Export | Import (a mod ships it) |
+|---|---|---|
+| Texture, Sprite | PNG, read back from the GPU, so the game's compressed textures work too | PNG, as today (`assets/textures/`) |
+| Mesh (not skinned) | OBJ | OBJ, replacing the mesh of that name (`assets/meshes/`) |
+| Material | JSON: the shader's property values and keywords | JSON with only the values to change (`assets/materials/`) |
+| Shader | JSON: its properties and keywords (the compiled shader is not exported) | none |
+| AudioClip | WAV, for clips whose samples can be read (not streamed ones) | WAV, replacing the clip of that name (`assets/audio/`) |
+| ScriptableObject and other serializable objects | JSON of their serialized fields (`JsonUtility`) | JSON with only the fields to change, applied over the object (`assets/data/`) |
+| Text and dialogue | Drag'n Wash Localization's exports | its translation packs |
+
+- **Where.** Exports go to `BepInEx/exports/<game build>/<kind>/`, with a `NOTICE.txt` that says what the files are and that they stay on your machine. Imports are read from `BepInEx/plugins/<YourMod>/assets/<kind>/<name>.<ext>`.
+- **From where.** An **Export** button on each object in the Inspector's object explorer ([OBJECT_EXPLORER.md](OBJECT_EXPLORER.md)), on each row of the Assets tab, and `export <kind> <name>` in the Console. Developer tools only.
+- **When imports apply.** Read at startup (the moment uploads are safe on Direct3D 12), applied when each scene loads and on **Apply replacements**, like textures. Data imports change only the fields named in the file.
+- **Clashes.** Two mods importing the same object: the mod whose folder sorts last wins, both are named in the log and in the Assets tab, as for textures.
+- **Untouched exports.** Exports are deterministic, so their hashes can be published without their content: `ci/asset-fingerprints.json` will list them, and `pack.ps1` and CI will refuse a mod zip that contains an untouched export.
+- **Not in scope.** Animation clips (the game build has no API to read their curves), fonts, compiled shaders and skinned meshes (characters).
 
 ## For mod authors
 

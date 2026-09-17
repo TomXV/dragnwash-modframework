@@ -20,6 +20,7 @@ Drag'n Wash Localization v1.2.0 と一緒にリリースしました。
 - **Mods 画面に、Mod ごとのお知らせ欄。** 今の画面が出せるのは「使えない機能」と「同じコードを書き換えている」の 2 種類だけです。どちらにも当てはまらないこともあります。たとえば、2 つの Mod が同じ行に違う訳を同梱した場合です（[Localization #28](https://github.com/TomXV/dragnwash-localization/issues/28)）。Mod やライブラリが、Mod の下に一言残せる小さな共通の仕組みを用意します。
 - **他の Mod が同梱する訳。** まず Drag'n Wash Localization が単独で `<Mod のフォルダー>/Translations/` を読むようにします。β版の実験的機能で、既定はオフです（[設計](https://github.com/TomXV/dragnwash-localization/blob/main/docs/MOD_TRANSLATIONS.ja.md)）。2 つ目の翻訳 Mod が同じ約束事を使いたくなったら、フォルダーを見つける処理を Text ライブラリに移します。
 - **Direct3D 12。** F1 の窓を開いたときやテクスチャのリロード中に、まれにゲームが落ちることがあります（Unity UUM-140564）。きっかけを突き止めるか、アップロードをすべて起動時に済ませる形にします。
+- **あらゆる種類の書き出しと取り込み。** テクスチャ、メッシュ、マテリアル、音、ゲームのデータ（ScriptableObject）をファイルに書き出し、手を加え、Mod から取り込めるように（[設計](ASSET_TOOL.ja.md#取り出すと取り込む)）。
 - **Steam Deck：** F1 の窓で、画面キーボードで文字を入力できるかの確認。
 
 ## 必要が出てきたら
@@ -37,7 +38,7 @@ Drag'n Wash Localization v1.2.0 と一緒にリリースしました。
 
 - Console のスクリプト言語。
 - 機械翻訳。
-- ゲームのファイルや、描き直したゲームの絵の配布。
+- ゲームのファイルを、手を加えずにそのまま配布すること（[CONTENT_POLICY.ja.md](CONTENT_POLICY.ja.md)）。
 - 2 つ目の Mod ローダーを作ること、BepInEx の役割を肩代わりすること。
 
 ## ほかの動きを待っているもの

@@ -79,11 +79,12 @@ The **Build** workflow (Actions) builds the release zip on GitHub: on every push
 ## Rules for this repository
 
 - Never commit the game's files, BepInEx binaries or anything from `libs/`. A check on every push and pull request enforces it.
+- Material from the game follows [docs/CONTENT_POLICY.md](docs/CONTENT_POLICY.md): made by hand or changed into something new is fine, the game's data unchanged is not.
 - Code that touches game classes stays `internal`; mods only see the framework's own types.
 
 ## A note to the developers
 
-This is an unofficial fan project and is not affiliated with Gator Dragon Games. It contains no game assets or code and does not modify the game's files (BepInEx loads it at runtime). If the development team has any concerns, please open an issue or contact the maintainer, and it will be changed or taken down.
+This is an unofficial fan project and is not affiliated with Gator Dragon Games. It contains none of the game's assets or code as they are (see [docs/CONTENT_POLICY.md](docs/CONTENT_POLICY.md)) and does not modify the game's files (BepInEx loads it at runtime). If the development team has any concerns, please open an issue or contact the maintainer, and it will be changed or taken down.
 
 ## Credits
 

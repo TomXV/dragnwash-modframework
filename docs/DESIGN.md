@@ -31,7 +31,7 @@ In most modding scenes every author designs things their own way. Two mods patch
 - **One place absorbs game updates.** Mods use the framework's types, never the game's classes directly for the features the framework covers. When the game changes, the framework follows and the mods keep working.
 - **Fail soft.** If a patch target disappears after an update, that feature reports itself unavailable and logs why. The game and the other features keep running.
 - **Safe on every platform the game runs on.** Windows (Direct3D 12 and 11), Windows on ARM, Steam Deck / Linux. Knowledge such as the Direct3D 12 upload crash (UUM-140564) lives in the framework, not in each mod.
-- **No game files.** Like the localization mod, the repository and releases never contain the game's assets, script or binaries.
+- **No game files as they are.** Like the localization mod, the repository and releases never contain the game's assets, script or binaries unchanged. Material made by hand or changed follows [CONTENT_POLICY.md](CONTENT_POLICY.md).
 
 ## Non-goals (for now)
 

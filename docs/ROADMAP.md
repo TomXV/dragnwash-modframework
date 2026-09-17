@@ -20,6 +20,7 @@ Released together with Drag'n Wash Localization v1.2.0.
 - **A notice per mod on the Mods screen.** Today the screen can say a feature is unavailable or that a mod patches the same code as another. Some things fit neither, such as two mods shipping different translations for the same line ([Localization #28](https://github.com/TomXV/dragnwash-localization/issues/28)). A small, general way for a mod or a library to leave a note under a mod.
 - **Translations shipped by other mods.** Drag'n Wash Localization will first load `<mod folder>/Translations/` on its own, as an experimental beta feature off by default ([design](https://github.com/TomXV/dragnwash-localization/blob/main/docs/MOD_TRANSLATIONS.md)). If a second translation mod wants the same convention, finding those folders moves into the Text library.
 - **Direct3D 12.** Opening the F1 window or reloading textures can, rarely, crash the game on Direct3D 12 (Unity UUM-140564). Find what triggers it, or keep every upload at startup.
+- **Export and import for every kind.** Textures, meshes, materials, sounds and the game's data (ScriptableObjects) written to files, changed, and brought back by a mod ([design](ASSET_TOOL.md#export-and-import)).
 - **Steam Deck:** typing in the F1 window with the on-screen keyboard.
 
 ## Later, if there is a need
@@ -37,7 +38,7 @@ Released together with Drag'n Wash Localization v1.2.0.
 
 - A scripting language in the Console.
 - Machine translation.
-- Shipping the game's files or redrawn game art.
+- Shipping the game's files unchanged ([CONTENT_POLICY.md](CONTENT_POLICY.md)).
 - A second mod loader, or taking over what BepInEx does.
 
 ## Waiting on others
