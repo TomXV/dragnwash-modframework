@@ -21,10 +21,25 @@ namespace DragNWash.ModFramework
         /// </summary>
         /// <param name="ownerGuid">BepInEx GUID of the mod that needs it.</param>
         /// <param name="feature">What stops working, for players, e.g. "Dialogue events".</param>
-        /// <param name="typeName">Full type name, e.g. "Yarn.Unity.LinePresenter".</param>
+        /// <param name="typeName">
+        /// Full type name, e.g. "Yarn.Unity.LinePresenter", or Harmony's
+        /// "Type:Method" form, e.g. "Yarn.Unity.LinePresenter:RunLine", which
+        /// the Inspector's Code view copies and AccessTools takes as it is.
+        /// </param>
         /// <param name="methodName">Method name, or null to check the type only.</param>
         public static bool Require(string ownerGuid, string feature, string typeName, string methodName = null)
         {
+            if (methodName == null && typeName != null)
+            {
+                // "Type:Method" pasted whole: a type name never holds a colon
+                // (a nested type is written with a +), so the split is safe.
+                int colon = typeName.LastIndexOf(':');
+                if (colon > 0 && colon < typeName.Length - 1)
+                {
+                    methodName = typeName.Substring(colon + 1);
+                    typeName = typeName.Substring(0, colon);
+                }
+            }
             Type type = AccessTools.TypeByName(typeName);
             bool ok = type != null && (methodName == null || AccessTools.Method(type, methodName) != null);
             if (!ok)
