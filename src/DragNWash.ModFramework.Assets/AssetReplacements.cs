@@ -19,6 +19,9 @@ namespace DragNWash.ModFramework.Assets
         /// <summary>Folder under BepInEx/plugins the file came from, as the mod's name.</summary>
         public string Mod { get; internal set; }
 
+        /// <summary>The language it applies to, or null when it applies whatever the language (a plain replacement).</summary>
+        public string Language { get; internal set; }
+
         /// <summary>The file.</summary>
         public string Path { get; internal set; }
 
@@ -68,6 +71,34 @@ namespace DragNWash.ModFramework.Assets
         private static readonly HashSet<Texture2D> Replacements = new HashSet<Texture2D>();
         private static readonly Dictionary<Sprite, Sprite> SpriteFor = new Dictionary<Sprite, Sprite>();
         private static bool _hooked;
+
+        // Replacements per language (AddLanguageFolder). Only the language in use
+        // is loaded; its files are in LanguageByName while they apply.
+        private sealed class LanguageFolder
+        {
+            public string Guid, Root, Subfolder, Mod;
+            public bool Enabled = true;
+        }
+        private static readonly List<LanguageFolder> LanguageFolders = new List<LanguageFolder>();
+        private static readonly Dictionary<string, TextureReplacement> LanguageByName = new Dictionary<string, TextureReplacement>(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<TextureReplacement, LanguageFolder> FolderOf = new Dictionary<TextureReplacement, LanguageFolder>();
+        private static string _loadedLanguage;
+
+        // What was there before a replacement went in, so it can be taken back:
+        // per material property, and per replacement sprite. Holding the
+        // originals keeps Unity from unloading them while they are replaced.
+        private static readonly Dictionary<string, Texture> MaterialOriginal = new Dictionary<string, Texture>();
+        private static readonly Dictionary<Sprite, Sprite> OriginalSprite = new Dictionary<Sprite, Sprite>();
+
+        /// <summary>
+        /// The language whose pictures apply after a restart, or null. Set on
+        /// Direct3D 12, where a language change cannot load textures while the
+        /// game runs; the previous language's pictures are taken back meanwhile.
+        /// </summary>
+        public static string PendingLanguage { get; private set; }
+
+        /// <summary>Raised after replacements were loaded, taken back or re-applied because of a language change or <see cref="SetLanguageFoldersEnabled"/>.</summary>
+        public static event Action Changed;
         private static readonly List<FileSystemWatcher> Watchers = new List<FileSystemWatcher>();
         private static volatile bool _reloadRequested;
         private static float _reloadRequestedAt;
@@ -81,8 +112,16 @@ namespace DragNWash.ModFramework.Assets
         /// <summary>Why <see cref="ReloadDisabled"/> is set, for the Assets tab.</summary>
         public static string ReloadDisabledReason { get; internal set; }
 
-        /// <summary>Every replacement found, by texture name.</summary>
-        public static IReadOnlyCollection<TextureReplacement> All => ByName.Values;
+        /// <summary>Every replacement found: the plain ones by texture name, then the current language's.</summary>
+        public static IReadOnlyCollection<TextureReplacement> All
+        {
+            get
+            {
+                var all = new List<TextureReplacement>(ByName.Values);
+                all.AddRange(LanguageByName.Values);
+                return all;
+            }
+        }
 
         /// <summary>Replacements that lost to another mod's file for the same name.</summary>
         public static int ConflictCount
@@ -90,13 +129,335 @@ namespace DragNWash.ModFramework.Assets
             get
             {
                 int n = 0;
-                foreach (TextureReplacement r in ByName.Values)
+                foreach (TextureReplacement r in All)
                 {
                     n += r.Overrides.Count;
                 }
                 return n;
             }
         }
+
+        // The replacement that applies to a texture of this name now: the current
+        // language's picture when its folder is on, else a plain replacement.
+        private static TextureReplacement Effective(string name)
+        {
+            if (name != null && LanguageByName.TryGetValue(name, out TextureReplacement l) && l.Texture != null && FolderOf.TryGetValue(l, out LanguageFolder f) && f.Enabled)
+            {
+                return l;
+            }
+            return name != null && ByName.TryGetValue(name, out TextureReplacement r) && r.Texture != null ? r : null;
+        }
+
+        /// <summary>
+        /// Adds replacements that apply only in one language:
+        /// <c>&lt;root&gt;/&lt;language&gt;/&lt;subfolder&gt;/&lt;texture name&gt;.png</c>
+        /// applies while <see cref="GameFonts.Language"/> is that language.
+        /// Only the language in use is loaded. Call from Awake, after
+        /// <see cref="GameFonts.SetLanguage"/>. A language picture wins over a
+        /// plain replacement of the same texture; both are named in the log.
+        /// Experimental (Assets 1.2).
+        /// </summary>
+        public static void AddLanguageFolder(string guid, string root, string subfolder)
+        {
+            if (string.IsNullOrEmpty(guid) || string.IsNullOrEmpty(root))
+            {
+                return;
+            }
+            LanguageFolders.RemoveAll(f => f.Guid == guid);
+            var folder = new LanguageFolder { Guid = guid, Root = root, Subfolder = subfolder ?? "", Mod = System.IO.Path.GetFileName(System.IO.Path.GetDirectoryName(root.TrimEnd('/', '\\'))) };
+            LanguageFolders.Add(folder);
+            string language = GameFonts.Language;
+            if (_loadedLanguage == null || string.Equals(_loadedLanguage, language, StringComparison.OrdinalIgnoreCase))
+            {
+                // Startup (or the same language): loading now is safe.
+                _loadedLanguage = language;
+                LoadLanguage(folder, language);
+                Hook();
+                ApplyNow();
+            }
+            else if (!GameFonts.RuntimeUploadsAreSafe)
+            {
+                PendingLanguage = language;
+            }
+            else
+            {
+                LoadLanguage(folder, _loadedLanguage);
+                ApplyNow();
+            }
+        }
+
+        /// <summary>
+        /// Switches one mod's language pictures off or on. Off takes them back at
+        /// once; on applies them again, loading them first where that is safe
+        /// (on Direct3D 12 pictures that were never loaded wait for a restart).
+        /// </summary>
+        public static void SetLanguageFoldersEnabled(string guid, bool on)
+        {
+            foreach (LanguageFolder f in LanguageFolders)
+            {
+                if (f.Guid != guid || f.Enabled == on)
+                {
+                    continue;
+                }
+                f.Enabled = on;
+                if (on && !HasLoaded(f))
+                {
+                    if (GameFonts.RuntimeUploadsAreSafe)
+                    {
+                        LoadLanguage(f, _loadedLanguage);
+                    }
+                    else
+                    {
+                        PendingLanguage = _loadedLanguage;
+                    }
+                }
+            }
+            RefreshAll();
+        }
+
+        private static bool HasLoaded(LanguageFolder folder)
+        {
+            foreach (LanguageFolder f in FolderOf.Values)
+            {
+                if (f == folder)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // From GameFonts.SetLanguage.
+        internal static void OnLanguageSet(string language)
+        {
+            if (LanguageFolders.Count == 0)
+            {
+                return;
+            }
+            try
+            {
+                if (string.Equals(language, _loadedLanguage, StringComparison.OrdinalIgnoreCase))
+                {
+                    // Back to the language loaded at startup: its pictures apply again.
+                    foreach (TextureReplacement r in Suspended)
+                    {
+                        LanguageByName[r.Name] = r;
+                    }
+                    Suspended.Clear();
+                    PendingLanguage = null;
+                    RefreshAll();
+                    return;
+                }
+                if (!GameFonts.RuntimeUploadsAreSafe)
+                {
+                    // Taking pictures back needs no upload; loading the new ones does.
+                    PendingLanguage = language;
+                    DisableLoaded();
+                    RefreshAll();
+                    AssetsLibraryPlugin.Log.LogInfo($"Pictures for \"{language}\" apply after a restart (Direct3D 12 cannot load textures while the game runs).");
+                    return;
+                }
+                var previous = new List<TextureReplacement>(LanguageByName.Values);
+                LanguageByName.Clear();
+                FolderOf.Clear();
+                RefreshAll(previous);
+                foreach (TextureReplacement r in previous)
+                {
+                    Replacements.Remove(r.Texture);
+                    if (r.Texture != null)
+                    {
+                        UnityEngine.Object.Destroy(r.Texture);
+                    }
+                }
+                _loadedLanguage = language;
+                PendingLanguage = null;
+                foreach (LanguageFolder f in LanguageFolders)
+                {
+                    LoadLanguage(f, language);
+                }
+                RefreshAll();
+            }
+            catch (Exception ex)
+            {
+                AssetsLibraryPlugin.Log.LogError($"Switching language pictures to \"{language}\" failed: {ex}");
+            }
+        }
+
+        // Direct3D 12 waiting for a restart: the loaded pictures stay in memory
+        // but no longer apply, as if their folders were off.
+        private static readonly HashSet<TextureReplacement> Suspended = new HashSet<TextureReplacement>();
+
+        private static void DisableLoaded()
+        {
+            foreach (TextureReplacement r in LanguageByName.Values)
+            {
+                Suspended.Add(r);
+            }
+            LanguageByName.Clear();
+        }
+
+        private static void LoadLanguage(LanguageFolder folder, string language)
+        {
+            if (string.IsNullOrEmpty(language))
+            {
+                return;
+            }
+            string dir = System.IO.Path.Combine(System.IO.Path.Combine(folder.Root, language), folder.Subfolder);
+            if (!Directory.Exists(dir))
+            {
+                return;
+            }
+            string[] files = Directory.GetFiles(dir, "*.png");
+            Array.Sort(files, StringComparer.OrdinalIgnoreCase);
+            int loaded = 0;
+            foreach (string file in files)
+            {
+                TextureReplacement r = Load(file, folder.Mod);
+                if (r == null)
+                {
+                    continue;
+                }
+                r.Language = language;
+                if (LanguageByName.TryGetValue(r.Name, out TextureReplacement earlier))
+                {
+                    r.Overrides.AddRange(earlier.Overrides);
+                    r.Overrides.Add(earlier.Mod);
+                    Replacements.Remove(earlier.Texture);
+                    FolderOf.Remove(earlier);
+                    AssetsLibraryPlugin.Log.LogWarning($"Texture \"{r.Name}\" has a {language} picture in both {earlier.Mod} and {r.Mod}; {r.Mod} wins.");
+                }
+                if (ByName.TryGetValue(r.Name, out TextureReplacement plain))
+                {
+                    r.Overrides.Add(plain.Mod);
+                    AssetsLibraryPlugin.Log.LogWarning($"Texture \"{r.Name}\" is replaced by {plain.Mod} and has a {language} picture in {r.Mod}; the {language} picture applies while that language is in use.");
+                }
+                LanguageByName[r.Name] = r;
+                FolderOf[r] = folder;
+                Replacements.Add(r.Texture);
+                loaded++;
+            }
+            if (loaded > 0)
+            {
+                AssetsLibraryPlugin.Log.LogInfo($"{loaded} {language} picture(s) loaded from {folder.Mod}.");
+            }
+        }
+
+        private static TextureReplacement Load(string file, string mod)
+        {
+            string name = System.IO.Path.GetFileNameWithoutExtension(file);
+            var replacement = new TextureReplacement { Name = name, Mod = mod, Path = file, Texture = GameAssets.LoadTexture(file) };
+            if (replacement.Texture == null)
+            {
+                return null;
+            }
+            replacement.Texture.name = name;
+            replacement.ContentHash = HashFile(file);
+            return replacement;
+        }
+
+        private static void Hook()
+        {
+            if (_hooked)
+            {
+                return;
+            }
+            GameEvents.OnSceneLoaded(GameFonts.Guid, (scene, mode) => ApplyNow());
+            ModFramework.Ready += () => ApplyNow();
+            _hooked = true;
+        }
+
+        // Takes back what no longer applies and applies what does, everywhere.
+        // With extra, those textures (no longer listed anywhere) are taken back too.
+        private static void RefreshAll(List<TextureReplacement> extra = null)
+        {
+            var gone = new HashSet<Texture>();
+            if (extra != null)
+            {
+                foreach (TextureReplacement r in extra)
+                {
+                    if (r.Texture != null) gone.Add(r.Texture);
+                }
+            }
+            foreach (TextureReplacement r in Suspended)
+            {
+                if (r.Texture != null) gone.Add(r.Texture);
+            }
+            TakeBack(gone);
+            ApplyNow();
+            try
+            {
+                Changed?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                AssetsLibraryPlugin.Log.LogError($"An AssetReplacements.Changed handler threw: {ex}");
+            }
+        }
+
+        // Puts the original back wherever one of these textures, or a replacement
+        // that no longer applies, is in use.
+        private static void TakeBack(HashSet<Texture> gone)
+        {
+            foreach (Material m in Resources.FindObjectsOfTypeAll<Material>())
+            {
+                if (m == null)
+                {
+                    continue;
+                }
+                foreach (string property in AssetCatalog.SafeTextureProperties(m))
+                {
+                    Texture current = m.GetTexture(property);
+                    if (current == null || !(gone.Contains(current) || IsStale(current)))
+                    {
+                        continue;
+                    }
+                    string key = MaterialKey(m, property);
+                    if (MaterialOriginal.TryGetValue(key, out Texture original))
+                    {
+                        m.SetTexture(property, original);
+                    }
+                }
+            }
+            foreach (Image image in Resources.FindObjectsOfTypeAll<Image>())
+            {
+                if (image != null && image.sprite != null && (gone.Contains(image.sprite.texture) || IsStale(image.sprite.texture)) &&
+                    OriginalSprite.TryGetValue(image.sprite, out Sprite original))
+                {
+                    image.sprite = original;
+                }
+            }
+            foreach (SpriteRenderer renderer in Resources.FindObjectsOfTypeAll<SpriteRenderer>())
+            {
+                if (renderer != null && renderer.sprite != null && (gone.Contains(renderer.sprite.texture) || IsStale(renderer.sprite.texture)) &&
+                    OriginalSprite.TryGetValue(renderer.sprite, out Sprite original))
+                {
+                    renderer.sprite = original;
+                }
+            }
+        }
+
+        // A replacement texture in use that is not what applies to its name now.
+        private static bool IsStale(Texture current)
+        {
+            var t = current as Texture2D;
+            if (t == null || !Replacements.Contains(t) && !IsSuspended(t))
+            {
+                return false;
+            }
+            TextureReplacement now = Effective(t.name);
+            return now == null || now.Texture != t;
+        }
+
+        private static bool IsSuspended(Texture2D t)
+        {
+            foreach (TextureReplacement r in Suspended)
+            {
+                if (r.Texture == t) return true;
+            }
+            return false;
+        }
+
+        private static string MaterialKey(Material m, string property) => m.GetInstanceID() + "|" + property;
 
         /// <summary>True when <paramref name="texture"/> is a replacement a mod shipped.</summary>
         public static bool IsReplacement(Texture2D texture)
@@ -126,14 +487,12 @@ namespace DragNWash.ModFramework.Assets
                 Array.Sort(files, StringComparer.OrdinalIgnoreCase);
                 foreach (string file in files)
                 {
-                    string name = System.IO.Path.GetFileNameWithoutExtension(file);
-                    var replacement = new TextureReplacement { Name = name, Mod = mod, Path = file, Texture = GameAssets.LoadTexture(file) };
-                    if (replacement.Texture == null)
+                    TextureReplacement replacement = Load(file, mod);
+                    if (replacement == null)
                     {
                         continue;
                     }
-                    replacement.Texture.name = name;
-                    replacement.ContentHash = HashFile(file);
+                    string name = replacement.Name;
                     if (ByName.TryGetValue(name, out TextureReplacement earlier))
                     {
                         replacement.Overrides.AddRange(earlier.Overrides);
@@ -148,12 +507,7 @@ namespace DragNWash.ModFramework.Assets
             if (ByName.Count > 0)
             {
                 AssetsLibraryPlugin.Log.LogInfo($"{ByName.Count} texture replacement(s) loaded from mods.");
-                if (!_hooked)
-                {
-                    GameEvents.OnSceneLoaded(GameFonts.Guid, (scene, mode) => ApplyNow());
-                    ModFramework.Ready += () => ApplyNow();
-                    _hooked = true;
-                }
+                Hook();
             }
         }
 
@@ -164,7 +518,7 @@ namespace DragNWash.ModFramework.Assets
         /// </summary>
         public static int ApplyNow()
         {
-            if (ByName.Count == 0)
+            if (ByName.Count == 0 && LanguageByName.Count == 0)
             {
                 return 0;
             }
@@ -197,7 +551,7 @@ namespace DragNWash.ModFramework.Assets
                 return results;
             }
             var changed = new List<TextureReplacement>();
-            foreach (TextureReplacement r in new List<TextureReplacement>(ByName.Values))
+            foreach (TextureReplacement r in All)
             {
                 if (!File.Exists(r.Path))
                 {
@@ -289,24 +643,42 @@ namespace DragNWash.ModFramework.Assets
                     }
                 }
             }
+            var recut = new Dictionary<Sprite, Sprite>();
             foreach (Image image in Resources.FindObjectsOfTypeAll<Image>())
             {
                 if (image != null && image.sprite != null && image.sprite.texture == old)
                 {
-                    image.sprite = ReCut(image.sprite, fresh);
+                    image.sprite = ReCut(image.sprite, fresh, recut);
                 }
             }
             foreach (SpriteRenderer renderer in Resources.FindObjectsOfTypeAll<SpriteRenderer>())
             {
                 if (renderer != null && renderer.sprite != null && renderer.sprite.texture == old)
                 {
-                    renderer.sprite = ReCut(renderer.sprite, fresh);
+                    renderer.sprite = ReCut(renderer.sprite, fresh, recut);
                 }
             }
         }
 
-        // The same sprite, cut from the new texture.
-        private static Sprite ReCut(Sprite previous, Texture2D fresh)
+        // The same sprite, cut from the new texture, once per previous sprite;
+        // it remembers the same original as the sprite it takes over from.
+        private static Sprite ReCut(Sprite previous, Texture2D fresh, Dictionary<Sprite, Sprite> done)
+        {
+            if (done.TryGetValue(previous, out Sprite made))
+            {
+                return made;
+            }
+            Sprite sprite = CutFrom(previous, fresh);
+            done[previous] = sprite;
+            if (OriginalSprite.TryGetValue(previous, out Sprite original))
+            {
+                OriginalSprite[sprite] = original;
+                SpriteFor[original] = sprite;
+            }
+            return sprite;
+        }
+
+        private static Sprite CutFrom(Sprite previous, Texture2D fresh)
         {
             Rect rect = previous.rect;
             float sx = (float)fresh.width / previous.texture.width, sy = (float)fresh.height / previous.texture.height;
@@ -416,9 +788,24 @@ namespace DragNWash.ModFramework.Assets
                 foreach (string property in AssetCatalog.SafeTextureProperties(m))
                 {
                     Texture current = m.GetTexture(property);
-                    if (current == null || Replacements.Contains(current as Texture2D) ||
-                        !ByName.TryGetValue(current.name, out TextureReplacement r))
+                    if (current == null)
                     {
+                        continue;
+                    }
+                    TextureReplacement r = Effective(current.name);
+                    if (r == null || current == r.Texture)
+                    {
+                        continue;
+                    }
+                    string key = MaterialKey(m, property);
+                    bool isReplacement = current is Texture2D t2 && (Replacements.Contains(t2) || IsSuspended(t2));
+                    if (!isReplacement)
+                    {
+                        MaterialOriginal[key] = current;
+                    }
+                    else if (!MaterialOriginal.ContainsKey(key))
+                    {
+                        // A replacement put there before we could note the original.
                         continue;
                     }
                     m.SetTexture(property, r.Texture);
@@ -455,29 +842,35 @@ namespace DragNWash.ModFramework.Assets
         // pivot and pixels-per-unit, made once per original sprite. The
         // replacement image should have the original's size; a different size
         // is scaled to keep the same rect in the texture's proportions.
-        private static bool TryReplacementSprite(Sprite original, out Sprite replacement)
+        private static bool TryReplacementSprite(Sprite current, out Sprite replacement)
         {
             replacement = null;
-            if (original == null || original.texture == null || Replacements.Contains(original.texture))
+            if (current == null || current.texture == null)
             {
                 return false;
             }
-            if (SpriteFor.TryGetValue(original, out replacement) && replacement != null)
+            // A sprite we made stands for the game's sprite it was cut for.
+            Sprite original = OriginalSprite.TryGetValue(current, out Sprite o) && o != null ? o : current;
+            if (original != current && original.texture == null)
+            {
+                return false;
+            }
+            if (original == current && (Replacements.Contains(current.texture) || IsSuspended(current.texture)))
+            {
+                return false;
+            }
+            TextureReplacement r = Effective(original.texture.name);
+            if (r == null || current.texture == r.Texture)
+            {
+                return false;
+            }
+            if (SpriteFor.TryGetValue(original, out replacement) && replacement != null && replacement.texture == r.Texture)
             {
                 return true;
             }
-            if (!ByName.TryGetValue(original.texture.name, out TextureReplacement r))
-            {
-                return false;
-            }
-            Rect rect = original.rect;
-            float sx = (float)r.Texture.width / original.texture.width, sy = (float)r.Texture.height / original.texture.height;
-            var scaled = new Rect(rect.x * sx, rect.y * sy, rect.width * sx, rect.height * sy);
-            Vector2 pivot = new Vector2(original.pivot.x / rect.width, original.pivot.y / rect.height);
-            replacement = Sprite.Create(r.Texture, scaled, pivot, original.pixelsPerUnit * sx, 0, SpriteMeshType.FullRect, original.border);
-            replacement.name = original.name;
-            replacement.hideFlags = HideFlags.DontUnloadUnusedAsset;
+            replacement = CutFrom(original, r.Texture);
             SpriteFor[original] = replacement;
+            OriginalSprite[replacement] = original;
             r.Applied++;
             return true;
         }

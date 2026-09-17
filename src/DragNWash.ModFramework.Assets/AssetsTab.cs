@@ -111,7 +111,11 @@ namespace DragNWash.ModFramework.Assets
                     var lines = new List<string>();
                     foreach (TextureReplacement r in AssetReplacements.All)
                     {
-                        lines.Add($"{r.Name}  from {r.Mod}  in {r.Applied} place(s)" + (r.Overrides.Count > 0 ? "  overrides " + string.Join(", ", r.Overrides) : "") + (r.Problem != null ? "  NOT reloaded: " + r.Problem : ""));
+                        lines.Add($"{r.Name}  from {r.Mod}" + (r.Language != null ? $" ({r.Language})" : "") + $"  in {r.Applied} place(s)" + (r.Overrides.Count > 0 ? "  overrides " + string.Join(", ", r.Overrides) : "") + (r.Problem != null ? "  NOT reloaded: " + r.Problem : ""));
+                    }
+                    if (AssetReplacements.PendingLanguage != null)
+                    {
+                        lines.Add($"Pictures for \"{AssetReplacements.PendingLanguage}\" apply after a restart (Direct3D 12).");
                     }
                     return lines.Count == 0 ? "No mod ships texture replacements." : string.Join("\n", lines);
                 }
@@ -333,7 +337,7 @@ namespace DragNWash.ModFramework.Assets
             foreach (TextureReplacement r in all)
             {
                 GUI.Label(new Rect(0, ry, inner * 0.4f - 6, row), r.Name, _cell);
-                GUI.Label(new Rect(inner * 0.4f, ry, inner * 0.3f - 6, row), r.Mod, _mutedCell);
+                GUI.Label(new Rect(inner * 0.4f, ry, inner * 0.3f - 6, row), r.Language != null ? $"{r.Mod} ({r.Language})" : r.Mod, _mutedCell);
                 string note = $"{r.Texture.width}x{r.Texture.height}, in {r.Applied} place(s)";
                 if (r.Overrides.Count > 0)
                 {

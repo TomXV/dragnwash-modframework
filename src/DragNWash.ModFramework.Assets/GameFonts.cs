@@ -185,7 +185,7 @@ namespace DragNWash.ModFramework.Assets
         public const string Guid = "com.tomxv.dragnwash.modframework.assets";
 
         /// <summary>Library version. Keep in sync with the csproj.</summary>
-        public const string Version = "1.1.1";
+        public const string Version = "1.2.0";
 
         private static readonly List<string> FontFolders = new List<string>();
 
@@ -232,9 +232,15 @@ namespace DragNWash.ModFramework.Assets
         /// </summary>
         public static void SetLanguage(string language)
         {
+            string previous = _currentLocale;
             _currentLocale = language ?? string.Empty;
             PublishFallbacks(_currentLocale);
             NoteLanguage(_currentLocale);
+            if (!string.Equals(previous, _currentLocale, StringComparison.OrdinalIgnoreCase))
+            {
+                // Texture replacements per language follow the language set here.
+                AssetReplacements.OnLanguageSet(_currentLocale);
+            }
         }
 
         // The crash report window speaks the language the player chose in the

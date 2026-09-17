@@ -11,6 +11,11 @@ Versions of the core and of each library are separate, and follow semantic versi
 - The debug view's names keep clear of the selection's name and of each other (moved above, or below the outline when there is no room), instead of being drawn over them.
 - Experimental. Rigidbodies and Rigidbody2Ds, read by reflection (no physics module is referenced): a debug view with each body's centre of mass and a velocity arrow, tagged with its speed, mass, kind and sleep (View → Rigidbodies: centre of mass and velocity); a **Rigidbodies list**, scene-wide or under the selection, fastest first, with a filter and Awake only; buttons on a selected body: **Stop**, **Kinematic** (kept in History), **Sleep** / **Wake**; and **Pause physics** with **Step** (simulation mode set to Script, put back on Resume, when the window closes or when developer tools go off). Console: `bodies`, `bodies pause|resume|step [count]`. See docs/INSPECTOR.md, Rigidbodies.
 
+### Assets 1.2.0
+
+- Experimental. Texture replacements per language: `AssetReplacements.AddLanguageFolder(guid, root, subfolder)` takes `<root>/<language>/<subfolder>/*.png`, which apply only while `GameFonts.Language` is that language and win over a plain replacement of the same texture (both are named in the log). Only the language in use is loaded. A language change takes the previous pictures back and loads the new ones; on Direct3D 12 the new ones wait for a restart (`AssetReplacements.PendingLanguage`). `SetLanguageFoldersEnabled(guid, on)` switches a mod's pictures off and on; `AssetReplacements.Changed` is raised afterwards. `TextureReplacement.Language` names the language, and the Assets tab shows it. For Drag'n Wash Localization's translated pictures.
+- Replacements can be taken back: the library remembers what each material property and each sprite user held before.
+
 ## 2026-09-19: crash reports, sliders, Direct3D 12
 
 Released together with Drag'n Wash Localization v1.3.0. The core and the preloader patcher go to 1.3.0, the Tool window and Assets libraries to 1.1.1; the others stay as they are. Everything new is additive: mods built on 1.2 need no change.
