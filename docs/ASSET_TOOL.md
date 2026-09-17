@@ -55,7 +55,7 @@ Planned. Every kind the object explorer lists that has a plain form can be writt
 | Text and dialogue | Drag'n Wash Localization's exports | its translation packs |
 
 - **Where.** Exports go to `BepInEx/exports/<game build>/<kind>/`, with a `NOTICE.txt` that says what the files are and that they stay on your machine. Imports are read from `BepInEx/plugins/<YourMod>/assets/<kind>/<name>.<ext>`.
-- **From where.** An **Export** button on each object in the Inspector's object explorer ([OBJECT_EXPLORER.md](OBJECT_EXPLORER.md)), on each row of the Assets tab, and `export <kind> <name>` in the Console. Developer tools only.
+- **From where.** An **Export** button on each object in the Inspector's object explorer (designed on the `experimental/object-explorer` branch), on each row of the Assets tab, and `export <kind> <name>` in the Console. Developer tools only.
 - **When imports apply.** Read at startup (the moment uploads are safe on Direct3D 12), applied when each scene loads and on **Apply replacements**, like textures. Data imports change only the fields named in the file.
 - **Clashes.** Two mods importing the same object: the mod whose folder sorts last wins, both are named in the log and in the Assets tab, as for textures.
 - **Untouched exports.** Exports are deterministic, so their hashes can be published without their content: `ci/asset-fingerprints.json` will list them, and `pack.ps1` and CI will refuse a mod zip that contains an untouched export.

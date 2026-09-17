@@ -55,7 +55,7 @@ Assets タブの **Reload files** は、差し替えの PNG をすべて読み�
 | テキストと会話 | Drag'n Wash Localization の書き出し | その翻訳パック |
 
 - **置き場所。** 書き出しは `BepInEx/exports/<ゲームのビルド>/<種類>/` に置き、ファイルが何で、手元にとどめるものだと書いた `NOTICE.txt` を添えます。取り込みは `BepInEx/plugins/<自分の Mod>/assets/<種類>/<名前>.<拡張子>` から読みます。
-- **どこから書き出すか。** Inspector のオブジェクトエクスプローラー（[OBJECT_EXPLORER.ja.md](OBJECT_EXPLORER.ja.md)）の各オブジェクトと、Assets タブの各行に **Export** ボタンを付けます。コンソールでは `export <種類> <名前>`。開発者ツールのときだけです。
+- **どこから書き出すか。** Inspector のオブジェクトエクスプローラー（`experimental/object-explorer` ブランチで設計中）の各オブジェクトと、Assets タブの各行に **Export** ボタンを付けます。コンソールでは `export <種類> <名前>`。開発者ツールのときだけです。
 - **取り込みを当てるとき。** 起動時に読み（Direct3D 12 でアップロードが安全なときです）、テクスチャと同じく、シーンを読み込むたびと **Apply replacements** のときに当てます。データの取り込みは、ファイルに書いたフィールドだけを変えます。
 - **ぶつかったとき。** 2 つの Mod が同じものを取り込むときは、テクスチャと同じく、フォルダ名の並びで後ろの Mod が勝ち、両方の名前が log と Assets タブに出ます。
 - **手を加えていない書き出し。** 書き出しは決定的なので、中身を含めずにハッシュを公開できます。`ci/asset-fingerprints.json` に載せ、`pack.ps1` と CI は、手を加えていない書き出しを含む Mod の zip を拒否します。
