@@ -151,6 +151,16 @@ namespace DragNWash.ModFramework
                 Authors = new[] { "TomXV" },
                 Website = "https://github.com/TomXV/dragnwash-modframework",
                 UpdateRepository = "TomXV/dragnwash-modframework",
+                Network = new[]
+                {
+                    new NetworkUse
+                    {
+                        Host = "api.github.com",
+                        Purpose = "Once a day, asks GitHub whether mods that name their GitHub repository have a newer release.",
+                        Sends = "The names of those repositories. Nothing about you or your game.",
+                        TurnOff = "Mods → Drag'n Wash ModFramework → Settings → Check for updates",
+                    },
+                },
                 IconPath = Path.Combine(Path.GetDirectoryName(typeof(ModFramework).Assembly.Location) ?? "", "icon.png"),
             });
 

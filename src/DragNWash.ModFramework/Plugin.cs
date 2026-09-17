@@ -15,6 +15,8 @@ namespace DragNWash.ModFramework
             DeveloperTools.Install(Config);
             ModReload.Install(Config, this);
             var harmony = new Harmony(ModFramework.Guid);
+            // Before anything else can go online, the framework's own update check included.
+            NetworkWatch.Install(Config, harmony);
             Mods.ModsScreen.Install(harmony);
             Options.OptionsRows.Install(harmony);
             Title.TitleVersion.Install(harmony);

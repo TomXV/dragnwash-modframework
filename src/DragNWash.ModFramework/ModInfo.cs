@@ -63,5 +63,15 @@ namespace DragNWash.ModFramework
         /// OnDestroy. False, the default, and it is never reloaded.
         /// </summary>
         public bool Reloadable { get; set; }
+
+        /// <summary>
+        /// Every way the mod connects to the internet, shown to players on the
+        /// Mods screen. Leave it empty for a mod that never goes online. A mod
+        /// that connects without saying so here is marked on the Mods screen
+        /// (see <see cref="NetworkWatch"/>). The update check that
+        /// <see cref="UpdateRepository"/> asks for is listed by the framework
+        /// itself. See GUIDE rule 11. Experimental, since 1.2.0.
+        /// </summary>
+        public NetworkUse[] Network { get; set; }
     }
 }

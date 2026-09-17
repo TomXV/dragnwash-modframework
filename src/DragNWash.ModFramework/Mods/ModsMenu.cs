@@ -223,6 +223,12 @@ namespace DragNWash.ModFramework.Mods
                 tag.color = entry.IsLibrary ? new Color(0.7f, 0.8f, 1f, 1f) : conflict ? WarnColor : UpdateColor;
                 used += FitRight(tag, used) + 16f;
             }
+            if (IsOnline(entry, out bool undeclaredOnline))
+            {
+                TMP_Text net = UiText.Create(band.transform, "Online", TextOnlineTag, UiText.BodySize * 0.8f);
+                net.color = undeclaredOnline ? WarnColor : OnlineColor;
+                used += FitRight(net, used) + 16f;
+            }
 
             TMP_Text name = UiText.Create(band.transform, "Name", Escape(entry.DisplayName), UiText.NameSize);
             name.alignment = TextAlignmentOptions.MidlineLeft;
@@ -336,10 +342,18 @@ namespace DragNWash.ModFramework.Mods
 
             // Notes about the mod, one per line from the top of this band down.
             var notes = new List<(string Name, string Label, string Value, bool Warn)>();
+            if (_confirming != entry)
+            {
+                AddNetworkNote(entry, notes, true);
+            }
             Updates.UpdateCheck.Release newer = entry.Loaded ? Updates.UpdateCheck.NewerRelease(entry.Guid, entry.Version) : null;
             if (newer != null && _confirming != entry)
             {
                 notes.Add(("Update", TextNewVersion, newer.Tag, false));
+            }
+            if (_confirming != entry)
+            {
+                AddNetworkNote(entry, notes, false);
             }
             int reloads = ModReload.ReloadCount(entry.Guid);
             if (reloads > 0 && _confirming != entry)
@@ -379,6 +393,10 @@ namespace DragNWash.ModFramework.Mods
             }
 
             List<ModsScreenPage> pages = entry.Loaded && entry.Guid != null ? ModFramework.PagesFor(entry.Guid) : new List<ModsScreenPage>();
+            if (entry.Loaded && IsOnline(entry, out _))
+            {
+                pages.Insert(0, InternetPage(entry));
+            }
             bool hasButtonRow = pages.Count > 0 || newer != null;
             int maxLines = hasButtonRow ? 2 : 3;
             float size = UiText.BodySize * 0.9f;
@@ -752,19 +770,23 @@ namespace DragNWash.ModFramework.Mods
     {
         internal ModsMenu Menu;
         private int _seen = -1;
+        private int _seenNetwork = -1;
 
         private void OnEnable()
         {
             _seen = Updates.UpdateCheck.Revision;
+            _seenNetwork = NetworkWatch.Revision;
         }
 
+        // Also when the framework sees a mod connect somewhere new.
         private void LateUpdate()
         {
-            if (_seen == Updates.UpdateCheck.Revision)
+            if (_seen == Updates.UpdateCheck.Revision && _seenNetwork == NetworkWatch.Revision)
             {
                 return;
             }
             _seen = Updates.UpdateCheck.Revision;
+            _seenNetwork = NetworkWatch.Revision;
             try
             {
                 Menu?.OnUpdatesChanged();

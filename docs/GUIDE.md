@@ -68,6 +68,7 @@ A mod that needs a newer library than the one installed can say so with `[BepInD
 9. **Take the game's events from `GameEvents`.** A handler on `SceneManager.sceneLoaded` that throws stops every mod that subscribed after it, and nobody can tell which mod it was. `GameEvents.OnSceneLoaded(yourGuid, ...)` runs each mod's handler on its own, names the mod on the Mods screen when it fails, and switches a handler off after three failures in a row.
 
 10. **Say so before you rely on reloading.** A mod is reloaded while the game runs only when it sets `ModInfo.Reloadable = true` (or carries `[ReloadableMod]`), and then it promises the points under [Reloading your mod while the game runs](#reloading-your-mod-while-the-game-runs).
+11. **Say so before you go online.** List every host your mod connects to in `ModInfo.Network`, with what for, what is sent and how to turn it off; the Mods screen shows it to players. Send anything about the player (a name, a save, what they typed, an ID that follows them) only after they turn it on. A mod that connects without saying so is marked on the Mods screen. See [docs/NETWORK.md](NETWORK.md).
 
 ## Reloading your mod while the game runs
 

@@ -386,11 +386,15 @@ namespace DragNWash.ModFramework.ToolWindow
                 }
                 return new string[0];
             });
-            Register(ToolWindow.Guid, "mods", "Loaded plugins, with features the framework found unavailable | mods reload <guid> | mods watch on|off", args =>
+            Register(ToolWindow.Guid, "mods", "Loaded plugins, with features the framework found unavailable | mods reload <guid> | mods watch on|off | mods network", args =>
             {
                 if (args.Length > 0 && args[0].Equals("reload", StringComparison.OrdinalIgnoreCase))
                 {
                     return args.Length < 2 ? "mods reload <guid>  (a reloadable mod; see mods)" : ModReload.Reload(args[1]);
+                }
+                if (args.Length > 0 && args[0].Equals("network", StringComparison.OrdinalIgnoreCase))
+                {
+                    return NetworkReport();
                 }
                 if (args.Length > 0 && args[0].Equals("watch", StringComparison.OrdinalIgnoreCase))
                 {
@@ -421,7 +425,7 @@ namespace DragNWash.ModFramework.ToolWindow
                 return sb.ToString().TrimEnd();
             }, args =>
             {
-                if (args.Length == 1) return new[] { "reload", "watch" };
+                if (args.Length == 1) return new[] { "reload", "watch", "network" };
                 if (args.Length == 2 && args[0].Equals("reload", StringComparison.OrdinalIgnoreCase)) return ModReload.ReloadableMods();
                 if (args.Length == 2 && args[0].Equals("watch", StringComparison.OrdinalIgnoreCase)) return new[] { "on", "off" };
                 return new string[0];
@@ -431,6 +435,35 @@ namespace DragNWash.ModFramework.ToolWindow
             // The same as "log clear", under the names people type by habit.
             Register(ToolWindow.Guid, "clear", "Clears the console (also: cls, log clear)", args => { ConsoleLog.Clear(); return ""; });
             Register(ToolWindow.Guid, "cls", "Clears the console (also: clear, log clear)", args => { ConsoleLog.Clear(); return ""; });
+        }
+
+        // What each mod says it does online, and what the framework saw.
+        private static string NetworkReport()
+        {
+            var sb = new StringBuilder();
+            sb.Append(NetworkWatch.Enabled ? "Connection watching is on (it only watches; a mod can get around it)." : "Connection watching is off.").Append('\n');
+            foreach (KeyValuePair<string, BepInEx.PluginInfo> kv in BepInEx.Bootstrap.Chainloader.PluginInfos)
+            {
+                IReadOnlyList<NetworkUse> declared = NetworkWatch.DeclaredBy(kv.Key);
+                IReadOnlyList<NetworkWatch.Connection> seen = NetworkWatch.SeenBy(kv.Key);
+                if (declared.Count == 0 && seen.Count == 0)
+                {
+                    continue;
+                }
+                sb.Append(kv.Value.Metadata.Name).Append(" (").Append(kv.Key).Append(")\n");
+                foreach (NetworkUse u in declared)
+                {
+                    sb.Append("  declares ").Append(u.Host);
+                    if (!string.IsNullOrEmpty(u.Purpose)) sb.Append(": ").Append(u.Purpose);
+                    sb.Append('\n');
+                }
+                foreach (NetworkWatch.Connection c in seen)
+                {
+                    sb.Append("  connected to ").Append(c.Host).Append(" via ").Append(c.Via).Append(", ").Append(c.Count).Append(" time(s)");
+                    sb.Append(c.Declared ? "" : "  - NOT DECLARED").Append('\n');
+                }
+            }
+            return sb.ToString().TrimEnd();
         }
     }
 }

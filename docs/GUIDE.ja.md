@@ -68,6 +68,7 @@ public class MyMod : BaseUnityPlugin
 9. **ゲームの出来事は `GameEvents` から受け取る。** `SceneManager.sceneLoaded` に直接つないだ処理が例外を投げると、あとから登録したすべての Mod の処理が止まり、どの Mod のせいかも分かりません。`GameEvents.OnSceneLoaded(自分のGUID, ...)` は Mod ごとに切り離して呼び、失敗した Mod を Mods 画面に名前つきで出し、3 回続けて失敗した処理をそのセッションでは止めます。
 
 10. **リロードに頼る前に、そう宣言する。** ゲームを動かしたまま Mod がリロードされるのは、`ModInfo.Reloadable = true` にした（または `[ReloadableMod]` を付けた）ときだけで、そのとき [ゲームを動かしたまま Mod をリロードする](#ゲームを動かしたまま-mod-をリロードする) の約束を守ることになります。
+11. **外と通信する前に、そう申告する。** Mod が接続するホストをすべて `ModInfo.Network` に並べ、何のためか・何を送るか・どう止めるかを書きます。Mods 画面でプレイヤーに表示されます。プレイヤーについての情報（名前、セーブ、入力した文字、その人を追える ID）は、本人がオンにしてから送ります。申告せずに通信した Mod には、Mods 画面で印が付きます。[docs/NETWORK.ja.md](NETWORK.ja.md) を参照。
 
 ## ゲームを動かしたまま Mod をリロードする
 
