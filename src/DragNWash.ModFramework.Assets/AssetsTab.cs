@@ -14,7 +14,7 @@ namespace DragNWash.ModFramework.Assets
         private static IDisposable _tab;
         // One line per row: the window's label styles wrap, and a long texture
         // name in a narrow window ran into the rows below it.
-        private static GUIStyle _cell, _mutedCell;
+        private static GUIStyle _cell, _mutedCell, _accentCell;
 
         private static void EnsureCells(ToolWindowStyles s)
         {
@@ -24,6 +24,9 @@ namespace DragNWash.ModFramework.Assets
             }
             _cell = new GUIStyle(s.Label) { wordWrap = false, clipping = TextClipping.Clip };
             _mutedCell = new GUIStyle(s.MutedLabel) { wordWrap = false, clipping = TextClipping.Clip };
+            _accentCell = new GUIStyle(_cell);
+            _accentCell.normal.textColor = TW.AccentColor;
+            _accentCell.hover.textColor = TW.AccentColor;
         }
         private static List<TextureInfo> _textures;
         private static string _filter = "";
@@ -139,6 +142,7 @@ namespace DragNWash.ModFramework.Assets
             {
                 _textures = AssetCatalog.Textures();
                 _status = $"{_textures.Count} texture(s) loaded.";
+                _selected = null;
             }
             if (GUI.Button(new Rect(x + 100, y, 170, row), "Apply replacements", s.Button))
             {
@@ -203,8 +207,59 @@ namespace DragNWash.ModFramework.Assets
             }
             else
             {
+                // A selected texture gets a preview: beside the list where there
+                // is room, above it in a narrow window.
+                if (_selected != null && _selected.Texture)
+                {
+                    if (view.width >= 640)
+                    {
+                        float pw = Mathf.Clamp(view.width * 0.38f, 220, 420);
+                        DrawPreview(new Rect(view.xMax - pw, view.y, pw, view.height), s, row);
+                        view.width -= pw + 8;
+                    }
+                    else
+                    {
+                        float ph = Mathf.Min(220, view.height * 0.45f);
+                        DrawPreview(new Rect(view.x, view.y, view.width, ph), s, row);
+                        view.y += ph + 8;
+                        view.height -= ph + 8;
+                    }
+                }
                 DrawTextures(view, s, row);
             }
+        }
+
+        private static TextureInfo _selected;
+
+        // The texture as it is on the GPU, scaled to fit, with its facts. Drawing
+        // a loaded texture uploads nothing, so this is safe on Direct3D 12.
+        private static void DrawPreview(Rect pane, ToolWindowStyles s, float row)
+        {
+            TW.Fill(pane, TW.PanelColor);
+            TextureInfo t = _selected;
+            float x = pane.x + 6, y = pane.y + 4, w = pane.width - 12;
+            GUI.Label(new Rect(x, y, w - 60, row), t.Name, _cell);
+            if (GUI.Button(new Rect(pane.xMax - 58, y + 2, 52, row - 4), "Close", s.Button))
+            {
+                _selected = null;
+                return;
+            }
+            y += row;
+            GUI.Label(new Rect(x, y, w, row), $"{t.Width}x{t.Height}  {t.Format}  {(t.Readable ? "readable" : "GPU only")}  {t.MaterialUsers} mat, {t.Sprites} sprite{(t.Replaced ? "  replacement" : "")}", _mutedCell);
+            y += row;
+            var box = new Rect(x, y, w, pane.yMax - y - 6);
+            if (box.height < 24)
+            {
+                return;
+            }
+            // A dark and a light square behind it, so a transparent or dark image still reads.
+            TW.Fill(box, new Color(0.18f, 0.2f, 0.24f));
+            TW.Fill(new Rect(box.x, box.y, box.width / 2, box.height / 2), new Color(0.26f, 0.28f, 0.32f));
+            TW.Fill(new Rect(box.x + box.width / 2, box.y + box.height / 2, box.width / 2, box.height / 2), new Color(0.26f, 0.28f, 0.32f));
+            float scale = Mathf.Min(box.width / t.Width, box.height / t.Height);
+            float dw = t.Width * scale, dh = t.Height * scale;
+            var fit = new Rect(box.x + (box.width - dw) / 2, box.y + (box.height - dh) / 2, dw, dh);
+            GUI.DrawTexture(fit, t.Texture, ScaleMode.StretchToFill, true);
         }
 
         private static void DrawTextures(Rect view, ToolWindowStyles s, float row)
@@ -229,7 +284,16 @@ namespace DragNWash.ModFramework.Assets
             {
                 if (ry + row >= _scroll.y && ry <= _scroll.y + view.height)
                 {
-                    GUI.Label(new Rect(0, ry, inner * 0.45f - 6, row), t.Name, _cell);
+                    bool selected = ReferenceEquals(t, _selected);
+                    if (selected)
+                    {
+                        TW.Fill(new Rect(0, ry, inner, row), TW.PanelColor);
+                    }
+                    // The name is a button: it selects the texture for the preview.
+                    if (GUI.Button(new Rect(0, ry, inner * 0.45f - 6, row), t.Name, selected ? _accentCell ?? _cell : _cell))
+                    {
+                        _selected = selected ? null : t;
+                    }
                     GUI.Label(new Rect(inner * 0.45f, ry, inner * 0.2f - 6, row), $"{t.Width}x{t.Height} {t.Format}", _mutedCell);
                     GUI.Label(new Rect(inner * 0.65f, ry, inner * 0.2f - 6, row), $"{t.MaterialUsers} mat, {t.Sprites} sprite", _mutedCell);
                     if (t.Replaced)

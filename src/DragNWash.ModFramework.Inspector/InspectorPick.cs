@@ -233,7 +233,23 @@ namespace DragNWash.ModFramework.Inspector
             Rect union = default;
             foreach (Renderer rend in go.GetComponentsInChildren<Renderer>())
             {
-                if (rend == null || !rend.enabled || !Project(cam, rend.bounds, out Rect r))
+                if (rend == null || !rend.enabled || rend.GetType().Name == "ParticleSystemRenderer" || rend.GetType().Name == "TrailRenderer")
+                {
+                    continue;
+                }
+                Rect r;
+                if (rend is SkinnedMeshRenderer skin && skin.sharedMesh != null)
+                {
+                    // A skinned renderer's bounds are the loose box Unity keeps for
+                    // culling, often far larger than the pose; the baked mesh is tight.
+                    skin.BakeMesh(BakedForBounds);
+                    Bounds local = BakedForBounds.bounds;
+                    if (!ProjectLocal(cam, local, Matrix4x4.TRS(rend.transform.position, rend.transform.rotation, Vector3.one), out r))
+                    {
+                        continue;
+                    }
+                }
+                else if (!Project(cam, rend.bounds, out r))
                 {
                     continue;
                 }
@@ -242,6 +258,29 @@ namespace DragNWash.ModFramework.Inspector
             }
             rect = union;
             return any;
+        }
+
+        private static readonly Mesh BakedForBounds = new Mesh();
+
+        // Local bounds under a transform to a screen rectangle.
+        private static bool ProjectLocal(Camera cam, Bounds b, Matrix4x4 toWorld, out Rect rect)
+        {
+            rect = default;
+            float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
+            Vector3 c = b.center, e = b.extents;
+            for (int i = 0; i < 8; i++)
+            {
+                var corner = new Vector3(c.x + ((i & 1) == 0 ? -e.x : e.x), c.y + ((i & 2) == 0 ? -e.y : e.y), c.z + ((i & 4) == 0 ? -e.z : e.z));
+                Vector3 s = cam.WorldToScreenPoint(toWorld.MultiplyPoint3x4(corner));
+                if (s.z < 0)
+                {
+                    return false;
+                }
+                minX = Mathf.Min(minX, s.x); maxX = Mathf.Max(maxX, s.x);
+                minY = Mathf.Min(minY, s.y); maxY = Mathf.Max(maxY, s.y);
+            }
+            rect = Rect.MinMaxRect(minX, Screen.height - maxY, maxX, Screen.height - minY);
+            return rect.width > 0 && rect.height > 0;
         }
 
         // Bounds to a screen rectangle (top-left origin); false when behind the camera.

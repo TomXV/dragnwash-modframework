@@ -21,6 +21,9 @@ namespace DragNWash.ModFramework.Inspector
         private static float _speed = 3f;
         private static float _yaw, _pitch;
         private static Vector2 _lastMouse;
+        private static Rect _window;
+        private static int _windowFrame = -1;
+        private static bool _pressOverWindow;
 
         internal static void Toggle()
         {
@@ -32,9 +35,19 @@ namespace DragNWash.ModFramework.Inspector
             Camera main = Camera.main;
             if (main == null)
             {
-                TW.ShowNotice("No main camera to copy.");
+                // No camera tagged MainCamera: the enabled one drawing last.
+                foreach (Camera c in Camera.allCameras)
+                {
+                    if (c != null && c.enabled && (main == null || c.depth > main.depth)) main = c;
+                }
+            }
+            if (main == null)
+            {
+                TW.ShowNotice("Free camera: no camera to copy.");
+                InspectorPlugin.Log.LogWarning("[camera] no enabled camera found");
                 return;
             }
+            InspectorPlugin.Log.LogInfo($"[camera] free camera from {main.name} (depth {main.depth})");
             _original = main;
             _rig = new GameObject("DragNWash Free Camera");
             _camera = _rig.AddComponent<Camera>();
@@ -74,6 +87,26 @@ namespace DragNWash.ModFramework.Inspector
             TW.ShowNotice("Free camera off.");
         }
 
+        // From the overlay pass, every frame the window is drawn: where it is,
+        // so a right press over it flies nothing.
+        internal static void NoteWindow(Rect window)
+        {
+            _window = window;
+            _windowFrame = Time.frameCount;
+        }
+
+        // OnGUI runs after Update, so the rectangle is a frame or two old.
+        private static bool OverWindow(Mouse mouse)
+        {
+            if (_windowFrame < Time.frameCount - 2 || !TW.IsOpen)
+            {
+                return false;
+            }
+            Vector2 p = mouse.position.ReadValue();
+            // The window is measured in GUI space: y from the top.
+            return _window.Contains(new Vector2(p.x, Screen.height - p.y));
+        }
+
         // From the plugin's Update.
         internal static void Update()
         {
@@ -93,7 +126,18 @@ namespace DragNWash.ModFramework.Inspector
             {
                 return;
             }
-            bool held = mouse.rightButton.isPressed;
+            // A right click in the window belongs to the window (a menu, a
+            // field): the camera only flies when the press began over the game,
+            // and keeps flying over the window once it has.
+            if (!mouse.rightButton.isPressed)
+            {
+                _pressOverWindow = false;
+            }
+            else if (!Flying && !_pressOverWindow && OverWindow(mouse))
+            {
+                _pressOverWindow = true;
+            }
+            bool held = mouse.rightButton.isPressed && !_pressOverWindow;
             if (held && !Flying)
             {
                 _lastMouse = mouse.position.ReadValue();

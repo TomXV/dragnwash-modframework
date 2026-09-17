@@ -35,6 +35,8 @@
     <Reference Include="UnityEngine.UIModule"><HintPath>../DragNWash.ModFramework/libs/UnityEngine.UIModule.dll</HintPath><Private>false</Private></Reference>
     <!-- Mouse and keyboard for the free camera: this game has legacy input switched off. -->
     <Reference Include="Unity.InputSystem"><HintPath>../DragNWash.ModFramework/libs/Unity.InputSystem.dll</HintPath><Private>false</Private></Reference>
+    <!-- Mono.Cecil (BepInEx ships it) reads a method's IL for the Code view. -->
+    <Reference Include="Mono.Cecil"><HintPath>../DragNWash.ModFramework/libs/Mono.Cecil.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
 
 </Project>

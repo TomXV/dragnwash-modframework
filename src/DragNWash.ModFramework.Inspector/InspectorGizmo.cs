@@ -16,6 +16,7 @@ namespace DragNWash.ModFramework.Inspector
 
         internal static GizmoMode Mode;
         internal static bool Dragging => _axis >= 0;
+        internal static Material Lines => _lines;
 
         private static Material _lines;
         private static int _axis = -1;
