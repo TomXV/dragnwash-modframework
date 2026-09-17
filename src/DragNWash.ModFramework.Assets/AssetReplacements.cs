@@ -296,13 +296,68 @@ namespace DragNWash.ModFramework.Assets
             LanguageByName.Clear();
         }
 
+        // The pictures for a language, then for each language its fallback.txt
+        // names (one per line, in order) the pictures it lacks. What no language
+        // in the chain has falls back to a plain replacement, then to the game's.
         private static void LoadLanguage(LanguageFolder folder, string language)
         {
             if (string.IsNullOrEmpty(language))
             {
                 return;
             }
-            string dir = System.IO.Path.Combine(System.IO.Path.Combine(folder.Root, language), folder.Subfolder);
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var chain = new List<string> { language };
+            foreach (string fallback in FallbacksOf(folder, language))
+            {
+                if (!chain.Exists(l => string.Equals(l, fallback, StringComparison.OrdinalIgnoreCase)))
+                {
+                    chain.Add(fallback);
+                }
+            }
+            foreach (string source in chain)
+            {
+                LoadLanguageFiles(folder, language, source, names);
+            }
+        }
+
+        private static List<string> FallbacksOf(LanguageFolder folder, string language)
+        {
+            var list = new List<string>();
+            string file = System.IO.Path.Combine(LanguageDir(folder, language), "fallback.txt");
+            try
+            {
+                if (!File.Exists(file))
+                {
+                    return list;
+                }
+                foreach (string line in File.ReadAllLines(file))
+                {
+                    string l = line.Trim();
+                    if (l.Length == 0 || l.StartsWith("#", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+                    if (l.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) >= 0 || l.Contains(".."))
+                    {
+                        AssetsLibraryPlugin.Log.LogWarning($"{file}: \"{l}\" is not a language folder name; skipped.");
+                        continue;
+                    }
+                    list.Add(l);
+                }
+            }
+            catch (Exception ex)
+            {
+                AssetsLibraryPlugin.Log.LogWarning($"{file} could not be read: {ex.Message}");
+            }
+            return list;
+        }
+
+        private static string LanguageDir(LanguageFolder folder, string language) =>
+            System.IO.Path.Combine(System.IO.Path.Combine(folder.Root, language), folder.Subfolder);
+
+        private static void LoadLanguageFiles(LanguageFolder folder, string language, string source, HashSet<string> taken)
+        {
+            string dir = LanguageDir(folder, source);
             if (!Directory.Exists(dir))
             {
                 return;
@@ -312,12 +367,19 @@ namespace DragNWash.ModFramework.Assets
             int loaded = 0;
             foreach (string file in files)
             {
-                TextureReplacement r = Load(file, folder.Mod);
-                if (r == null)
+                // A picture the language (or an earlier fallback) has already wins.
+                if (taken.Contains(System.IO.Path.GetFileNameWithoutExtension(file)))
                 {
                     continue;
                 }
-                r.Language = language;
+                TextureReplacement r = Load(file, folder.Mod);
+                if (r == null)
+                {
+                    AssetsLibraryPlugin.Log.LogWarning($"{file} could not be loaded; the texture falls back to the next picture, or the game's.");
+                    continue;
+                }
+                taken.Add(r.Name);
+                r.Language = source;
                 if (LanguageByName.TryGetValue(r.Name, out TextureReplacement earlier))
                 {
                     r.Overrides.AddRange(earlier.Overrides);
@@ -338,7 +400,9 @@ namespace DragNWash.ModFramework.Assets
             }
             if (loaded > 0)
             {
-                AssetsLibraryPlugin.Log.LogInfo($"{loaded} {language} picture(s) loaded from {folder.Mod}.");
+                AssetsLibraryPlugin.Log.LogInfo(source == language
+                    ? $"{loaded} {language} picture(s) loaded from {folder.Mod}."
+                    : $"{loaded} {source} picture(s) loaded from {folder.Mod} as fallbacks for {language}.");
             }
         }
 
