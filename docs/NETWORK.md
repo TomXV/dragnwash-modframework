@@ -6,6 +6,14 @@
 
 A mod runs with the same rights as the game, so it can send anything anywhere. Players cannot see that happen, and most never read a mod's source. The framework's rule is simple: **a mod that connects to the internet says so, and players can see it on the Mods screen before anything surprises them.**
 
+## Why
+
+A mod that talks to the internet is also where malware would hide: a mod can send a player's files away, or fetch and run code, and look like any other mod while doing it. The framework cannot stop a mod that is written to deceive (see [What it is not](#what-it-is-not)). What it can do is make going online something every mod has to state openly, so that:
+
+- players can see, before and while they play, which mods talk to which hosts and why;
+- a mod that connects somewhere it never mentioned stands out, on the Mods screen and in the log, where players, reviewers and other mod makers will notice it;
+- mod makers who are honest have a plain, standard way to say what they do.
+
 Three parts:
 
 1. **A rule** for mod makers: GUIDE rule 11.
