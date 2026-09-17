@@ -69,7 +69,11 @@ namespace DragNWash.ModFramework.Inspector
                 // screen space, outside the window.
                 _overlay = TW.AddOverlay(Inspector.Guid, window =>
                 {
+                    InspectorFreeCamera.NoteWindow(window);
+                    InspectorDebugView.OnGUI(window, InspectorTab.SelectedObject);
                     InspectorPick.OnGUI(window, InspectorTab.SelectedObject);
+                    InspectorMesh.OnGUI(window, InspectorTab.SelectedObject);
+                    InspectorBones.OnGUI(window, InspectorTab.SelectedObject);
                     InspectorGizmo.OnGUI(window, InspectorTab.SelectedObject);
                 });
                 TW.OpenChanged += open => { if (!open) InspectorPick.End(); };
@@ -87,7 +91,7 @@ namespace DragNWash.ModFramework.Inspector
             InspectorFreeCamera.Update();
             // The game's input is held while a pick or a gizmo drag is under way,
             // so the click that selects or moves an object never reaches the player.
-            TW.BlockGameInput(Inspector.Guid, InspectorPick.Picking || InspectorGizmo.Dragging);
+            TW.BlockGameInput(Inspector.Guid, InspectorPick.Picking || InspectorGizmo.Dragging || InspectorMesh.Dragging);
         }
 
         private void OnDestroy()
