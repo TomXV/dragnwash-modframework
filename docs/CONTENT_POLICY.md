@@ -2,7 +2,7 @@
 
 [日本語](CONTENT_POLICY.ja.md)
 
-How this project, and the mods that follow its GUIDE, handle material that comes from Drag'n Wash: its art, models, sounds, text and code. Adopted 2026-09-18.
+How this project, and the mods that follow its GUIDE, handle material that comes from Drag'n Wash: its art, models, sounds, text and code. Adopted 2026-09-18. It applies to every mod that uses Drag'n Wash ModFramework, so Drag'n Wash Localization follows it too.
 
 The project follows the idea of **fair use**: material from the game may be used when the use is fair.
 
