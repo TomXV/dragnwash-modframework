@@ -83,6 +83,10 @@ The **Build** workflow (Actions) builds the release zip on GitHub: on every push
 
 This is an unofficial fan project and is not affiliated with Gator Dragon Games. It contains no game assets or code and does not modify the game's files (BepInEx loads it at runtime). If the development team has any concerns, please open an issue or contact the maintainer, and it will be changed or taken down.
 
+## Credits
+
+- The **Mods button** in the Options screen (`ModsButton0.png`, `ModsButton1.png`) was drawn for the framework by **Mister ERIO** ([@mistererio](https://github.com/mistererio)) and is used with permission. It is their artwork, not the game's, and is not covered by the MIT license below.
+
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE), except the artwork named under [Credits](#credits).

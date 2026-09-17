@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Reflection;
 using HarmonyLib;
 using TMPro;
@@ -14,8 +15,11 @@ namespace DragNWash.ModFramework.Mods
     // Menu registered with MenuManager under its GameObject name. A button
     // raises an intent named after its GameObject (MenuWithButtons), and the
     // shown menu answers with a transition to another menu by name. So:
-    //   - the Mods button is a copy of Options' Back button named "Mods", with
-    //     the painted label hidden and a TextMeshPro label instead,
+    //   - the Mods button is a copy of Options' Back button named "Mods",
+    //     painted with the framework's own Mods button (ModsButton0.png and
+    //     ModsButton1.png, drawn for the framework by Mister ERIO), or, when
+    //     those cannot be used, with the painted label hidden and a
+    //     TextMeshPro label instead,
     //   - MenuOptions.OnEvent turns the "Mods" intent into a transition to
     //     "Menu_Mods",
     //   - Menu_Mods is a copy of the Options screen with the settings rows,
@@ -34,8 +38,16 @@ namespace DragNWash.ModFramework.Mods
         private static readonly FieldInfo IntentListField = AccessTools.Field(typeof(MenuIntents), "intents");
         private static bool _available;
 
+        // The Mods button's artwork: normal and selected, the same 420x160 at
+        // 100 pixels per unit as the game's menu buttons.
+        private static Sprite _buttonNormal;
+        private static Sprite _buttonSelected;
+
         internal static void Install(Harmony harmony)
         {
+            // Loaded here, from the plugin's Awake: a texture made later can
+            // crash Direct3D 12.
+            LoadButtonArt();
             try
             {
                 MethodInfo onShow = AccessTools.Method(typeof(MenuOptions), "OnShow");
@@ -144,20 +156,24 @@ namespace DragNWash.ModFramework.Mods
                 button.onClick = new Button.ButtonClickedEvent();
             }
 
-            // The painted "Back" has to go. Disabling the graphics (not the
-            // objects) keeps the button's animator happy; the click area is
-            // PointTarget, which stays.
+            // The painted "Back" has to go: the Mods artwork takes its place,
+            // or, without it, the graphics are disabled (not the objects, which
+            // keeps the button's animator happy; the click area is PointTarget,
+            // which stays) and a text label is laid over.
             Transform images = inner.Find("Images");
-            if (images != null)
+            bool painted = images != null && PaintButton(images.GetComponentsInChildren<Image>(true));
+            if (!painted)
             {
-                foreach (Image image in images.GetComponentsInChildren<Image>(true))
+                if (images != null)
                 {
-                    image.enabled = false;
+                    foreach (Image image in images.GetComponentsInChildren<Image>(true))
+                    {
+                        image.enabled = false;
+                    }
                 }
+                TMP_Text label = UiText.Create(inner, "Label", ButtonName, UiText.ButtonSize);
+                label.alignment = TextAlignmentOptions.Center;
             }
-
-            TMP_Text label = UiText.Create(inner, "Label", ButtonName, UiText.ButtonSize);
-            label.alignment = TextAlignmentOptions.Center;
 
             // MenuWithButtons wires its buttons when enabled; run that again so
             // the new button raises the "Mods" intent like the game's own.
@@ -279,6 +295,67 @@ namespace DragNWash.ModFramework.Mods
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
+        }
+
+        private static void LoadButtonArt()
+        {
+            try
+            {
+                string dir = Path.GetDirectoryName(typeof(ModsScreen).Assembly.Location) ?? "";
+                _buttonNormal = SpriteOf(IconLoader.Load(Path.Combine(dir, "ModsButton0.png")));
+                _buttonSelected = SpriteOf(IconLoader.Load(Path.Combine(dir, "ModsButton1.png")));
+            }
+            catch (Exception ex)
+            {
+                ModFramework.Log.LogWarning($"The Mods button artwork could not be loaded; the button gets a text label: {ex.Message}");
+            }
+        }
+
+        private static Sprite SpriteOf(Texture2D texture)
+        {
+            if (texture == null)
+            {
+                return null;
+            }
+            Sprite sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f), 100f);
+            sprite.name = texture.name;
+            sprite.hideFlags = HideFlags.DontUnloadUnusedAsset;
+            return sprite;
+        }
+
+        // The game draws each menu button as two sprites, MenuButtonsNNNN with
+        // an odd number for the normal look and the next even number for the
+        // selected one (Back is 0011 and 0012). Each image of the copied Back
+        // button gets the Mods artwork of the same state. Nothing is changed
+        // unless every image can be told apart that way.
+        private static bool PaintButton(Image[] images)
+        {
+            if (_buttonNormal == null || _buttonSelected == null || images.Length == 0)
+            {
+                return false;
+            }
+            var chosen = new Sprite[images.Length];
+            for (int i = 0; i < images.Length; i++)
+            {
+                string name = images[i].sprite != null ? images[i].sprite.name : "";
+                int digits = 0;
+                while (digits < name.Length && char.IsDigit(name[name.Length - 1 - digits]))
+                {
+                    digits++;
+                }
+                if (digits == 0 || !int.TryParse(name.Substring(name.Length - digits), out int number))
+                {
+                    ModFramework.Log.LogInfo($"The Back button's image \"{images[i].name}\" shows \"{name}\"; the Mods button gets a text label instead.");
+                    return false;
+                }
+                chosen[i] = number % 2 == 1 ? _buttonNormal : _buttonSelected;
+            }
+            for (int i = 0; i < images.Length; i++)
+            {
+                images[i].sprite = chosen[i];
+            }
+            ModFramework.Log.LogInfo("The Mods button uses its artwork (by Mister ERIO).");
+            return true;
         }
 
         private static void RewireButtons(GameObject menu)

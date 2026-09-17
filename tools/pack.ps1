@@ -1,7 +1,7 @@
 # Builds the core, the libraries and the preloader patcher, and packs them into
 # release/DragNWash.ModFramework-<version>.zip with the layout of a game folder:
 #
-#   BepInEx/plugins/DragNWash.ModFramework/DragNWash.ModFramework.dll (+ LICENSE.txt, icon.png)
+#   BepInEx/plugins/DragNWash.ModFramework/DragNWash.ModFramework.dll (+ LICENSE.txt, icon.png, ModsButton0.png, ModsButton1.png)
 #   BepInEx/plugins/DragNWash.ModFramework.<Library>/DragNWash.ModFramework.<Library>.dll
 #   BepInEx/patchers/DragNWash.ModFramework.Preloader.dll
 #   installer/Install.exe, installer/install-steamdeck.sh, installer/mod-install.example.json
@@ -57,6 +57,10 @@ foreach ($name in $Plugins) {
 }
 Copy-Item -LiteralPath (Join-Path $Root 'LICENSE') -Destination (Join-Path $Stage 'BepInEx/plugins/DragNWash.ModFramework/LICENSE.txt')
 Copy-Item -LiteralPath (Join-Path $Root 'src/DragNWash.ModFramework/icon.png') -Destination (Join-Path $Stage 'BepInEx/plugins/DragNWash.ModFramework')
+# The Options screen's Mods button, drawn for the framework by Mister ERIO.
+foreach ($art in 'ModsButton0.png', 'ModsButton1.png') {
+    Copy-Item -LiteralPath (Join-Path $Root "src/DragNWash.ModFramework/$art") -Destination (Join-Path $Stage 'BepInEx/plugins/DragNWash.ModFramework')
+}
 New-Item -ItemType Directory -Force -Path (Join-Path $Stage 'BepInEx/patchers') | Out-Null
 Copy-Item -LiteralPath (Join-Path $Root "src/$Patcher/bin/Release/$Patcher.dll") -Destination (Join-Path $Stage 'BepInEx/patchers')
 # The shared installer, for mods to ship next to their files (docs/INSTALLER.md).

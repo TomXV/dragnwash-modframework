@@ -83,6 +83,10 @@ Actions の **Build** ワークフローが、リリース用の zip を GitHub 
 
 本プロジェクトは非公式のファン制作物で、Gator Dragon Games とは無関係です。ゲームのアセットやコードは含まず、ゲームのファイルを書き換えることもありません（BepInEx が実行時に読み込みます）。開発チームの方で懸念がある場合は、このリポジトリの Issue かメンテナーへの連絡でお知らせください。ご希望に応じて修正または公開停止します。
 
+## クレジット
+
+- Options 画面の **Mods ボタン**（`ModsButton0.png`、`ModsButton1.png`）は、**Mister ERIO** さん（[@mistererio](https://github.com/mistererio)）がこのフレームワークのために描き、許可を得て使っています。ゲームの絵ではなく Mister ERIO さんの作品で、MIT ライセンスの対象外です。
+
 ## ライセンス
 
-[MIT](LICENSE)
+[MIT](LICENSE)。ただし、上の「クレジット」に挙げた絵を除きます。
