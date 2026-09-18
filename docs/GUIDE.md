@@ -39,7 +39,7 @@ A mod that needs a newer library than the one installed can say so with `[BepInD
 | You want to | Use | Instead of |
 |---|---|---|
 | Tell players what your mod is | `ModFramework.Register(ModInfo)` | nothing: plain plugins are listed too, but with less |
-| Give players settings | BepInEx `Config.Bind` (the Mods screen builds a page), `GameOptions.AddChoice` / `AddToggle` for the game's own Options screen | your own settings menu |
+| Give players settings | BepInEx `Config.Bind` (the Mods screen builds a page), `GameOptions.AddChoice` / `AddToggle` / `AddSlider` for the game's own Options screen | your own settings menu |
 | Order your settings, hide the advanced ones, name them, say a restart is needed | a `SettingMeta` / `SectionMeta` in the `ConfigDescription` tags (experimental) | nothing: the page then lists them by section and key |
 | Change text before it is shown | `GameText.AddRewriter` (library **Text**) | patching `TMP_Text.text` or `SetText` |
 | Know which line of dialogue is shown, and who says it | `GameDialogue.LineShowing`, `OptionShowing`, `TryGetLine` (library **Dialogue**) | patching Yarn Spinner's presenters |
