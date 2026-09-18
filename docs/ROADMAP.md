@@ -34,6 +34,7 @@ Released together with Drag'n Wash Localization v1.2.0.
 - **Direct3D 12.** 1.3.0 removed the most common trigger of the crash (Unity UUM-140564): a burst of font atlas uploads. Reloading textures while the game runs still uploads at once; the crash reports' GPU trace says whether it needs the same treatment.
 - **Texture replacements per language.** Replacements that apply only while a given language is in use, can be taken back, and wait for a restart on Direct3D 12. For Drag'n Wash Localization's translated pictures ([design](https://github.com/TomXV/dragnwash-localization/blob/experimental/translated-textures/docs/TRANSLATED_TEXTURES.md)).
 - **Export and import for every kind.** Textures, meshes, materials, sounds and the game's data (ScriptableObjects) written to files, changed, and brought back by a mod ([design](ASSET_TOOL.md#export-and-import)).
+- **Overrides: edits made in the Inspector, shipped as a mod.** The History exported as a file, and a small Overrides library that applies it for players, so a mod can be made with no code: a folder with `mod.json` and `overrides/*.json`, shown and switched off on the Mods screen like any mod, taken back cleanly. Research first ([design](OVERRIDES.md)).
 - **Steam Deck:** typing in the F1 window with the on-screen keyboard.
 
 ## Later, if there is a need

@@ -34,6 +34,7 @@ Drag'n Wash Localization v1.2.0 と一緒にリリースしました。
 - **Direct3D 12。** 1.3.0 で、このクラッシュ（Unity UUM-140564）のいちばん多いきっかけだった、フォントのアトラスの転送の集中をなくしました。ゲーム中のテクスチャのリロードは、まだ一度に転送します。同じ対策が要るかは、クラッシュレポートの GPU 転送のトレースで確かめます。
 - **言語ごとのテクスチャの差し替え。** 特定の言語を使っている間だけ効き、元に戻せて、Direct3D 12 では再起動を待つ差し替え。Drag'n Wash Localization の絵の翻訳のため（[設計](https://github.com/TomXV/dragnwash-localization/blob/experimental/translated-textures/docs/TRANSLATED_TEXTURES.ja.md)）。
 - **あらゆる種類の書き出しと取り込み。** テクスチャ、メッシュ、マテリアル、音、ゲームのデータ（ScriptableObject）をファイルに書き出し、手を加え、Mod から取り込めるように（[設計](ASSET_TOOL.ja.md#取り出すと取り込む)）。
+- **Overrides：Inspector での編集を、そのまま Mod に。** History をファイルに書き出し、小さな Overrides ライブラリが遊ぶ人の環境で適用します。コードなしで Mod が作れます。`mod.json` と `overrides/*.json` だけのフォルダーで、ほかの Mod と同じく Mods 画面に出てオフにでき、きれいに元に戻せます。まず調査から（[設計](OVERRIDES.ja.md)）。
 - **Steam Deck：** F1 の窓で、画面キーボードで文字を入力できるかの確認。
 
 ## 必要が出てきたら
