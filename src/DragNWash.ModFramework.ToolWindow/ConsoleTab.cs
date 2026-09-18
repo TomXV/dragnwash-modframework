@@ -439,14 +439,32 @@ namespace DragNWash.ModFramework.ToolWindow
 
         // Log lines carry any text, including Japanese from the localization
         // mod. Drawing a character the window font has not rasterised uploads
-        // a new atlas in the middle of the frame, which crashes Direct3D 12
-        // (UUM-140564). Characters some mod already prepared (the localization
-        // mod prepares its language's at startup) are drawn as they are. Others
-        // are drawn as '?': on Direct3D 12 for good, elsewhere once, and then
-        // prepared for the next frame from Update, the way PrepareCharacters works.
+        // its atlas in the middle of the frame; on Direct3D 12 many such uploads
+        // in one frame crash the game (UUM-140564). Characters some mod already
+        // prepared (the localization mod prepares its language's at startup) are
+        // drawn as they are. Others are drawn as '?' once and prepared for the
+        // next frame from Update, the way PrepareCharacters works. On Direct3D 12
+        // that is safe only while the core batches atlas uploads to once per
+        // frame; without it they stay '?'.
         private static readonly HashSet<char> Prepared = new HashSet<char>();
         private static readonly StringBuilder Pending = new StringBuilder();
-        private static readonly bool NeverPrepare = SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Direct3D12;
+        private static readonly bool NeverPrepare = SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Direct3D12 && !UploadsBatched();
+
+        // Its own method, so a core without the property (older than this Tool
+        // window) is caught here instead of failing the whole class.
+        private static bool UploadsBatched()
+        {
+            try
+            {
+                return BatchedFromCore();
+            }
+            catch (MissingMemberException)
+            {
+                return false;
+            }
+        }
+
+        private static bool BatchedFromCore() => GameInfo.FontAtlasUploadsBatched;
 
         internal static string Drawable(string text)
         {

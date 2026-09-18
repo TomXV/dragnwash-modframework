@@ -22,6 +22,15 @@ namespace DragNWash.ModFramework
         /// </summary>
         public static bool IsDirect3D12 => GraphicsApi == GraphicsDeviceType.Direct3D12;
 
+        /// <summary>
+        /// Experimental. True when the core batches font atlas uploads to once per
+        /// frame on Direct3D 12 ([Direct3D12] BatchFontAtlasUploads). Then adding
+        /// glyphs while the game runs, which uploads the atlas, no longer piles
+        /// up into the upload burst that crashes Direct3D 12 (UUM-140564), and a
+        /// window may draw text it did not prepare in advance.
+        /// </summary>
+        public static bool FontAtlasUploadsBatched { get; internal set; }
+
         /// <summary>Operating system family (Windows, Linux for the Steam Deck, macOS).</summary>
         public static OperatingSystemFamily OperatingSystem => SystemInfo.operatingSystemFamily;
     }

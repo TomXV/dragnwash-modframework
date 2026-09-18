@@ -17,6 +17,8 @@ namespace DragNWash.ModFramework
             var harmony = new Harmony(ModFramework.Guid);
             // First, so a crash while the rest starts is recorded too.
             CrashReports.Install(Config, harmony);
+            // Direct3D 12: one font atlas upload per frame (UUM-140564).
+            FontAtlasUploads.Install(Config, harmony, this);
             // Before anything else can go online, the framework's own update check included.
             NetworkWatch.Install(Config, harmony);
             Mods.ModsScreen.Install(harmony);
