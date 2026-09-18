@@ -35,6 +35,7 @@ Drag'n Wash Localization v1.2.0 と一緒にリリースしました。
 - **言語ごとのテクスチャの差し替え。** 特定の言語を使っている間だけ効き、元に戻せて、Direct3D 12 では再起動を待つ差し替え。Drag'n Wash Localization の絵の翻訳のため（[設計](https://github.com/TomXV/dragnwash-localization/blob/experimental/translated-textures/docs/TRANSLATED_TEXTURES.ja.md)）。
 - **あらゆる種類の書き出しと取り込み。** テクスチャ、メッシュ、マテリアル、音、ゲームのデータ（ScriptableObject）をファイルに書き出し、手を加え、Mod から取り込めるように（[設計](ASSET_TOOL.ja.md#取り出すと取り込む)）。
 - **Overrides：Inspector での編集を、そのまま Mod に。** History をファイルに書き出し、小さな Overrides ライブラリが遊ぶ人の環境で適用します。コードなしで Mod が作れます。`mod.json` と `overrides/*.json` だけのフォルダーで、ほかの Mod と同じく Mods 画面に出てオフにでき、きれいに元に戻せます。まず調査から（[設計](OVERRIDES.ja.md)）。
+- **操作の登録簿、MCP、ノードグラフ。** 各ライブラリが、できることを名前つきの操作として登録します。その 1 つの登録簿から、Console コマンド、AI クライアント向けの MCP のツール（まず読むだけ、この PC の中だけ、既定はオフ）、ゲームの外で組み立てて DLL のない Mod として配れるノードグラフのブロックを作ります。4 段階で進めます：登録簿、MCP、コードをノードで眺める、組み立て（[計画](API_PLAN.ja.md)）。
 - **Steam Deck：** F1 の窓で、画面キーボードで文字を入力できるかの確認。
 
 ## 必要が出てきたら
@@ -50,7 +51,7 @@ Drag'n Wash Localization v1.2.0 と一緒にリリースしました。
 
 ## 予定していないこと
 
-- Console のスクリプト言語。
+- 自由なスクリプト言語（任意のメソッド、リフレクション）。代わりに、登録された操作だけを呼ぶノードグラフを予定しています（[計画](API_PLAN.ja.md)）。
 - 機械翻訳。
 - ゲームのファイルを、手を加えずにそのまま配布すること（[CONTENT_POLICY.ja.md](CONTENT_POLICY.ja.md)）。
 - 2 つ目の Mod ローダーを作ること、BepInEx の役割を肩代わりすること。

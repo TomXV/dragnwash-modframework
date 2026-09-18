@@ -35,6 +35,7 @@ Released together with Drag'n Wash Localization v1.2.0.
 - **Texture replacements per language.** Replacements that apply only while a given language is in use, can be taken back, and wait for a restart on Direct3D 12. For Drag'n Wash Localization's translated pictures ([design](https://github.com/TomXV/dragnwash-localization/blob/experimental/translated-textures/docs/TRANSLATED_TEXTURES.md)).
 - **Export and import for every kind.** Textures, meshes, materials, sounds and the game's data (ScriptableObjects) written to files, changed, and brought back by a mod ([design](ASSET_TOOL.md#export-and-import)).
 - **Overrides: edits made in the Inspector, shipped as a mod.** The History exported as a file, and a small Overrides library that applies it for players, so a mod can be made with no code: a folder with `mod.json` and `overrides/*.json`, shown and switched off on the Mods screen like any mod, taken back cleanly. Research first ([design](OVERRIDES.md)).
+- **Operations, MCP and node graphs.** Each library registers what it can do as named operations; from that one registry come Console commands, MCP tools for AI clients (read-only first, this computer only, off by default) and blocks for node graphs built outside the game and shipped as data-only mods. In four stages: the registry, MCP, code seen as nodes, building ([plan](API_PLAN.md)).
 - **Steam Deck:** typing in the F1 window with the on-screen keyboard.
 
 ## Later, if there is a need
@@ -50,7 +51,7 @@ Released together with Drag'n Wash Localization v1.2.0.
 
 ## Not planned
 
-- A scripting language in the Console.
+- A free scripting language (arbitrary methods, reflection). Node graphs that call only registered operations are planned instead ([plan](API_PLAN.md)).
 - Machine translation.
 - Shipping the game's files unchanged ([CONTENT_POLICY.md](CONTENT_POLICY.md)).
 - A second mod loader, or taking over what BepInEx does.
