@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    CrashReporter.exe: started by the ModFramework core when the game starts (Windows
+    only). It waits for the game to exit; if the game did not exit cleanly, it writes
+    the crash report (the same code the core uses at the next start, linked below)
+    and shows it in a window of its own, outside the game.
+
+    Built deterministically, like Install.exe: antivirus reputation is tied to the
+    file's hash, so the file must not change unless the code does.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>CrashReporter</AssemblyName>
+    <RootNamespace>DragNWash.CrashReporter</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildProjectDirectory)=/crashreporter</PathMap>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <GenerateSupportedRuntime>false</GenerateSupportedRuntime>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- The same report writer and diagnosis the core uses (plain .NET, no Unity). -->
+  <ItemGroup>
+    <Compile Include="..\src\DragNWash.ModFramework\Diagnostics\CrashReportWriter.cs" Link="Shared\CrashReportWriter.cs" />
+    <Compile Include="..\src\DragNWash.ModFramework\Diagnostics\CrashDiagnosis.cs" Link="Shared\CrashDiagnosis.cs" />
+  </ItemGroup>
+
+</Project>

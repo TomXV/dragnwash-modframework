@@ -234,7 +234,27 @@ namespace DragNWash.ModFramework.Assets
         {
             _currentLocale = language ?? string.Empty;
             PublishFallbacks(_currentLocale);
+            NoteLanguage(_currentLocale);
         }
+
+        // The crash report window speaks the language the player chose in the
+        // game, read from the last of these notes in the session record.
+        private static void NoteLanguage(string language)
+        {
+            try
+            {
+                NoteInCrashReports(language);
+            }
+            catch (MissingMemberException)
+            {
+                // A core older than crash reports.
+            }
+            catch (TypeLoadException)
+            {
+            }
+        }
+
+        private static void NoteInCrashReports(string language) => CrashReports.Note(Guid, "language", string.IsNullOrEmpty(language) ? "-" : language);
 
         /// <summary>How many different non-ASCII characters in <paramref name="texts"/> were never prepared.</summary>
         public static int CountUnprepared(IEnumerable<string> texts)

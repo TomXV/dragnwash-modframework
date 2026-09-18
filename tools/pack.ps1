@@ -77,6 +77,16 @@ Copy-Item -LiteralPath (Join-Path $Root 'installer/mod-install.example.json') -D
 $InstallerHash = (Get-FileHash -LiteralPath (Join-Path $InstallerStage 'Install.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
 Write-Host "Install.exe sha256 $InstallerHash (unchanged unless installer/ or the .NET SDK changed)"
 
+# The crash reporter the core starts on Windows (docs/CRASH_REPORTS.md), next to
+# the core DLL. Built deterministically, like Install.exe.
+$ReporterProject = Join-Path $Root 'crashreporter/DragNWash.CrashReporter.csproj'
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue (Join-Path $Root 'crashreporter/bin'), (Join-Path $Root 'crashreporter/obj')
+dotnet build $ReporterProject -c Release
+if ($LASTEXITCODE -ne 0) { throw 'Build of the crash reporter failed.' }
+Copy-Item -LiteralPath (Join-Path $Root 'crashreporter/bin/Release/CrashReporter.exe') -Destination (Join-Path $Stage 'BepInEx/plugins/DragNWash.ModFramework')
+$ReporterHash = (Get-FileHash -LiteralPath (Join-Path $Stage 'BepInEx/plugins/DragNWash.ModFramework/CrashReporter.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
+Write-Host "CrashReporter.exe sha256 $ReporterHash"
+
 foreach ($doc in 'README.md', 'README.ja.md', 'CHANGELOG.md') {
     Copy-Item -LiteralPath (Join-Path $Root $doc) -Destination $Stage
 }
