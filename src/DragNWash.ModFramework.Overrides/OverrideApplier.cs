@@ -263,7 +263,7 @@ namespace DragNWash.ModFramework.Overrides
                 if (earlier.By.Mod.Order > o.Mod.Order) return false;
                 if (earlier.By.Mod != o.Mod && SaidConflict.Add(o.Key))
                 {
-                    OverridesPlugin.Log.LogWarning($"[overrides] {earlier.By.Mod.Name} and {o.Mod.Name} both change {o.Target}; {o.Mod.Name}'s value is used (it loads later).");
+                    OverridesPlugin.Log.LogWarning($"[overrides] {earlier.By.Mod.Name} and {o.Mod.Name} both change {o.Target}; the value from {o.Mod.Name} is used (it loads later).");
                 }
                 set(value);
                 earlier.By = o;
