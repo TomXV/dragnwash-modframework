@@ -59,7 +59,24 @@ namespace DragNWash.ModFramework.ToolWindow
                 values[args[i].Substring(0, eq)] = args[i].Substring(eq + 1);
             }
             OperationResult result = Operations.CallNow(args[0], values, "console");
-            return result.Ok ? result.ToJson(indented: true) : result.Error;
+            return result.Ok ? ForPeople(result.Value) : result.Error;
+        }
+
+        // A list as one line of JSON per item, which reads down the console;
+        // anything else indented.
+        private static string ForPeople(object value)
+        {
+            if (value is System.Collections.IList list && !(value is string))
+            {
+                if (list.Count == 0) return "(none)";
+                var sb = new StringBuilder();
+                foreach (object item in list)
+                {
+                    sb.Append(Operations.ToJson(item)).Append('\n');
+                }
+                return sb.Append($"({list.Count})").ToString();
+            }
+            return Operations.ToJson(value, indented: true);
         }
 
         private static string List()
