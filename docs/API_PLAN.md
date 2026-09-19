@@ -85,6 +85,8 @@ A new, optional library, **Bridge**, its own plugin, so a mod's release can leav
 
 ## Stage 3: code seen as nodes (read only)
 
+Designed in detail in [CODE_GRAPH.md](CODE_GRAPH.md): a page only, not MCP.
+
 The Inspector's Code view already reads a method's IL through Mono.Cecil, and knows the Harmony patches and UnityEvent listeners on a type.
 
 - An operation `code.graph` returns a method or a type as a graph: the method's blocks and branches, the methods it calls, the fields it reads and writes, which Harmony patches (and whose) sit on it, and which events lead to it.
