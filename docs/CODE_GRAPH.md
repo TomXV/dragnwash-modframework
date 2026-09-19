@@ -53,6 +53,20 @@ The Bridge refuses web pages today (any `Origin` but `null`). The page is a web 
 
 The page is only for this computer, like the rest of the Bridge. On the Steam Deck it opens in Desktop Mode's browser.
 
+## The app (Windows)
+
+Decided 2026-09-20: the page also opens in a window of its own, **CodeGraph.exe**, in the Bridge's folder (`CodeGraph/`, with the WebView2 parts it needs, about 0.8 MB). It shows the same page, so there is one page to keep.
+
+- **Opening**: the Graph buttons start it when `[Bridge] OpenPageIn` is `App` (the default) and it is there; otherwise, and off Windows, the page opens in the browser as before.
+- **Sign-in**: it reads the Bridge's token and asks `POST /page/api/code` for a one-time code. That door answers only with the token and only without an `Origin` (programs send none; a browser always does on POST), so no web page can use it.
+- **Game away**: it checks every 3 seconds that the Bridge answers; while the game is closed it shows *Waiting for the game* and signs in again when the game comes back, at the method it was showing.
+- **One window**: a second start hands its method to the window already open (a named pipe) and brings it to the front.
+- **Apart from the game**: started by the game, it would count as part of the game for Steam, and Steam would say the game is still running while the window is open. So the game's start of it leaves the method and port in a file, has the shell (`explorer.exe`) start it again, and exits.
+- **Keep on top**, the window's size and place, the details' width and folded results are remembered. The title bar is dark when Windows' apps are. Only the Bridge's page loads in it.
+- **Built deterministically**, like CrashReporter.exe, so its hash changes only with its code.
+
+Found while trying it: started directly by the game, it inherited the game's handles, the Bridge's listening socket among them, and kept the port after the game exited. The Bridge now marks its socket as not inherited and starts the app through the shell.
+
 ## Not in this stage
 
 Changing code, or anything that writes; stage 4 (building graphs) uses the same page later. Mods' own code is not drawn: a mod shows up as its patches (owner and patch method), not its IL. Debugging (breakpoints, stepping) is out of scope.
