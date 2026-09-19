@@ -62,7 +62,7 @@ Core に小さな登録簿を置きます。`Services` の隣です（`Services`
 |---|---|
 | Core | `mods.list`、`mods.network`、`game.info`、`scene.list` |
 | Tool window | `log.read` |
-| Inspector | `objects.find`、`objects.children`、`components.list`、`member.get`、`selection.get`（のちに書き換えの `member.set`） |
+| Inspector | `objects.find`、`objects.children`、`components.list`、`member.get`、`selection.get`（のちに書き換えの `member.set`）。オブジェクトエクスプローラーの `loaded.kinds`、`loaded.list`、`loaded.usedby`（[OBJECT_EXPLORER.ja.md](OBJECT_EXPLORER.ja.md)） |
 | Assets | `textures.list`、`materials.list`、`meshes.list`、`replacements.list` |
 | Dialogue | `dialogue.current`、`lines.find` |
 | Text | `text.lookup`、`text.language` |

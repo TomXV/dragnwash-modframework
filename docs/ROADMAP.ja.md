@@ -36,6 +36,7 @@ Drag'n Wash Localization v1.2.0 と一緒にリリースしました。
 - **あらゆる種類の書き出しと取り込み。** テクスチャ、メッシュ、マテリアル、音、ゲームのデータ（ScriptableObject）をファイルに書き出し、手を加え、Mod から取り込めるように（[設計](https://github.com/TomXV/dragnwash-modframework/wiki/Assets-ja)）。
 - **Overrides：Inspector での編集を、そのまま Mod に。** History をファイルに書き出し、小さな Overrides ライブラリが遊ぶ人の環境で適用します。コードなしで Mod が作れます。`mod.json` と `overrides/*.json` だけのフォルダーで、ほかの Mod と同じく Mods 画面に出てオフにでき、きれいに元に戻せます。まず調査から（[設計](https://github.com/TomXV/dragnwash-modframework/wiki/Overrides-ja)）。
 - **操作の登録簿、MCP、ノードグラフ。** 各ライブラリが、できることを名前つきの操作として登録します。その 1 つの登録簿から、Console コマンド、AI クライアント向けの MCP のツール（まず読むだけ、この PC の中だけ、既定はオフ）、ゲームの外で組み立てて DLL のない Mod として配れるノードグラフのブロックを作ります。4 段階で進めます：登録簿、MCP、コードをノードで眺める、組み立て（[計画](API_PLAN.ja.md)）。
+- **Inspector のオブジェクトエクスプローラー。** 読み込まれているものすべてを種類別に（テクスチャ、マテリアル、メッシュ、シェーダー、音、アニメーション、フォント、ScriptableObject に入ったゲームのデータ）。Unity の Project ウィンドウのように並べ、**Used by** でどこで使われているかも調べられます。Inspector と同じく実験的です。`experimental/object-explorer-build` で作り、ゲームの中での確認を待っています（[設計](OBJECT_EXPLORER.ja.md)）。
 - **Steam Deck：** F1 の窓で、画面キーボードで文字を入力できるかの確認。
 
 ## 必要が出てきたら

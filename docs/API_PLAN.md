@@ -62,7 +62,7 @@ First operations, reads first:
 |---|---|
 | Core | `mods.list`, `mods.network`, `game.info`, `scene.list` |
 | Tool window | `log.read` |
-| Inspector | `objects.find`, `objects.children`, `components.list`, `member.get`, `selection.get` (and later `member.set`, a write) |
+| Inspector | `objects.find`, `objects.children`, `components.list`, `member.get`, `selection.get` (and later `member.set`, a write); for the object explorer, `loaded.kinds`, `loaded.list`, `loaded.usedby` ([OBJECT_EXPLORER.md](OBJECT_EXPLORER.md)) |
 | Assets | `textures.list`, `materials.list`, `meshes.list`, `replacements.list` |
 | Dialogue | `dialogue.current`, `lines.find` |
 | Text | `text.lookup`, `text.language` |
