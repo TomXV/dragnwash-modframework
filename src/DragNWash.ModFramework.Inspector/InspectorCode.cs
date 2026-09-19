@@ -40,6 +40,7 @@ namespace DragNWash.ModFramework.Inspector
         private static Vector2 _scroll;
         private static bool _showInherited;
         private static bool _showPrivateMethods;
+        private static bool _gameType;
         private static GUIStyle _cell, _muted, _mono, _accent;
 
         internal static void Reset()
@@ -72,6 +73,7 @@ namespace DragNWash.ModFramework.Inspector
             }
             Reset();
             _type = type;
+            _gameType = InspectorCodeGraph.IsGameType(type);
             string assembly = type.Assembly.GetName().Name;
             _header = $"{type.FullName}   ({assembly}{(type.BaseType != null ? ", : " + type.BaseType.Name : "")})";
             _methods = new List<MethodRow>();
@@ -393,11 +395,12 @@ namespace DragNWash.ModFramework.Inspector
                 _showPrivateMethods = !_showPrivateMethods;
             }
             bx += 98;
-            if (GUI.Button(new Rect(bx, y, 110, row), "Type graph", s.Button))
+            // The graph draws the game's code only, not Unity's or .NET's.
+            if (_gameType && GUI.Button(new Rect(bx, y, 110, row), "Type graph", s.Button))
             {
                 OpenGraph("t:" + _type.FullName.Replace('+', '/'));
             }
-            bx += 118;
+            if (_gameType) bx += 118;
             GUI.Label(new Rect(bx, y, w - (bx - x), row), "Copy gives Type:Method, for GameHooks.Require and AccessTools.Method; Patch gives the whole Harmony patch, guard and all.", _muted);
             y += row + 4;
 
@@ -437,7 +440,7 @@ namespace DragNWash.ModFramework.Inspector
                         if (open) { _ilFor = null; _il = null; }
                         else { _ilFor = mr.Method; _il = Disassemble(mr.Method); }
                     }
-                    if (GUI.Button(new Rect(r.x + 168, r.y + 2, 60, row - 4), "Graph", s.Button))
+                    if (InspectorCodeGraph.IsGameType(mr.Method.DeclaringType) && GUI.Button(new Rect(r.x + 168, r.y + 2, 60, row - 4), "Graph", s.Button))
                     {
                         OpenGraph("m:" + InspectorCodeGraph.Id(mr.Method));
                     }

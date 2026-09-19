@@ -201,7 +201,7 @@ pre.il { font-family: var(--mono); font-size: 11.5px; background: var(--inset); 
         const notes = [];
         if (m.coroutine) notes.push("coroutine");
         if (m.patched) notes.push("patched by a mod");
-        if (m.calls.length) notes.push("calls " + m.calls.map(c => c.split("::")[1].split("(")[0]).join(", "));
+        if (m.calls.length) notes.push("calls " + [...new Set(m.calls.map(c => pretty(c.split("::")[1].split("(")[0])))].join(", "));
         if (notes.length) d.append(el("small", null, notes.join(" · ")));
         const open = () => go("m:" + m.id);
         d.onclick = open; d.onkeydown = e => { if (e.key === "Enter") open(); };
@@ -214,7 +214,7 @@ pre.il { font-family: var(--mono); font-size: 11.5px; background: var(--inset); 
   }
 
   // ---- a method: blocks and branches ----
-  const W = 300, LINE = 16, HEAD = 22, PAD = 8, GAPX = 46, GAPY = 58;
+  const W = 330, LINE = 16, HEAD = 22, PAD = 8, GAPX = 50, GAPY = 64, CLIP = 44;
 
   function showMethod(g) {
     current = g; selected = null;
@@ -259,6 +259,7 @@ pre.il { font-family: var(--mono); font-size: 11.5px; background: var(--inset); 
       m.append(el("svg:path", { d: "M0,0 L10,5 L0,10 z", fill: "var(" + name + ")" }));
       defs.append(m);
     }
+    const own = g.type.split(/[./]/).pop();
     const edgeLayer = el("svg:g"), nodeLayer = el("svg:g"), labelLayer = el("svg:g");
     vg.append(edgeLayer, nodeLayer, labelLayer);
     // Several edges leave one block: spread their start points along its bottom.
@@ -277,7 +278,8 @@ pre.il { font-family: var(--mono); font-size: 11.5px; background: var(--inset); 
       } else {
         const x1 = a.x + a.w * (i + 1) / (n + 1), y1 = a.y + a.h, x2 = b.x + b.w / 2, y2 = b.y, my = (y1 + y2) / 2;
         d = `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`;
-        lx = (x1 + x2) / 2 + 4; ly = my;
+        // Beside where the branch leaves its block: the middle of a long edge may lie over another block.
+        lx = x1 + 5; ly = y1 + 13;
       }
       const dashed = e.kind === "resume" || e.kind === "catch" || e.kind === "finally" || e.kind === "fault";
       edgeLayer.append(el("svg:path", { d, class: "edge", stroke: "var(" + colour + ")", "marker-end": "url(#a" + colour + ")", "stroke-dasharray": dashed ? "5 4" : "none" }));
@@ -295,8 +297,10 @@ pre.il { font-family: var(--mono); font-size: 11.5px; background: var(--inset); 
       if (end) n.append(el("svg:text", { class: "end", x: b.w - 10, y: 15, "text-anchor": "end" }, end));
       b.lines.forEach((line, i) => {
         const call = line.call != null ? g.calls[line.call] : null;
-        const t = el("svg:text", { x: 10, y: HEAD + PAD + 11 + i * LINE }, clip(line.text, 40));
-        if (line.text.length > 40) t.append(el("svg:title", null, line.text));
+        // The method's own type goes without saying: "reads jumpVelocity", not "reads LocomotionController.jumpVelocity".
+        const text = line.text.split(" " + own + ".").join(" ");
+        const t = el("svg:text", { x: 10, y: HEAD + PAD + 11 + i * LINE }, clip(text, CLIP));
+        if (text.length > CLIP || text !== line.text) t.append(el("svg:title", null, line.text));
         if (call && call.game) {
           t.setAttribute("class", "call" + (call.patched ? " patched" : ""));
           t.addEventListener("click", ev => { ev.stopPropagation(); go("m:" + call.id); });
@@ -313,6 +317,9 @@ pre.il { font-family: var(--mono); font-size: 11.5px; background: var(--inset); 
       nodeLayer.append(n);
     }
   }
+
+  // get_Speed reads as Speed, add_OnJump as OnJump.
+  function pretty(name) { return name.replace(/^(get|set|add|remove)_/, ""); }
 
   function clip(s, n) { return s.length > n ? s.slice(0, n - 1) + "…" : s; }
 
@@ -357,7 +364,8 @@ pre.il { font-family: var(--mono); font-size: 11.5px; background: var(--inset); 
   function fit() {
     if (!bounds) return;
     const r = stage.getBoundingClientRect();
-    const k = Math.min(1.2, Math.max(0.2, Math.min(r.width / bounds.w, r.height / Math.min(bounds.h, r.height * 3))));
+    // Whole width when it can, but never smaller than readable: a tall graph scrolls (drag, wheel, arrow keys).
+    const k = Math.min(1.1, Math.max(0.75, Math.min(r.width / bounds.w, r.height / bounds.h)));
     view = { k, x: r.width / 2 - (bounds.x + bounds.w / 2) * k, y: 20 - bounds.y * k };
     apply();
   }

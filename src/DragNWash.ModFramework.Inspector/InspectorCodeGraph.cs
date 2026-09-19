@@ -110,6 +110,22 @@ namespace DragNWash.ModFramework.Inspector
         // The game's and its authors' assemblies (and YarnSpinner, which runs the
         // dialogue); not Unity's, .NET's, BepInEx's, the mods', nor the libraries
         // bundled with them (Yarn.* are YarnSpinner's copies of .NET packages).
+        // Whether the code graph can draw this type: one of the game's assemblies, in the game's folder.
+        internal static bool IsGameType(Type type)
+        {
+            try
+            {
+                string location = type.Assembly.Location;
+                return !string.IsNullOrEmpty(location)
+                    && string.Equals(Path.GetDirectoryName(Path.GetFullPath(location)), Path.GetFullPath(Path.Combine(Application.dataPath, "Managed")), StringComparison.OrdinalIgnoreCase)
+                    && IsGameAssembly(type.Assembly.GetName().Name);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         private static bool IsGameAssembly(string name)
         {
             string[] skip = { "System", "Unity.", "UnityEngine", "Mono.", "mscorlib", "netstandard", "Microsoft.", "Newtonsoft", "0Harmony", "BepInEx", "HarmonyX", "MonoMod",
@@ -687,7 +703,7 @@ namespace DragNWash.ModFramework.Inspector
             Index index = Get();
             TypeDefinition type = FindType(index, text);
             Dictionary<string, MethodBase> patched = PatchedById();
-            var groups = new Dictionary<string, List<object>> { ["Unity messages"] = new List<object>(), ["Public"] = new List<object>(), ["Private and internal"] = new List<object>() };
+            var groups = new Dictionary<string, List<object>> { ["Unity messages"] = new List<object>(), ["Public"] = new List<object>(), ["Private and internal"] = new List<object>(), ["Properties and events"] = new List<object>() };
             var ids = new HashSet<string>(type.Methods.Select(Id));
             foreach (MethodDefinition m in type.Methods.OrderBy(x => x.Name, StringComparer.Ordinal))
             {
@@ -704,16 +720,17 @@ namespace DragNWash.ModFramework.Inspector
                         if (ins.Operand is MethodReference r && ins.OpCode.FlowControl == FlowControl.Call && ids.Contains(Id(r)) && Id(r) != id && !inType.Contains(Id(r))) inType.Add(Id(r));
                     }
                 }
+                string accessor = Accessor(m);
                 var row = new Dictionary<string, object>
                 {
                     ["id"] = id,
-                    ["name"] = m.Name,
+                    ["name"] = accessor ?? m.Name,
                     ["signature"] = Signature(m),
                     ["patched"] = PatchesOf(patched, id).Count > 0,
                     ["coroutine"] = MachineBody(index, m) != null,
                     ["calls"] = inType,
                 };
-                string group = UnityMessages.Contains(m.Name) && !m.IsStatic ? "Unity messages" : m.IsPublic ? "Public" : "Private and internal";
+                string group = accessor != null ? "Properties and events" : UnityMessages.Contains(m.Name) && !m.IsStatic ? "Unity messages" : m.IsPublic ? "Public" : "Private and internal";
                 groups[group].Add(row);
             }
             return new Dictionary<string, object>
@@ -723,6 +740,17 @@ namespace DragNWash.ModFramework.Inspector
                 ["base"] = type.BaseType?.FullName,
                 ["groups"] = groups.Where(g => g.Value.Count > 0).Select(g => (object)new Dictionary<string, object> { ["name"] = g.Key, ["methods"] = g.Value }).ToList(),
             };
+        }
+
+        // get_Speed is "Speed (get)", add_OnJump "OnJump (add)": how people name a property's and an event's code.
+        private static string Accessor(MethodDefinition m)
+        {
+            if (!m.IsSpecialName) return null;
+            foreach (string prefix in new[] { "get_", "set_", "add_", "remove_" })
+            {
+                if (m.Name.StartsWith(prefix, StringComparison.Ordinal)) return m.Name.Substring(prefix.Length) + " (" + prefix.TrimEnd('_') + ")";
+            }
+            return null;
         }
 
         private static MethodDefinition MachineBody(Index index, MethodDefinition m)
