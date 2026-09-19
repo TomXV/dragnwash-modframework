@@ -61,6 +61,21 @@ namespace DragNWash.ModFramework
         private static Action _ready;
 
         /// <summary>
+        /// The name the Mods screen shows for a mod: its registered display name,
+        /// else its BepInEx name, else <paramref name="guid"/> itself. Takes a
+        /// Harmony ID too, since mods usually patch under their GUID. Since 1.4.0.
+        /// </summary>
+        public static string NameOf(string guid)
+        {
+            if (string.IsNullOrEmpty(guid)) return guid;
+            lock (Infos)
+            {
+                if (Infos.TryGetValue(guid, out ModInfo info) && !string.IsNullOrEmpty(info.DisplayName)) return info.DisplayName;
+            }
+            return BepInEx.Bootstrap.Chainloader.PluginInfos.TryGetValue(guid, out BepInEx.PluginInfo plugin) && plugin.Metadata != null ? plugin.Metadata.Name : guid;
+        }
+
+        /// <summary>
         /// Tells the Mods screen more about a mod than BepInEx knows: description,
         /// authors and website. Registering again with the same GUID replaces the
         /// earlier information.

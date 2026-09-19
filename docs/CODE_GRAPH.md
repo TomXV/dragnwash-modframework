@@ -2,7 +2,7 @@
 
 [日本語](CODE_GRAPH.ja.md)
 
-> **Design** (2026-09-19), stage 3 of the [API plan](API_PLAN.md). Nothing is built yet. The first measurements are in [Research](#research); the rest of the research comes before any code.
+> **Built** (experimental, 2026-09-19), stage 3 of the [API plan](API_PLAN.md), on the branch `experimental/code-graph`. Tried in the game on Windows; the look of the page and the Steam Deck are still to try. What the research found is in [Research](#research).
 
 The Inspector's Code view lists a component's methods, the Harmony patches on them and a method's IL, as rows in the F1 window. The code graph shows the same code as a drawing: a method's blocks and branches, what it calls, the fields it reads and writes, whose patches sit on it and which events lead to it. Clicking a call opens that method. It is for mod makers who want to know *where* to hook and *what else* a method touches, without dnSpy.
 
@@ -37,7 +37,7 @@ For one type: its methods as nodes, grouped (Unity messages such as `Update`, pu
 | Page-only operations | Core (`Operations`) | A new flag on an operation: *page only*. MCP's `tools/list` and `tools/call` leave these out; the console's `op` and the page can call them. |
 | The page | Bridge | `GET /page` (one HTML file: its script, its styles and the drawing code inside it; nothing from the internet), and `/page/api/…` for the page's calls. |
 | Page sign-in | Bridge | One-time code → cookie (below). |
-| The button | Inspector | **Open graph** in the Code view (with the method or type selected), and `code open <Type:Method>` in the console. |
+| The button | Inspector | **Graph** in the Code view (with the method or type selected), and `code open <Type:Method>` in the console. |
 
 The layout is drawn by the page's own code: at most 79 blocks per method (see research), so a simple layered layout is enough, and no library has to be shipped or fetched.
 
@@ -45,7 +45,7 @@ The layout is drawn by the page's own code: at most 79 blocks per method (see re
 
 The Bridge refuses web pages today (any `Origin` but `null`). The page is a web page, from the Bridge's own address, so it gets its own door, separate from MCP:
 
-1. **Open graph** makes a one-time code (32 random bytes; one use; 60 seconds) and opens `http://127.0.0.1:<port>/page#<code>` with the system's browser.
+1. **Graph** makes a one-time code (32 random bytes; one use; 60 seconds) and opens `http://127.0.0.1:<port>/page#<code>` with the system's browser.
 2. The page reads the code from after `#` (a browser never sends that part to a server, so it is in no log), removes it from the address bar, and posts it to `/page/api/login`.
 3. The Bridge answers with a cookie: `HttpOnly`, `SameSite=Strict`, `Path=/page`, lasting while the game runs. The code is spent.
 4. Every later call to `/page/api/…` needs that cookie **and** an `Origin` equal to the Bridge's own address (`http://127.0.0.1:<port>`); the Host check stays as it is. Other sites cannot call it (no cookie is sent from another site with `SameSite=Strict`, and their `Origin` differs), and the MCP door does not accept the cookie.
@@ -76,13 +76,17 @@ So: the whole assembly can be indexed at once (calls, callers) in about 50 ms, g
 
 **Coroutines** (checked the same day): all 44 state machines (39 iterators, 5 `async`) lead back to the method that makes them, through its `IteratorStateMachine` / `AsyncStateMachine` attribute. `MoveNext` begins by reading the state field and branching on it: a chain of comparisons in 37, a `switch` in 7 (the ones with more states). Each resume point is a constant stored into that field just before returning (median 1 per machine, at most 12); 18 have `try`/`finally`, which the compiler also routes through the state. So the page can replace the dispatch at the head with edges *resumes after yield n*, and draw the rest as the method's body. Cecil's `Resolve()` needs an assembly resolver pointed at the game's `Managed` folder for types from other assemblies; comparing full names is enough for this.
 
-Still to check, before code:
+**In the game** (Windows, with what was built):
 
-1. **Opening the browser**: `Application.OpenURL` with a `#` part, on Windows (does the default browser keep the part after `#`?) and on the Steam Deck's Desktop Mode.
-2. **Cookies on 127.0.0.1** with `SameSite=Strict` and `HttpOnly` in Edge, Chrome and Firefox; the `Origin` a same-address `fetch` sends.
-3. ~~**Coroutine states**~~ (done, below).
-4. **UnityEvent listeners in loaded scenes**: the cost of scanning every loaded component's `UnityEventBase` fields for "who calls this method", and whether to scan once per scene load.
-5. **Patch owners**: mapping a Harmony ID to the Mods screen's name for every mod that patches (framework libraries, Localization, other mods).
+1. **Opening the browser: works.** `Application.OpenURL` with the code after `#` opened the default browser, which kept the part after `#`: the page signed in. The Steam Deck's Desktop Mode is still to try.
+2. **Cookie and Origin: work.** The calls after the sign-in carried the cookie and the page's own `Origin`. From curl: no `Origin` or another site's is 403, a used or unknown code 403, no cookie or a made-up one 401, another Host 403. MCP's `tools/list` still offers the same 22 tools; `code_graph` and `bridge_page_open` are unknown tools there.
+3. **The game stops behind the browser.** The game does not run while its window is not in front, so the page's first call waited until the game was clicked again (46 seconds). The Bridge now keeps the game running while it listens (`Application.runInBackground`, put back when it stops); after that the call was answered at once.
+4. **UnityEvent listeners: cheap.** 239 components on the title screen in 2 ms; scanned once per scene load.
+5. **Patch owners: work.** The framework's prefix on `MenuOptions.OnEvent` shows as `Drag'n Wash ModFramework` (from `com.tomxv.dragnwash.modframework`).
+6. **Which assemblies.** The game's folder holds 32 that are neither Unity's nor .NET's; 17 of them are libraries bundled with others (YarnSpinner's copies of .NET packages, Protobuf, Steamworks, …) and are left out: 15 remain, 5,891 methods, indexed in 82 ms.
+7. **Calls through a base type.** `MenuOptions.OnEvent` has no direct callers; it is reached through `Menu.OnEvent`. Callers of the methods it overrides are listed too, marked *through Menu.OnEvent*.
+
+Calls are listed inside their block (a link for the game's own methods) rather than as nodes of their own beside it: a block rarely makes more than a few, and the drawing stays readable.
 
 ## Order of work
 
@@ -90,4 +94,4 @@ Still to check, before code:
 2. Page-only operations in the registry; `code.graph`, `code.type`, `code.callers`, `code.search` in the Inspector, tried with `op`.
 3. The page door in the Bridge: `/page`, sign-in, cookie, `/page/api/op`.
 4. The page: layout, blocks, calls, callers, patches, coroutines, search.
-5. **Open graph** in the Code view; docs.
+5. **Graph** in the Code view; docs.

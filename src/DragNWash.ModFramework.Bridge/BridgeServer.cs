@@ -110,6 +110,16 @@ namespace DragNWash.ModFramework.Bridge
                         Respond(stream, 403, "text/plain", "Only this computer's address may call the Bridge.", null);
                         return;
                     }
+                    // The page on this computer (docs/CODE_GRAPH.md) has a door of its own:
+                    // a one-time code, then a cookie, and only from the Bridge's own address.
+                    if (path == "/page" || path.StartsWith("/page/", StringComparison.Ordinal))
+                    {
+                        string pageBody = "";
+                        if (method == "POST" && !ReadBody(reader, stream, headers, out pageBody)) return;
+                        PageAnswer page = PageDoor.Handle(method, path, headers, pageBody, _port);
+                        Respond(stream, page.Status, page.Type, page.Body, null, page.Headers);
+                        return;
+                    }
                     // 2. Origin: only browsers send one; no web page may call.
                     if (headers.TryGetValue("Origin", out string origin) && origin != "null")
                     {
@@ -136,18 +146,8 @@ namespace DragNWash.ModFramework.Bridge
                     {
                         case "POST":
                         {
-                            headers.TryGetValue("Content-Length", out string lengthText);
-                            if (!int.TryParse(lengthText, out int length) || length < 0) { Respond(stream, 411, "text/plain", "Content-Length is required.", null); return; }
-                            if (length > MaxBody) { Respond(stream, 413, "text/plain", "The request is larger than 1 MB.", null); return; }
-                            var body = new char[length];
-                            int read = 0;
-                            while (read < length)
-                            {
-                                int got = reader.Read(body, read, length - read);
-                                if (got <= 0) break;
-                                read += got;
-                            }
-                            McpAnswer answer = McpProtocol.Handle(new string(body, 0, read), sessionId, protocolVersion);
+                            if (!ReadBody(reader, stream, headers, out string body)) return;
+                            McpAnswer answer = McpProtocol.Handle(body, sessionId, protocolVersion);
                             Respond(stream, answer.Status, answer.Body != null ? "application/json" : null, answer.Body, answer.SessionId);
                             return;
                         }
@@ -169,6 +169,27 @@ namespace DragNWash.ModFramework.Bridge
                     BridgePlugin.Log.LogWarning($"[bridge] A request failed: {ex.GetType().Name}: {ex.Message}");
                 }
             }
+        }
+
+        // The body after the headers; answers 411 or 413 itself and returns false when it cannot be read.
+        private static bool ReadBody(StreamReader reader, Stream stream, Dictionary<string, string> headers, out string body)
+        {
+            body = null;
+            headers.TryGetValue("Content-Length", out string lengthText);
+            if (!int.TryParse(lengthText, out int length) || length < 0) { Respond(stream, 411, "text/plain", "Content-Length is required.", null); return false; }
+            if (length > MaxBody) { Respond(stream, 413, "text/plain", "The request is larger than 1 MB.", null); return false; }
+            // Content-Length counts bytes; the reader gives characters, so read at most that many and stop at the end.
+            var chars = new char[length];
+            int read = 0;
+            while (read < length)
+            {
+                int got = reader.Read(chars, read, length - read);
+                if (got <= 0) break;
+                read += got;
+                if (Encoding.UTF8.GetByteCount(chars, 0, read) >= length) break;
+            }
+            body = new string(chars, 0, read);
+            return true;
         }
 
         private static void Respond(Stream stream, int status, string type, string body, string sessionId, string extraHeader = null)

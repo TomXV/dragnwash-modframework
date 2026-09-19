@@ -62,6 +62,13 @@ namespace DragNWash.ModFramework
         public IReadOnlyList<OperationParameter> Parameters { get; internal set; }
         /// <summary>One line on what it returns.</summary>
         public string Returns { get; internal set; }
+        /// <summary>
+        /// True for an operation only the Bridge's page on this computer (and the
+        /// console) may call, never an AI client over MCP: set it right after
+        /// <see cref="Operations.Register"/>. For what shows the game's own code
+        /// (docs/CODE_GRAPH.md). Since 1.4.0.
+        /// </summary>
+        public bool PageOnly { get; set; }
 
         internal Func<OperationArgs, object> Run;
     }

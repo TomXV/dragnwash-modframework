@@ -393,6 +393,11 @@ namespace DragNWash.ModFramework.Inspector
                 _showPrivateMethods = !_showPrivateMethods;
             }
             bx += 98;
+            if (GUI.Button(new Rect(bx, y, 110, row), "Type graph", s.Button))
+            {
+                OpenGraph("t:" + _type.FullName.Replace('+', '/'));
+            }
+            bx += 118;
             GUI.Label(new Rect(bx, y, w - (bx - x), row), "Copy gives Type:Method, for GameHooks.Require and AccessTools.Method; Patch gives the whole Harmony patch, guard and all.", _muted);
             y += row + 4;
 
@@ -432,7 +437,11 @@ namespace DragNWash.ModFramework.Inspector
                         if (open) { _ilFor = null; _il = null; }
                         else { _ilFor = mr.Method; _il = Disassemble(mr.Method); }
                     }
-                    GUI.Label(new Rect(r.x + 170, r.y, r.width - 170, row), TW.Drawable(mr.Signature + (mr.Overloads > 1 ? "   (" + mr.Overloads + " overloads)" : "") + (mr.Inherited ? "   (" + mr.Method.DeclaringType.Name + ")" : "")), mr.Patches != null ? _accent : (mr.Method.IsPublic ? _cell : _muted));
+                    if (GUI.Button(new Rect(r.x + 168, r.y + 2, 60, row - 4), "Graph", s.Button))
+                    {
+                        OpenGraph("m:" + InspectorCodeGraph.Id(mr.Method));
+                    }
+                    GUI.Label(new Rect(r.x + 234, r.y, r.width - 234, row), TW.Drawable(mr.Signature + (mr.Overloads > 1 ? "   (" + mr.Overloads + " overloads)" : "") + (mr.Inherited ? "   (" + mr.Method.DeclaringType.Name + ")" : "")), mr.Patches != null ? _accent : (mr.Method.IsPublic ? _cell : _muted));
                 });
                 heights.Add(row);
                 if (m.Patches != null)
@@ -468,6 +477,18 @@ namespace DragNWash.ModFramework.Inspector
                 ry += heights[i];
             }
             GUI.EndScrollView();
+        }
+
+        // The code graph opens in the browser through the Bridge (docs/CODE_GRAPH.md), when it is installed and on.
+        private static void OpenGraph(string focus)
+        {
+            if (Operations.Find("bridge.page.open") == null)
+            {
+                TW.ShowNotice("The graph needs the Bridge library, on (its tab in this window).");
+                return;
+            }
+            OperationResult r = Operations.CallNow("bridge.page.open", new Dictionary<string, object> { ["focus"] = focus }, "inspector");
+            TW.ShowNotice(r.Ok ? "The graph opens in your browser." : r.Error);
         }
 
         private static IEnumerable<string> Describe(Patches p)

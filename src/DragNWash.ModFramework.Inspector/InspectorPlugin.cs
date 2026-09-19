@@ -67,6 +67,8 @@ namespace DragNWash.ModFramework.Inspector
             {
                 InspectorTab.Install();
                 InspectorOperations.Register();
+                InspectorCodeGraph.Register();
+                GameEvents.OnSceneLoaded(Inspector.Guid, (scene, mode) => InspectorCodeGraph.OnSceneLoaded());
                 // The outline, the pick mode and the gizmo draw in the game's
                 // screen space, outside the window.
                 _overlay = TW.AddOverlay(Inspector.Guid, window =>

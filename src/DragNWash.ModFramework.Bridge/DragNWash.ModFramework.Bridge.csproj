@@ -28,6 +28,11 @@
     <Compile Include="..\DragNWash.ModFramework.Overrides\Json.cs" Link="Json.cs" />
   </ItemGroup>
 
+  <!-- The page on this computer (docs/CODE_GRAPH.md): one file, served from the DLL. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Page\page.html" LogicalName="page.html" />
+  </ItemGroup>
+
   <!-- Shares libs/ with the core project; see tools/copy-libs.ps1. -->
   <ItemGroup>
     <Reference Include="BepInEx"><HintPath>../DragNWash.ModFramework/libs/BepInEx.dll</HintPath><Private>false</Private></Reference>

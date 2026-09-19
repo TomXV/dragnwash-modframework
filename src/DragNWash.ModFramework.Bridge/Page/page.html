@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Drag'n Wash Code Graph</title>
+<style>
+/* The Tool window's palette (ToolWindow.PanelColor, InsetColor, AccentColor…), light and dark. */
+:root {
+  --ground: #f3f6f8; --panel: #ffffff; --inset: #e8edf1; --line: #cfd8e0;
+  --text: #16202b; --muted: #5b6878; --accent: #1f8f82; --accent-soft: #d5efeb;
+  --true: #2f8a4c; --false: #8a95a3; --case: #3a6fc4; --back: #b0621f; --catch: #c0392b; --resume: #7a52b3;
+  --warn: #9a6a00; --error: #c0392b; --node: #ffffff; --node-head: #eef3f6; --selected: #1f8f82;
+  --mono: ui-monospace, "Cascadia Mono", "Consolas", "DejaVu Sans Mono", monospace;
+  --sans: system-ui, "Segoe UI", "Noto Sans", "Noto Sans JP", "DejaVu Sans", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0e121a; --panel: #171c26; --inset: #0b0e14; --line: #2a3342;
+    --text: #e8eff7; --muted: #99a8ba; --accent: #52c7b8; --accent-soft: #173a38;
+    --true: #6fcf8e; --false: #7d8a9b; --case: #7aa7f0; --back: #eda25a; --catch: #f57366; --resume: #b394ea;
+    --warn: #edbf4d; --error: #f57366; --node: #1b2130; --node-head: #212a3b; --selected: #52c7b8;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0e121a; --panel: #171c26; --inset: #0b0e14; --line: #2a3342;
+  --text: #e8eff7; --muted: #99a8ba; --accent: #52c7b8; --accent-soft: #173a38;
+  --true: #6fcf8e; --false: #7d8a9b; --case: #7aa7f0; --back: #eda25a; --catch: #f57366; --resume: #b394ea;
+  --warn: #edbf4d; --error: #f57366; --node: #1b2130; --node-head: #212a3b; --selected: #52c7b8;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--ground); color: var(--text); font: 14px/1.45 var(--sans); display: grid; grid-template-rows: auto 1fr; }
+header { display: flex; gap: 10px; align-items: center; padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+header h1 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; margin: 0 8px 0 0; color: var(--muted); font-weight: 600; }
+header h1 b { color: var(--accent); font-weight: 700; }
+input[type=search] { flex: 1 1 240px; min-width: 0; max-width: 460px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--inset); color: var(--text); font: inherit; }
+button { font: inherit; color: var(--text); background: var(--inset); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button:focus-visible, input:focus-visible, a:focus-visible, .node:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button[disabled] { opacity: .45; cursor: default; }
+#status { color: var(--muted); font-size: 12px; margin-left: auto; }
+main { display: grid; grid-template-columns: 280px 1fr 360px; min-height: 0; }
+aside { background: var(--panel); overflow: auto; min-height: 0; padding: 12px 14px; }
+#left { border-right: 1px solid var(--line); }
+#right { border-left: 1px solid var(--line); }
+h2 { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; font-weight: 600; }
+h2:first-child { margin-top: 0; }
+ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+ul.list li { padding: 4px 6px; border-radius: 5px; cursor: pointer; overflow-wrap: anywhere; }
+ul.list li:hover { background: var(--accent-soft); }
+ul.list li small { display: block; color: var(--muted); font-size: 11.5px; }
+.kind { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent); margin-right: 6px; }
+.muted { color: var(--muted); }
+.pill { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); margin: 0 4px 4px 0; }
+.pill.warn { border-color: var(--warn); color: var(--warn); }
+.pill.acc { border-color: var(--accent); color: var(--accent); }
+.sig { font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
+pre.il { font-family: var(--mono); font-size: 11.5px; background: var(--inset); border: 1px solid var(--line); border-radius: 6px; padding: 8px; overflow-x: auto; margin: 0; white-space: pre; }
+#stage { position: relative; overflow: hidden; min-height: 0; background:
+  radial-gradient(circle, var(--line) 1px, transparent 1.2px) 0 0 / 22px 22px, var(--ground); cursor: grab; }
+#stage.dragging { cursor: grabbing; }
+#stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#types { position: absolute; inset: 0; overflow: auto; padding: 18px; display: none; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); align-content: start; cursor: default; }
+#types section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+#types .m { padding: 4px 6px; border-radius: 5px; cursor: pointer; font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
+#types .m:hover { background: var(--accent-soft); }
+#types .m small { display: block; font-family: var(--sans); color: var(--muted); font-size: 11px; }
+#empty { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 24px; cursor: default; }
+#empty p { max-width: 46ch; margin: 0 auto 8px; }
+.node rect.body { fill: var(--node); stroke: var(--line); }
+.node rect.head { fill: var(--node-head); }
+.node.selected rect.body { stroke: var(--selected); stroke-width: 2; }
+.node.dispatch rect.body { stroke-dasharray: 4 3; }
+.node text { font-family: var(--mono); font-size: 11.5px; fill: var(--text); }
+.node text.h { font-family: var(--sans); font-size: 11px; font-weight: 600; fill: var(--muted); letter-spacing: .04em; }
+.node text.end { font-family: var(--sans); font-size: 10.5px; fill: var(--accent); }
+.node text.call { fill: var(--case); cursor: pointer; text-decoration: underline; }
+.node text.patched { fill: var(--warn); }
+.edge { fill: none; stroke-width: 1.6; }
+.edge-label { font-family: var(--sans); font-size: 10.5px; paint-order: stroke; stroke: var(--ground); stroke-width: 3px; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; grid-template-rows: auto 60vh auto; } #left, #right { border: 0; border-bottom: 1px solid var(--line); max-height: 40vh; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header>
+  <h1><b>Drag'n Wash</b> code graph</h1>
+  <button id="back" type="button" title="Back" disabled>←</button>
+  <button id="fwd" type="button" title="Forward" disabled>→</button>
+  <input id="q" type="search" placeholder="Search types and methods (e.g. Dragon, Update)" autocomplete="off" spellcheck="false">
+  <button id="fit" type="button" title="Fit the graph to the window">Fit</button>
+  <span id="status">Structure only: read from the game's assemblies on this computer.</span>
+</header>
+<main>
+  <aside id="left"><h2>Results</h2><ul class="list" id="results"><li class="muted" style="cursor:default">Type part of a name above.</li></ul></aside>
+  <div id="stage" tabindex="0" aria-label="Graph">
+    <svg id="svg" role="img" aria-label="Blocks and branches of the method"><defs id="defs"></defs><g id="view"></g></svg>
+    <div id="types"></div>
+    <div id="empty"><div><p><strong>Open a method or a type.</strong></p><p>Search above, or in the game: F1 → Inspector → a component → Code → <em>Graph</em> on a method.</p></div></div>
+  </div>
+  <aside id="right"><div id="details"><h2>Details</h2><p class="muted">Nothing open yet.</p></div></aside>
+</main>
+<script>
+"use strict";
+(function () {
+  const $ = id => document.getElementById(id);
+  const svgNS = "http://www.w3.org/2000/svg";
+  const status = $("status");
+  let signedIn = false;
+  const hist = [], state = { at: -1 };
+  let current = null, selected = null, view = { x: 40, y: 30, k: 1 }, bounds = null;
+
+  function el(tag, attrs, text) {
+    const e = tag.startsWith("svg:") ? document.createElementNS(svgNS, tag.slice(4)) : document.createElement(tag);
+    if (attrs) for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function setStatus(text, bad) { status.textContent = text; status.style.color = bad ? "var(--error)" : ""; }
+
+  async function call(name, args) {
+    const r = await fetch("/page/api/op", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, args: args || {} }) });
+    const j = await r.json().catch(() => ({ ok: false, error: "The game gave no answer (" + r.status + ")." }));
+    if (r.status === 401) signedIn = false;
+    if (!j.ok) throw new Error(j.error || "Failed.");
+    return j.value;
+  }
+
+  // ---- sign-in: the code after '#', never sent to the server by the browser ----
+  async function start() {
+    const params = new URLSearchParams(location.hash.slice(1));
+    const code = params.get("code");
+    const focus = params.get("focus");
+    history.replaceState(null, "", location.pathname + (focus ? "#focus=" + encodeURIComponent(focus) : ""));
+    if (code) {
+      const r = await fetch("/page/api/login", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
+      const j = await r.json().catch(() => ({ ok: false }));
+      if (!j.ok) { setStatus(j.error || "Could not sign in: open the page again from the F1 window.", true); return; }
+    }
+    signedIn = true;
+    if (focus) go(focus, true);
+  }
+
+  // ---- navigation ----
+  function go(focus, replace) {
+    if (!replace) { hist.length = state.at + 1; }
+    if (replace && state.at >= 0) hist[state.at] = focus; else { hist.push(focus); state.at = hist.length - 1; }
+    history.replaceState(null, "", location.pathname + "#focus=" + encodeURIComponent(focus));
+    load(focus);
+  }
+  function step(d) { const n = state.at + d; if (n < 0 || n >= hist.length) return; state.at = n; history.replaceState(null, "", location.pathname + "#focus=" + encodeURIComponent(hist[n])); load(hist[n]); }
+  $("back").onclick = () => step(-1);
+  $("fwd").onclick = () => step(1);
+  function navButtons() { $("back").disabled = state.at <= 0; $("fwd").disabled = state.at >= hist.length - 1; }
+
+  async function load(focus) {
+    navButtons();
+    setStatus("Loading…");
+    try {
+      if (focus.startsWith("t:")) showType(await call("code.type", { type: focus.slice(2) }));
+      else showMethod(await call("code.graph", { method: focus.startsWith("m:") ? focus.slice(2) : focus }));
+      setStatus("Structure only: read from the game's assemblies on this computer.");
+    } catch (e) { setStatus(e.message, true); }
+  }
+
+  // ---- search ----
+  let timer = 0;
+  $("q").addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(search, 250); });
+  $("q").addEventListener("keydown", e => { if (e.key === "Enter") { clearTimeout(timer); search(); } });
+  async function search() {
+    const text = $("q").value.trim();
+    const ul = $("results");
+    if (text.length < 2) return;
+    try {
+      const found = await call("code.search", { text, max: 80 });
+      ul.replaceChildren();
+      if (!found.length) ul.append(el("li", { class: "muted" }, "Nothing named like that."));
+      for (const f of found) {
+        const li = el("li", { tabindex: "0" });
+        li.append(el("span", { class: "kind" }, f.kind), document.createTextNode(f.name));
+        if (f.signature) li.append(el("small", null, f.signature));
+        else if (f.assembly) li.append(el("small", null, f.assembly));
+        const open = () => go((f.kind === "type" ? "t:" : "m:") + f.id);
+        li.onclick = open; li.onkeydown = e => { if (e.key === "Enter") open(); };
+        ul.append(li);
+      }
+    } catch (e) { setStatus(e.message, true); }
+  }
+
+  // ---- a type: its methods in groups ----
+  function showType(t) {
+    current = null;
+    $("empty").style.display = "none"; $("svg").style.display = "none";
+    const box = $("types"); box.style.display = "grid"; box.replaceChildren();
+    for (const g of t.groups) {
+      const sec = el("section"); sec.append(el("h2", null, g.name + " (" + g.methods.length + ")"));
+      for (const m of g.methods) {
+        const d = el("div", { class: "m", tabindex: "0" }, m.name);
+        const notes = [];
+        if (m.coroutine) notes.push("coroutine");
+        if (m.patched) notes.push("patched by a mod");
+        if (m.calls.length) notes.push("calls " + m.calls.map(c => c.split("::")[1].split("(")[0]).join(", "));
+        if (notes.length) d.append(el("small", null, notes.join(" · ")));
+        const open = () => go("m:" + m.id);
+        d.onclick = open; d.onkeydown = e => { if (e.key === "Enter") open(); };
+        sec.append(d);
+      }
+      box.append(sec);
+    }
+    const det = $("details"); det.replaceChildren(el("h2", null, "Type"), el("p", { class: "sig" }, t.type));
+    det.append(el("p", { class: "muted" }, t.assembly + (t.base ? " · base " + t.base : "")));
+  }
+
+  // ---- a method: blocks and branches ----
+  const W = 300, LINE = 16, HEAD = 22, PAD = 8, GAPX = 46, GAPY = 58;
+
+  function showMethod(g) {
+    current = g; selected = null;
+    $("types").style.display = "none"; $("empty").style.display = g.blocks.length ? "none" : "grid"; $("svg").style.display = "";
+    if (!g.blocks.length) $("empty").replaceChildren(el("p", null, g.note || "No body."));
+    layout(g); draw(g); details(g); fit();
+  }
+
+  // Layers by the longest forward path; back edges (loops) do not count.
+  function layout(g) {
+    const blocks = g.blocks, rank = new Map(), byIndex = new Map(blocks.map(b => [b.index, b]));
+    for (const b of blocks) rank.set(b.index, 0);
+    const fwd = g.edges.filter(e => !e.back).sort((a, b) => a.from - b.from);
+    for (let pass = 0; pass < 2; pass++)
+      for (const e of fwd) if (rank.get(e.to) < rank.get(e.from) + 1) rank.set(e.to, rank.get(e.from) + 1);
+    const layers = [];
+    for (const b of blocks) { const r = rank.get(b.index); (layers[r] = layers[r] || []).push(b); }
+    let y = 0;
+    for (const layer of layers) {
+      if (!layer) continue;
+      layer.sort((a, b) => a.index - b.index);
+      let h = 0;
+      layer.forEach((b, i) => {
+        b.w = W; b.h = HEAD + PAD + Math.max(1, b.lines.length) * LINE + PAD;
+        b.x = (i - (layer.length - 1) / 2) * (W + GAPX) - W / 2; b.y = y; h = Math.max(h, b.h);
+      });
+      y += h + GAPY;
+    }
+    g.byIndex = byIndex;
+    let minX = Infinity, maxX = -Infinity, maxY = 0;
+    for (const b of blocks) { minX = Math.min(minX, b.x); maxX = Math.max(maxX, b.x + b.w); maxY = Math.max(maxY, b.y + b.h); }
+    bounds = { x: minX - 80, y: -30, w: maxX - minX + 200, h: maxY + 60 };
+  }
+
+  const colours = { true: "--true", false: "--false", else: "--false", next: "--false", jump: "--false", leave: "--false", case: "--case", default: "--case", catch: "--catch", finally: "--catch", fault: "--catch", filter: "--catch", resume: "--resume" };
+
+  function draw(g) {
+    const vg = $("view"); vg.replaceChildren();
+    const defs = $("defs"); defs.replaceChildren();
+    for (const name of new Set(Object.values(colours).concat("--back"))) {
+      const m = el("svg:marker", { id: "a" + name, viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "7", markerHeight: "7", orient: "auto-start-reverse" });
+      m.append(el("svg:path", { d: "M0,0 L10,5 L0,10 z", fill: "var(" + name + ")" }));
+      defs.append(m);
+    }
+    const edgeLayer = el("svg:g"), nodeLayer = el("svg:g"), labelLayer = el("svg:g");
+    vg.append(edgeLayer, nodeLayer, labelLayer);
+    // Several edges leave one block: spread their start points along its bottom.
+    const outs = new Map();
+    for (const e of g.edges) { if (!outs.has(e.from)) outs.set(e.from, []); outs.get(e.from).push(e); }
+    for (const e of g.edges) {
+      const a = g.byIndex.get(e.from), b = g.byIndex.get(e.to);
+      if (!a || !b) continue;
+      const list = outs.get(e.from), i = list.indexOf(e), n = list.length;
+      const colour = e.back ? "--back" : (colours[e.kind] || "--false");
+      let d, lx, ly;
+      if (e.back) {
+        const x1 = a.x + a.w, y1 = a.y + a.h / 2, x2 = b.x + b.w, y2 = b.y + 14, bulge = 50 + (a.index % 4) * 14;
+        d = `M${x1},${y1} C${x1 + bulge},${y1} ${x2 + bulge},${y2} ${x2},${y2}`;
+        lx = Math.max(x1, x2) + bulge * .75; ly = (y1 + y2) / 2;
+      } else {
+        const x1 = a.x + a.w * (i + 1) / (n + 1), y1 = a.y + a.h, x2 = b.x + b.w / 2, y2 = b.y, my = (y1 + y2) / 2;
+        d = `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`;
+        lx = (x1 + x2) / 2 + 4; ly = my;
+      }
+      const dashed = e.kind === "resume" || e.kind === "catch" || e.kind === "finally" || e.kind === "fault";
+      edgeLayer.append(el("svg:path", { d, class: "edge", stroke: "var(" + colour + ")", "marker-end": "url(#a" + colour + ")", "stroke-dasharray": dashed ? "5 4" : "none" }));
+      if (e.label) labelLayer.append(el("svg:text", { x: lx, y: ly, class: "edge-label", fill: "var(" + colour + ")" }, e.back ? "loop · " + e.label : e.label));
+    }
+    for (const b of g.blocks) {
+      const cls = "node" + (b.dispatch ? " dispatch" : "");
+      const n = el("svg:g", { class: cls, transform: `translate(${b.x},${b.y})`, tabindex: "0", role: "button", "aria-label": "Block " + b.index });
+      n.append(el("svg:rect", { class: "body", width: b.w, height: b.h, rx: 7 }));
+      n.append(el("svg:rect", { class: "head", width: b.w, height: HEAD, rx: 7 }));
+      n.append(el("svg:rect", { class: "head", y: HEAD - 7, width: b.w, height: 7 }));
+      const title = b.dispatch ? "STATE DISPATCH" : b.index === 0 ? "ENTRY" : "BLOCK " + b.index;
+      n.append(el("svg:text", { class: "h", x: 10, y: 15 }, title + "  ·  IL_" + b.offset.toString(16).padStart(4, "0")));
+      const end = b.yield != null ? (current.coroutine === "async" ? "await → state " : "yield → state ") + b.yield : b.ends === "return" || b.ends === "throw" ? b.ends : "";
+      if (end) n.append(el("svg:text", { class: "end", x: b.w - 10, y: 15, "text-anchor": "end" }, end));
+      b.lines.forEach((line, i) => {
+        const call = line.call != null ? g.calls[line.call] : null;
+        const t = el("svg:text", { x: 10, y: HEAD + PAD + 11 + i * LINE }, clip(line.text, 40));
+        if (line.text.length > 40) t.append(el("svg:title", null, line.text));
+        if (call && call.game) {
+          t.setAttribute("class", "call" + (call.patched ? " patched" : ""));
+          t.addEventListener("click", ev => { ev.stopPropagation(); go("m:" + call.id); });
+          t.append(el("svg:title", null, (call.patched ? "Patched by " + call.patched.map(p => p.mod).join(", ") + ". " : "") + "Open " + call.name));
+        } else if (call && call.patched) {
+          t.setAttribute("class", "patched");
+          t.append(el("svg:title", null, "Patched by " + call.patched.map(p => p.mod).join(", ")));
+        }
+        n.append(t);
+      });
+      const pick = () => { selected = b.index; for (const x of nodeLayer.children) x.classList.remove("selected"); n.classList.add("selected"); details(current); };
+      n.addEventListener("click", pick);
+      n.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+      nodeLayer.append(n);
+    }
+  }
+
+  function clip(s, n) { return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+
+  function details(g) {
+    const d = $("details"); d.replaceChildren();
+    d.append(el("h2", null, g.type.split(".").pop().replace("/", ".")), el("p", { class: "sig" }, g.signature));
+    const pills = el("p");
+    pills.append(el("span", { class: "pill" }, g.assembly));
+    if (g.unity_message) pills.append(el("span", { class: "pill acc" }, "Unity message"));
+    if (g.coroutine) pills.append(el("span", { class: "pill acc" }, g.coroutine === "async" ? "async" : "coroutine"));
+    if (g.patches.length) pills.append(el("span", { class: "pill warn" }, "patched"));
+    d.append(pills);
+    const typeLink = el("button", { type: "button" }, "Whole type");
+    typeLink.onclick = () => go("t:" + g.type);
+    d.append(typeLink);
+    if (g.coroutine && g.body !== "stub") d.append(el("p", { class: "muted" }, "Drawn: the body of its state machine (MoveNext). Dashed purple edges resume after a yield or an await."));
+    if (g.state_machine_of) { const b = el("button", { type: "button" }, "Open the coroutine's method"); b.onclick = () => go("m:" + g.state_machine_of); d.append(el("p"), b); }
+    section(d, "Patches on it", g.patches, p => `${p.kind} by ${p.mod} (${p.patch})`);
+    section(d, "Called by", g.callers, c => c.name + (c.via ? "  (through " + c.via + ")" : ""), c => go("m:" + c.id));
+    section(d, "Events that lead here", g.events, e => e);
+    if (selected != null) {
+      const b = current.byIndex.get(selected);
+      d.append(el("h2", null, "IL of block " + b.index), el("pre", { class: "il" }, b.il.join("\n")));
+    } else d.append(el("h2", null, "IL"), el("p", { class: "muted" }, "Click a block to see its IL."));
+  }
+
+  function section(d, title, items, text, open) {
+    d.append(el("h2", null, title + " (" + items.length + ")"));
+    if (!items.length) { d.append(el("p", { class: "muted" }, "None.")); return; }
+    const ul = el("ul", { class: "list" });
+    for (const it of items) {
+      const li = el("li", open ? { tabindex: "0" } : { style: "cursor:default" }, text(it));
+      if (open) { li.onclick = () => open(it); li.onkeydown = e => { if (e.key === "Enter") open(it); }; }
+      ul.append(li);
+    }
+    d.append(ul);
+  }
+
+  // ---- pan and zoom ----
+  const stage = $("stage");
+  function apply() { $("view").setAttribute("transform", `translate(${view.x},${view.y}) scale(${view.k})`); }
+  function fit() {
+    if (!bounds) return;
+    const r = stage.getBoundingClientRect();
+    const k = Math.min(1.2, Math.max(0.2, Math.min(r.width / bounds.w, r.height / Math.min(bounds.h, r.height * 3))));
+    view = { k, x: r.width / 2 - (bounds.x + bounds.w / 2) * k, y: 20 - bounds.y * k };
+    apply();
+  }
+  $("fit").onclick = fit;
+  let drag = null;
+  stage.addEventListener("pointerdown", e => { if (e.target.closest(".node") || e.target.closest("#types")) return; drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }; stage.classList.add("dragging"); stage.setPointerCapture(e.pointerId); });
+  stage.addEventListener("pointermove", e => { if (!drag) return; view.x = drag.vx + e.clientX - drag.x; view.y = drag.vy + e.clientY - drag.y; apply(); });
+  stage.addEventListener("pointerup", () => { drag = null; stage.classList.remove("dragging"); });
+  stage.addEventListener("wheel", e => {
+    if (e.target.closest("#types")) return;
+    e.preventDefault();
+    const r = stage.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+    const k = Math.min(2.5, Math.max(0.15, view.k * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
+    view.x = mx - (mx - view.x) * k / view.k; view.y = my - (my - view.y) * k / view.k; view.k = k; apply();
+  }, { passive: false });
+  stage.addEventListener("keydown", e => {
+    const s = 60;
+    if (e.key === "ArrowLeft") view.x += s; else if (e.key === "ArrowRight") view.x -= s; else if (e.key === "ArrowUp") view.y += s; else if (e.key === "ArrowDown") view.y -= s; else if (e.key === "f") fit(); else return;
+    e.preventDefault(); apply();
+  });
+  window.addEventListener("resize", () => { if (current) fit(); });
+
+  start().catch(e => setStatus(e.message, true));
+})();
+</script>
+</body>
+</html>

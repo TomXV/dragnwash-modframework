@@ -153,10 +153,13 @@ namespace DragNWash.ModFramework.Bridge
             return answer;
         }
 
+        // What AI clients get: read operations, except those kept for the page on this computer (the game's code).
+        private static bool Offered(Operation op) => op.Kind == OperationKind.Read && !op.PageOnly;
+
         private static List<object> Tools()
         {
             var tools = new List<object>();
-            foreach (Operation op in Operations.All.Where(o => o.Kind == OperationKind.Read))
+            foreach (Operation op in Operations.All.Where(Offered))
             {
                 var properties = new Dictionary<string, object>();
                 var required = new List<object>();
@@ -196,7 +199,7 @@ namespace DragNWash.ModFramework.Bridge
             }
             var p = message.TryGetValue("params", out object raw) ? raw as Dictionary<string, object> : null;
             string tool = Json.String(p, "name");
-            Operation op = Operations.All.FirstOrDefault(o => o.Kind == OperationKind.Read && ToolName(o.Name) == tool);
+            Operation op = Operations.All.FirstOrDefault(o => Offered(o) && ToolName(o.Name) == tool);
             if (op == null) return Error(200, id, -32602, $"Unknown tool: {tool}.");
             var args = p != null && p.TryGetValue("arguments", out object a) && a is Dictionary<string, object> d ? d : new Dictionary<string, object>();
 
