@@ -66,6 +66,7 @@ namespace DragNWash.ModFramework.Inspector
                 case Material m:
                 {
                     if (member == "shader" || member == "renderQueue") return new Place { Not = $"the material's {member}" };
+                    if (InspectorTab.InObjects) return new Place { Not = "a material edited in Objects (an override names the renderer showing it)" };
                     GameObject go = InspectorTab.SelectedObject;
                     Renderer r = go != null ? go.GetComponents<Renderer>().FirstOrDefault(x => x.sharedMaterials.Contains(m)) : null;
                     if (r == null) return new Place { Not = "a material not shown by the selected object" };

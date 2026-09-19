@@ -46,7 +46,7 @@ namespace DragNWash.ModFramework.Assets
         }
 
         // The Inspector library, when it is loaded: a texture row's Inspect
-        // button opens the first material that uses the texture there.
+        // button opens the texture in its Objects view.
         private static System.Reflection.MethodInfo _inspect;
         private static bool _inspectLookedUp;
         private static System.Reflection.MethodInfo InspectMethod()
@@ -58,23 +58,6 @@ namespace DragNWash.ModFramework.Assets
                 _inspect = type?.GetMethod("Inspect", new[] { typeof(UnityEngine.Object) });
             }
             return _inspect;
-        }
-
-        private static Material FirstMaterialUsing(Texture2D texture)
-        {
-            foreach (Material m in Resources.FindObjectsOfTypeAll<Material>())
-            {
-                if (m == null || m.shader == null) continue;
-                int count = m.shader.GetPropertyCount();
-                for (int i = 0; i < count; i++)
-                {
-                    if (m.shader.GetPropertyType(i) == UnityEngine.Rendering.ShaderPropertyType.Texture && m.GetTexture(m.shader.GetPropertyName(i)) == texture)
-                    {
-                        return m;
-                    }
-                }
-            }
-            return null;
         }
 
         public static void Install()
@@ -304,17 +287,10 @@ namespace DragNWash.ModFramework.Assets
                     {
                         GUI.Label(new Rect(inner * 0.85f, ry, inner * 0.15f - 70, row), "replacement", _mutedCell);
                     }
-                    if (t.MaterialUsers > 0 && InspectMethod() != null && GUI.Button(new Rect(inner - 66, ry + 2, 66, row - 4), "Inspect", s.Button))
+                    if (InspectMethod() != null && GUI.Button(new Rect(inner - 66, ry + 2, 66, row - 4), "Inspect", s.Button))
                     {
-                        Material m = FirstMaterialUsing(t.Texture);
-                        if (m != null)
-                        {
-                            InspectMethod().Invoke(null, new object[] { m });
-                        }
-                        else
-                        {
-                            _status = $"No material uses {t.Name} right now.";
-                        }
+                        // The Inspector's Objects view, whose Used by lists its materials and sprites.
+                        InspectMethod().Invoke(null, new object[] { t.Texture });
                     }
                 }
                 ry += row;

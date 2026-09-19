@@ -16,8 +16,10 @@ namespace DragNWash.ModFramework.Inspector
     // while the game runs. Three panes side by side; in a narrow window, three
     // pages. Nothing is saved: an edit lives until the scene reloads or the
     // game quits, and Reset puts back what a row held before its first edit.
+    // Scene | Objects: Objects puts the object explorer (every loaded object by
+    // kind; InspectorObjectsPane) in the left pane, beside the same members pane.
     // See https://github.com/TomXV/dragnwash-modframework/wiki/Inspector.
-    internal static class InspectorTab
+    internal static partial class InspectorTab
     {
         internal const string Title = "Inspector";
         private const string ControlPrefix = "DnWInspect:";
@@ -103,11 +105,14 @@ namespace DragNWash.ModFramework.Inspector
             }
             _tab = TW.AddTab(TW.Guid, Title, Draw, 45);
             TW.PrepareCharacters(IconHierarchy + IconPick + IconHighlight + IconParent + IconMove + IconRotate + IconScale + IconResetTransform + IconHistory + IconRefresh + IconCamera + IconBones + IconWire + IconEditMesh + "\u25BE");
-            GameEvents.OnSceneLoaded(TW.Guid, (scene, mode) => _dirty = true);
-            GameEvents.OnSceneUnloaded(TW.Guid, scene => _dirty = true);
+            GameEvents.OnSceneLoaded(TW.Guid, (scene, mode) => { _dirty = true; InspectorObjects.MarkStale(); });
+            GameEvents.OnSceneUnloaded(TW.Guid, scene => { _dirty = true; InspectorObjects.MarkStale(); });
             TW.AddCommand(TW.Guid, "inspect",
                 "inspect | inspect <name or path> [component] | inspect set <path> <component> <member> <value> | inspect pick",
                 Command, Complete);
+            TW.AddCommand(TW.Guid, "objects",
+                "objects | objects <kind> [filter] | objects usedby <kind> <name>  (every loaded object by kind: textures, sprites, materials, shaders, meshes, audio, animation, fonts, data, outside, other)",
+                ObjectsCommand, ObjectsComplete);
             TW.AddCommand(TW.Guid, "bodies",
                 "bodies | bodies pause | bodies resume | bodies step [count]  (rigidbodies, fastest first; the physics pause is experimental)",
                 InspectorBodies.Command, InspectorBodies.Complete);
@@ -115,6 +120,9 @@ namespace DragNWash.ModFramework.Inspector
 
         // ---- selection (also from TW.Inspect, the console and pick mode) ----
 
+        // A scene's object or component opens in Scene; a material stays in the
+        // view that is open; anything else, and what no loaded scene holds,
+        // opens in Objects.
         internal static void Select(UnityEngine.Object target)
         {
             if (target == null)
@@ -123,18 +131,20 @@ namespace DragNWash.ModFramework.Inspector
             }
             switch (target)
             {
-                case GameObject go:
+                case GameObject go when go.scene.IsValid():
+                    SetMode(false);
                     SelectObject(go);
                     break;
-                case Component c:
+                case Component c when c.gameObject.scene.IsValid():
+                    SetMode(false);
                     SelectObject(c.gameObject);
                     SetTarget(c);
                     break;
-                case Material m:
+                case Material m when !_objectsMode:
                     SetTarget(m);
                     break;
                 default:
-                    _status = $"{target.name} ({target.GetType().Name}) is not an object, a component or a material.";
+                    SelectInObjects(target);
                     return;
             }
             _page = _target != null && !(_target is GameObject) ? 2 : 1;
@@ -157,6 +167,8 @@ namespace DragNWash.ModFramework.Inspector
             // A new selection shows its members, not the history that was open.
             _showHistory = false;
             _showBodies = false;
+            _showUsedBy = false;
+            _header = null;
             _bodyNote = "";
             _members = null;
             _rendererUsers = -1;
@@ -187,6 +199,10 @@ namespace DragNWash.ModFramework.Inspector
                     break;
                 case null:
                     _members = new List<Member>();
+                    break;
+                case UnityEngine.Object listed when InspectorObjects.IsListed(listed):
+                    // From Objects: its members, less the arrays Unity copies on every read.
+                    _members = InspectorObjects.MembersOf(_target.GetType());
                     break;
                 case Component animator when InspectorAnimators.IsAnimator(animator):
                     // Its parameters and layer weights first, then its own members.
@@ -254,13 +270,29 @@ namespace DragNWash.ModFramework.Inspector
             if (!ReferenceEquals(_object, null) && !_object)
             {
                 _object = null;
-                SetTarget(null);
-                _status = "The selected object was destroyed.";
+                if (_objectsMode)
+                {
+                    _sceneTarget = null;
+                }
+                else
+                {
+                    SetTarget(null);
+                    _status = "The selected object was destroyed.";
+                }
             }
             if (_target is UnityEngine.Object uo && !uo)
             {
-                SetTarget(_object);
-                _status = "The selected component was destroyed.";
+                if (_objectsMode)
+                {
+                    _assetObject = null;
+                    SetTarget(null);
+                    _status = "The selected object was destroyed.";
+                }
+                else
+                {
+                    SetTarget(_object);
+                    _status = "The selected component was destroyed.";
+                }
             }
             if (ev.type == EventType.Repaint)
             {
@@ -311,7 +343,7 @@ namespace DragNWash.ModFramework.Inspector
                     case KeyCode.Q: if (!ctrl) InspectorGizmo.Mode = InspectorGizmo.GizmoMode.None; else handled = false; break;
                     case KeyCode.P: if (!ctrl) { if (InspectorPick.Picking) InspectorPick.End(); else InspectorPick.Begin(); } else handled = false; break;
                     case KeyCode.H: if (!ctrl) InspectorPick.Highlight = !InspectorPick.Highlight; else handled = false; break;
-                    case KeyCode.T: if (!ctrl) { _showHierarchy = !_showHierarchy; if (narrowWindow(area)) _page = _showHierarchy ? 0 : 1; } else handled = false; break;
+                    case KeyCode.T: if (!ctrl) { bool shown = _objectsMode ? (_showObjectList = !_showObjectList) : (_showHierarchy = !_showHierarchy); if (narrowWindow(area)) _page = shown ? 0 : 1; } else handled = false; break;
                     case KeyCode.Z: if (ctrl) _status = InspectorHistory.Undo(); else handled = false; break;
                     case KeyCode.UpArrow: if (ctrl && SelectedObject != null && SelectedObject.transform.parent != null) Select(SelectedObject.transform.parent.gameObject); else handled = false; break;
                     case KeyCode.Escape:
@@ -373,9 +405,20 @@ namespace DragNWash.ModFramework.Inspector
             {
                 Tool("<", "<", "Back", false, () => _page--);
             }
-            Tool(IconHierarchy, "Tree", "Show or hide the hierarchy", _showHierarchy, () => { _showHierarchy = !_showHierarchy; if (narrow) _page = _showHierarchy ? 0 : 1; });
+            // Scene | Objects: the scenes' hierarchy, or every loaded object by kind.
+            Tool("Scene", "Scene", "The scenes' objects and their components", !_objectsMode, () => SetMode(false));
+            Tool("Objects", "Objects", "Every loaded object by kind: textures, materials, meshes, sounds, data...", _objectsMode, () => { SetMode(true); if (narrow) _page = 0; });
+            bx += 6;
+            if (_objectsMode)
+            {
+                Tool(IconHierarchy, "List", "Show or hide the list", _showObjectList, () => { _showObjectList = !_showObjectList; if (narrow) _page = _showObjectList ? 0 : 1; });
+            }
+            else
+            {
+                Tool(IconHierarchy, "Tree", "Show or hide the hierarchy", _showHierarchy, () => { _showHierarchy = !_showHierarchy; if (narrow) _page = _showHierarchy ? 0 : 1; });
+            }
             Tool(IconPick, "Pick", "Pick: click an object in the game", InspectorPick.Picking, () => { if (InspectorPick.Picking) InspectorPick.End(); else InspectorPick.Begin(); });
-            if (SelectedObject != null && SelectedObject.transform.parent != null)
+            if (!_objectsMode && SelectedObject != null && SelectedObject.transform.parent != null)
             {
                 Tool(IconParent, "Parent", "Select the parent", false, () => Select(SelectedObject.transform.parent.gameObject));
             }
@@ -387,25 +430,28 @@ namespace DragNWash.ModFramework.Inspector
             bool viewOn = InspectorPick.Highlight || InspectorBones.Show || InspectorMesh.Wireframe || InspectorFreeCamera.Active || InspectorDebugView.Active;
             Tool(IconHighlight, "View \u25BE", "Highlight, bones, wireframe, free camera", viewOn, () => OpenToolMenu("view"));
             bx += 6;
-            Tool(IconHistory, InspectorHistory.Count > 0 ? "History " + InspectorHistory.Count : "History", "History of edits", _showHistory, () => { _showHistory = !_showHistory; _showBodies = false; _showScenes = false; });
-            Tool(IconRefresh, "Refresh", "Rebuild the tree and reread the members", false, () => { _dirty = true; _members = null; });
+            Tool(IconHistory, InspectorHistory.Count > 0 ? "History " + InspectorHistory.Count : "History", "History of edits", _showHistory, () => { _showHistory = !_showHistory; _showBodies = false; _showScenes = false; _showUsedBy = false; });
+            Tool(IconRefresh, "Refresh", _objectsMode ? "List the loaded objects again and reread the members" : "Rebuild the tree and reread the members", false, () => { _dirty = true; _members = null; _header = null; if (_objectsMode) RefreshObjects(); });
             if (x + w - bx < 140)
             {
                 bx = x;
                 y += row + 6;
             }
             var searchRect = new Rect(bx, y, x + w - bx, row);
-            _search = GUI.TextField(searchRect, _search ?? "", s.TextField);
+            // Each view keeps its own search; Objects' takes t:Type too.
+            if (_objectsMode) _objectsSearch = GUI.TextField(searchRect, _objectsSearch ?? "", s.TextField);
+            else _search = GUI.TextField(searchRect, _search ?? "", s.TextField);
             Underline(searchRect);
-            if (string.IsNullOrEmpty(_search))
+            if (string.IsNullOrEmpty(_objectsMode ? _objectsSearch : _search))
             {
-                GUI.Label(new Rect(searchRect.x + 6, searchRect.y, searchRect.width - 6, row), "Search", s.MutedLabel);
+                GUI.Label(new Rect(searchRect.x + 6, searchRect.y, searchRect.width - 6, row), _objectsMode ? "Search (t:Material for one type)" : "Search", s.MutedLabel);
             }
             y += row + 6;
             _toolbarRect = new Rect(x, toolbarTop, w, y - toolbarTop);
 
-            // The breadcrumb: the selection's path, each ancestor a button.
-            if (SelectedObject != null)
+            // The breadcrumb: the selection's path, each ancestor a button. In
+            // Objects, the status line instead (what was listed, and notes).
+            if (SelectedObject != null && !_objectsMode)
             {
                 float cx = x;
                 var chain = new List<Transform>();
@@ -480,37 +526,23 @@ namespace DragNWash.ModFramework.Inspector
             }
 
             float bodyHeight = area.yMax - pad - y;
+            bool leftPane = _objectsMode ? _showObjectList : _showHierarchy;
             if (narrow)
             {
                 var pane = new Rect(x, y, w, bodyHeight);
-                if (_page == 0 && _showHierarchy) DrawHierarchy(pane, s, row);
-                else if (_showBodies) DrawBodies(pane, s, row);
-                else if (_showScenes) DrawScenes(pane, s, row);
-                else if (ShowingClips) DrawClips(pane, s, row);
-                else if (ShowingLayers) DrawLayers(pane, s, row);
-                else if (_showHistory) DrawHistory(pane, s, row);
-                else DrawMembers(pane, s, row);
+                if (_page == 0 && leftPane) DrawLeft(pane, s, row);
+                else DrawRight(pane, s, row);
             }
-            else if (_showHierarchy)
+            else if (leftPane)
             {
                 float gap = 8;
                 float w1 = (w - gap) * 0.32f, w2 = (w - gap) - w1;
-                DrawHierarchy(new Rect(x, y, w1, bodyHeight), s, row);
-                if (_showBodies) DrawBodies(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
-                else if (_showScenes) DrawScenes(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
-                else if (ShowingClips) DrawClips(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
-                else if (ShowingLayers) DrawLayers(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
-                else if (_showHistory) DrawHistory(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
-                else DrawMembers(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
+                DrawLeft(new Rect(x, y, w1, bodyHeight), s, row);
+                DrawRight(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
             }
             else
             {
-                if (_showBodies) DrawBodies(new Rect(x, y, w, bodyHeight), s, row);
-                else if (_showScenes) DrawScenes(new Rect(x, y, w, bodyHeight), s, row);
-                else if (ShowingClips) DrawClips(new Rect(x, y, w, bodyHeight), s, row);
-                else if (ShowingLayers) DrawLayers(new Rect(x, y, w, bodyHeight), s, row);
-                else if (_showHistory) DrawHistory(new Rect(x, y, w, bodyHeight), s, row);
-                else DrawMembers(new Rect(x, y, w, bodyHeight), s, row);
+                DrawRight(new Rect(x, y, w, bodyHeight), s, row);
             }
             if (ev.type == EventType.Repaint)
             {
@@ -522,6 +554,24 @@ namespace DragNWash.ModFramework.Inspector
                 DrawMenu(area, s, row);
                 DrawToolMenu(area, s, row);
             }
+        }
+
+        private static void DrawLeft(Rect pane, ToolWindowStyles s, float row)
+        {
+            if (_objectsMode) DrawObjectList(pane, s, row);
+            else DrawHierarchy(pane, s, row);
+        }
+
+        // The members pane, or the view that stands in its place.
+        private static void DrawRight(Rect pane, ToolWindowStyles s, float row)
+        {
+            if (_showBodies) DrawBodies(pane, s, row);
+            else if (_showScenes) DrawScenes(pane, s, row);
+            else if (ShowingClips) DrawClips(pane, s, row);
+            else if (ShowingLayers) DrawLayers(pane, s, row);
+            else if (_showHistory) DrawHistory(pane, s, row);
+            else if (_showUsedBy) DrawUsedBy(pane, s, row);
+            else DrawMembers(pane, s, row);
         }
 
         // ---- the toolbar menus ---------------------------------------------------------------
@@ -583,9 +633,9 @@ namespace DragNWash.ModFramework.Inspector
                 items.Add(("    names (near the pointer when many)", InspectorDebugView.Names, () => InspectorDebugView.Names = !InspectorDebugView.Names, true));
                 if (InspectorBodies.Available)
                 {
-                    items.Add(("Rigidbodies list", _showBodies, () => { _showBodies = !_showBodies; if (_showBodies) { _showHistory = false; _showScenes = false; if (_page == 0) _page = 1; } }, false));
+                    items.Add(("Rigidbodies list", _showBodies, () => { _showBodies = !_showBodies; if (_showBodies) { _showHistory = false; _showScenes = false; _showUsedBy = false; if (_page == 0) _page = 1; } }, false));
                 }
-                items.Add(("Scenes and levels", _showScenes, () => { _showScenes = !_showScenes; if (_showScenes) { _showHistory = false; _showBodies = false; if (_page == 0) _page = 1; } }, false));
+                items.Add(("Scenes and levels", _showScenes, () => { _showScenes = !_showScenes; if (_showScenes) { _showHistory = false; _showBodies = false; _showUsedBy = false; if (_page == 0) _page = 1; } }, false));
             }
             float lineH = row - 2;
             float width = 200;
@@ -730,6 +780,10 @@ namespace DragNWash.ModFramework.Inspector
 
         private static string WhereLabel()
         {
+            if (_objectsMode && _target is UnityEngine.Object listed && (InspectorObjects.IsListed(listed) || InspectorObjects.IsOutsideScenes(listed)))
+            {
+                return listed is Component c ? InspectorObjects.Describe(c.gameObject) + " : " + c.GetType().Name : InspectorObjects.Describe(listed);
+            }
             string where = SelectedObject != null ? InspectorModel.PathOf(SelectedObject.transform) : "";
             string what = _target is Material m ? "Material " + m.name : _target is GameObject ? "GameObject" : _target?.GetType().Name ?? "";
             return string.IsNullOrEmpty(where) ? what : where + " : " + what;
@@ -1563,20 +1617,20 @@ namespace DragNWash.ModFramework.Inspector
         // The selected object's components (and its renderers' materials) as a
         // strip of buttons above the members; the selected one is highlighted.
         // Returns the height used.
-        private static float DrawComponentStrip(Rect pane, ToolWindowStyles s, float row)
+        private static float DrawComponentStrip(Rect pane, GameObject owner, ToolWindowStyles s, float row)
         {
-            if (ReferenceEquals(_object, null) || !_object)
+            if (ReferenceEquals(owner, null) || !owner)
             {
                 GUI.Label(new Rect(pane.x + 8, pane.y + 4, pane.width - 16, row), "Select an object: Pick one in the game, or open the tree.", s.MutedLabel);
                 return row + 4;
             }
             var entries = new List<KeyValuePair<string, object>>();
-            entries.Add(new KeyValuePair<string, object>("GameObject", _object));
-            foreach (Component c in _object.GetComponents<Component>())
+            entries.Add(new KeyValuePair<string, object>("GameObject", owner));
+            foreach (Component c in owner.GetComponents<Component>())
             {
                 entries.Add(new KeyValuePair<string, object>(c == null ? "(missing script)" : c.GetType().Name, c));
             }
-            foreach (Renderer r in _object.GetComponents<Renderer>())
+            foreach (Renderer r in owner.GetComponents<Renderer>())
             {
                 foreach (Material m in r.sharedMaterials)
                 {
@@ -1613,7 +1667,7 @@ namespace DragNWash.ModFramework.Inspector
                 bx += bw + 4;
             }
             y += lineH + 4;
-            GUI.Label(new Rect(x, y, w, row), $"{(_object.activeInHierarchy ? "active" : "inactive")}   tag {_object.tag}   layer {LayerMask.LayerToName(_object.layer)}", _mutedCell);
+            GUI.Label(new Rect(x, y, w, row), $"{(owner.activeInHierarchy ? "active" : "inactive")}   tag {owner.tag}   layer {LayerMask.LayerToName(owner.layer)}", _mutedCell);
             y += row;
             return y - pane.y;
         }
@@ -1622,26 +1676,29 @@ namespace DragNWash.ModFramework.Inspector
         private static void DrawMembers(Rect pane, ToolWindowStyles s, float row)
         {
             TW.Fill(pane, TW.InsetColor);
-            float used = DrawComponentStrip(pane, s, row);
+            float used = _objectsMode ? DrawObjectHeader(pane, s, row) : DrawComponentStrip(pane, SelectedObject, s, row);
             if (_target == null)
             {
                 return;
             }
             float x = pane.x + 4, y = pane.y + used + 2, w = pane.width - 8;
+            bool readOnly = InspectorObjects.IsOutsideScenes(_target);
             // Header: what is selected, the toggles.
             string heading = _target is Material mat
                 ? $"{mat.name}  ({mat.shader?.name})"
-                : _target is GameObject go ? go.name + "  (GameObject)" : $"{_target.GetType().Name}";
+                : _target is GameObject go ? go.name + "  (GameObject)"
+                : _target is UnityEngine.Object listed && InspectorObjects.IsListed(listed) ? $"{(string.IsNullOrEmpty(listed.name) ? "(no name)" : listed.name)}  ({listed.GetType().Name})"
+                : $"{_target.GetType().Name}";
             GUI.Label(new Rect(x, y, w, row), Drawable(heading), _cell);
             y += row;
             if (_target is Material m2)
             {
-                if (_rendererUsers < 0)
+                if (_rendererUsers < 0 && !_objectsMode)
                 {
                     _rendererUsers = InspectorModel.RendererCount(m2);
                 }
-                GUI.Label(new Rect(x, y, w, row), $"Shared by {_rendererUsers} renderer(s); a change shows on all of them.", _mutedCell);
-                y += row;
+                if (!_objectsMode) GUI.Label(new Rect(x, y, w, row), $"Shared by {_rendererUsers} renderer(s); a change shows on all of them.", _mutedCell);
+                if (!_objectsMode) y += row;
             }
             else if (!(_target is GameObject))
             {
@@ -1658,7 +1715,7 @@ namespace DragNWash.ModFramework.Inspector
                     Frozen.Clear();
                 }
                 bx += 88;
-                if (_target is Behaviour beh)
+                if (_target is Behaviour beh && !readOnly)
                 {
                     if (GUI.Button(new Rect(bx, y, 90, row), beh.enabled ? "Enabled" : "Disabled", beh.enabled ? s.SelectedButton : s.Button))
                     {
@@ -1678,11 +1735,11 @@ namespace DragNWash.ModFramework.Inspector
                 return;
             }
 
-            if (_target is Component body && InspectorBodies.IsBody(body))
+            if (_target is Component body && InspectorBodies.IsBody(body) && !readOnly)
             {
                 y = DrawBodyControls(body, x, y, w, s, row);
             }
-            if (_target is Component animator && InspectorAnimators.IsAnimator(animator))
+            if (_target is Component animator && InspectorAnimators.IsAnimator(animator) && !readOnly)
             {
                 y = DrawAnimatorControls(animator, x, y, w, s, row);
             }
@@ -1710,7 +1767,7 @@ namespace DragNWash.ModFramework.Inspector
                     continue;
                 }
                 object tgt = _target;
-                Rows.Add(new RowInfo { Member = m, Key = ControlPrefix + m.Name, Getter = () => m.Get(tgt), Setter = m.CanWrite ? (Action<object>)(v => m.Set(tgt, v)) : null, Label = m.Name, Type = m.Type });
+                Rows.Add(new RowInfo { Member = m, Key = ControlPrefix + m.Name, Getter = () => m.Get(tgt), Setter = m.CanWrite && !readOnly ? (Action<object>)(v => m.Set(tgt, v)) : null, Label = m.Name, Type = m.Type });
                 if (InspectorModel.IsList(m.Type) && ExpandedLists.Contains(m.Name))
                 {
                     object listValue = SafeGet(m, () => m.Get(tgt));
@@ -1724,7 +1781,7 @@ namespace DragNWash.ModFramework.Inspector
                             Rows.Add(new RowInfo
                             {
                                 Member = m, Key = ControlPrefix + m.Name + "[" + i + "]", Label = $"    [{i}]", Type = element,
-                                Getter = () => list[index], Setter = list.IsReadOnly ? null : (Action<object>)(v => list[index] = v),
+                                Getter = () => list[index], Setter = list.IsReadOnly || readOnly ? null : (Action<object>)(v => list[index] = v),
                             });
                         }
                         if (list.Count > count)
@@ -1859,6 +1916,7 @@ namespace DragNWash.ModFramework.Inspector
                 r.Setter(value);
                 RowErrors.Remove(r.Key);
                 Frozen.Remove(r.Key);
+                NoteSharedEdit();
                 return true;
             }
             catch (Exception ex)
@@ -2006,29 +2064,17 @@ namespace DragNWash.ModFramework.Inspector
             }
             else if (value is UnityEngine.Object uo && uo)
             {
-                GUI.Label(new Rect(control.x, control.y, control.width - 50, row), Drawable(shown), _mutedCell);
-                bool canGo = uo is GameObject || uo is Component || uo is Material || uo is Texture;
-                if (canGo && GUI.Button(new Rect(control.xMax - 44, control.y + 2, 44, row - 4), "Go", s.Button))
+                GUI.Label(new Rect(control.x, control.y, control.width - (uo is Texture2D && AssetsTabAvailable ? 118 : 50), row), Drawable(shown), _mutedCell);
+                // Go for every kind: a scene's object in Scene, anything else in
+                // Objects. A texture also keeps Assets, the Assets tab on it.
+                bool assets = uo is Texture2D && AssetsTabAvailable;
+                if (assets && GUI.Button(new Rect(control.xMax - 112, control.y + 2, 64, row - 4), "Assets", s.Button))
                 {
-                    if (uo is Texture)
-                    {
-                        // The Assets library lists it, when it is loaded; reached by
-                        // reflection so the Inspector does not depend on it.
-                        Type catalog = Type.GetType("DragNWash.ModFramework.Assets.AssetCatalog, DragNWash.ModFramework.Assets", false);
-                        System.Reflection.MethodInfo show = catalog?.GetMethod("ShowInToolWindow", new[] { typeof(string) });
-                        if (show != null)
-                        {
-                            show.Invoke(null, new object[] { uo.name });
-                        }
-                        else
-                        {
-                            _status = $"Texture {uo.name}: the Assets library is not loaded.";
-                        }
-                    }
-                    else
-                    {
-                        Select(uo);
-                    }
+                    ShowInAssetsTab(uo);
+                }
+                if (GUI.Button(new Rect(control.xMax - 44, control.y + 2, 44, row - 4), "Go", s.Button))
+                {
+                    Select(uo);
                 }
             }
             else if (t != null && InspectorModel.IsList(t) && haveValue && value != null && r.Label == r.Member.Name)
@@ -2254,6 +2300,7 @@ namespace DragNWash.ModFramework.Inspector
                 }
                 RowErrors.Remove(r.Key);
                 Frozen.Remove(r.Key);
+                NoteSharedEdit();
                 return true;
             }
             catch (Exception ex)
@@ -2281,6 +2328,10 @@ namespace DragNWash.ModFramework.Inspector
                 TW.Open(Title);
                 InspectorPick.Begin();
                 return "Click an object in the game; Escape cancels.";
+            }
+            if (args[0].Equals("object", StringComparison.OrdinalIgnoreCase))
+            {
+                return InspectObjectCommand(args);
             }
             if (args[0].Equals("set", StringComparison.OrdinalIgnoreCase))
             {
@@ -2373,7 +2424,7 @@ namespace DragNWash.ModFramework.Inspector
         {
             if (args.Length == 1)
             {
-                var names = new List<string> { "set", "pick" };
+                var names = new List<string> { "set", "pick", "object" };
                 string partial = args[0];
                 if (partial.Length >= 2)
                 {
@@ -2383,6 +2434,10 @@ namespace DragNWash.ModFramework.Inspector
                     }
                 }
                 return names;
+            }
+            if (args[0].Equals("object", StringComparison.OrdinalIgnoreCase))
+            {
+                return ObjectsComplete(args);
             }
             bool set = args[0].Equals("set", StringComparison.OrdinalIgnoreCase);
             int pathIndex = set ? 1 : 0;

@@ -22,10 +22,11 @@ namespace DragNWash.ModFramework.Inspector
         public const string Version = "1.0.0";
 
         /// <summary>
-        /// Selects <paramref name="target"/> (a GameObject, a Component or a
-        /// Material) in the Inspector tab and opens the window on it. Anything
-        /// else is refused with a note in the tab. Nothing happens while
-        /// developer tools are off.
+        /// Selects <paramref name="target"/> in the Inspector tab and opens the
+        /// window on it: a GameObject or Component of a loaded scene in Scene, a
+        /// Material in the view that is open, and any other object (a texture,
+        /// a mesh, a ScriptableObject, a GameObject no scene holds) in Objects.
+        /// Nothing happens while developer tools are off.
         /// </summary>
         public static void Inspect(UnityEngine.Object target)
         {

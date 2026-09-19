@@ -13,6 +13,7 @@ namespace DragNWash.ModFramework.Inspector
     {
         internal static void Register()
         {
+            RegisterObjects();
             string g = Inspector.Guid;
             Operations.Register(g, "inspector.objects.find", "Objects in the loaded scenes whose name contains the text.", OperationKind.Read,
                 "a list of { path, scene, active }", args =>
@@ -94,8 +95,20 @@ namespace DragNWash.ModFramework.Inspector
                 Operations.Parameter("private", OperationType.Boolean, "Also private members (where the game's scripts keep their settings)."));
 
             Operations.Register(g, "inspector.selection.get", "What is selected in the Inspector: the object and the component or material open.", OperationKind.Read,
-                "{ path, scene, target } or null", args =>
+                "{ path, scene, target } in Scene, { view: objects, object, kind } in Objects, or null", args =>
                 {
+                    if (InspectorTab.InObjects)
+                    {
+                        if (!(InspectorTab.Target is UnityEngine.Object o) || !o) return null;
+                        UnityEngine.Object listed = o is Component oc ? oc.gameObject : o;
+                        return new Dictionary<string, object>
+                        {
+                            ["view"] = "objects",
+                            ["object"] = InspectorObjects.Describe(listed),
+                            ["kind"] = ObjectList.FolderName(InspectorObjects.TypeOf(listed.GetType()).Kind),
+                            ["target"] = o is Component tc2 ? tc2.GetType().Name : o.GetType().Name,
+                        };
+                    }
                     GameObject go = InspectorTab.SelectedObject;
                     if (go == null) return null;
                     Dictionary<string, object> d = Describe(go.transform);
@@ -103,6 +116,90 @@ namespace DragNWash.ModFramework.Inspector
                     d["target"] = target is Component tc ? tc.GetType().Name : target is Material mat ? "Material " + mat.name : target is GameObject ? "GameObject" : null;
                     return d;
                 });
+        }
+
+        // The object explorer (docs/OBJECT_EXPLORER.md): what is loaded, by kind, and where one is used.
+        internal static void RegisterObjects()
+        {
+            string g = Inspector.Guid;
+            OperationParameter kind = Operations.Parameter("kind", OperationType.String, "The kind (a folder of Objects).", true,
+                "textures", "sprites", "materials", "shaders", "meshes", "audio", "animation", "fonts", "data", "outside", "other");
+
+            Operations.Register(g, "inspector.loaded.kinds", "Every loaded object by kind (the folders of the Inspector's Objects view), with counts.", OperationKind.Read,
+                "a list of { kind, count, hidden }, and how long listing took", args =>
+                {
+                    ObjectList list = InspectorObjects.List();
+                    int[] shown = list.Counts(false), all = list.Counts(true);
+                    return new Dictionary<string, object>
+                    {
+                        ["kinds"] = Enumerable.Range(0, shown.Length).Select(i => (object)new Dictionary<string, object>
+                        {
+                            ["kind"] = ObjectList.FolderNames[i],
+                            ["count"] = shown[i],
+                            ["hidden"] = all[i] - shown[i],
+                        }).ToList(),
+                        ["listed_ms"] = list.BuildMs,
+                    };
+                });
+
+            Operations.Register(g, "inspector.loaded.list", "Loaded objects of one kind, by name: textures, materials, meshes, sounds, the game's data (ScriptableObjects), GameObjects outside the scenes.", OperationKind.Read,
+                "a list of { name, type, fact, id }", args =>
+                {
+                    ObjectKind k = Kind(args.String("kind"));
+                    int max = Math.Max(1, Math.Min(1000, args.Int("max", 200)));
+                    return InspectorObjects.List().Find(k, args.String("filter") ?? "", args.Bool("hidden", false), max)
+                        .Select(e => (object)new Dictionary<string, object>
+                        {
+                            ["name"] = e.Name,
+                            ["type"] = e.Type.Name,
+                            ["fact"] = InspectorObjects.Fact(e),
+                            ["id"] = e.Id,
+                        }).ToList();
+                },
+                kind,
+                Operations.Parameter("filter", OperationType.String, "Only names that contain this; t:Type limits it to a type (t:Texture2D)."),
+                Operations.Parameter("hidden", OperationType.Boolean, "Also objects Unity hides (HideFlags)."),
+                Operations.Parameter("max", OperationType.Number, "At most this many (1 to 1000; 200 when left out)."));
+
+            Operations.Register(g, "inspector.loaded.usedby", "Where a loaded object is used: renderers, mesh filters, sprites, audio sources, animators, materials, and the fields of scripts and ScriptableObjects.", OperationKind.Read,
+                "{ object, summary, places: a list of { where, member, in_scene } }", args =>
+                {
+                    ObjectKind k = Kind(args.String("kind"));
+                    ObjectEntry e;
+                    if (args.Has("id"))
+                    {
+                        e = InspectorObjects.List().ById(args.Int("id"));
+                        if (e == null) throw new InvalidOperationException($"No listed object has the id {args.Int("id")} (inspector.loaded.list gives them).");
+                    }
+                    else
+                    {
+                        e = InspectorObjects.FindEntry(k, args.String("name") ?? "", out string problem);
+                        if (e == null) throw new InvalidOperationException(problem);
+                    }
+                    UnityEngine.Object o = InspectorObjects.Find(e);
+                    if (o == null) throw new InvalidOperationException($"{e.Name} was destroyed since it was listed.");
+                    int max = Math.Max(1, Math.Min(InspectorObjects.HitCap, args.Int("max", 200)));
+                    List<InspectorObjects.Hit> hits = InspectorObjects.UsedBy(o, max, out string summary);
+                    return new Dictionary<string, object>
+                    {
+                        ["object"] = InspectorObjects.Describe(o),
+                        ["summary"] = summary,
+                        ["places"] = hits.Select(h => (object)new Dictionary<string, object> { ["where"] = h.Where, ["member"] = h.Member, ["in_scene"] = h.InScene }).ToList(),
+                    };
+                },
+                kind,
+                Operations.Parameter("name", OperationType.String, "The object's name (the whole name, or a part only one object has)."),
+                Operations.Parameter("id", OperationType.Number, "Or its id, from inspector.loaded.list."),
+                Operations.Parameter("max", OperationType.Number, "At most this many places (1 to 2000; 200 when left out)."));
+        }
+
+        private static ObjectKind Kind(string text)
+        {
+            if (!ObjectList.TryParseKind(text, out ObjectKind kind))
+            {
+                throw new InvalidOperationException($"No kind \"{text}\" (inspector.loaded.kinds lists them).");
+            }
+            return kind;
         }
 
         private static GameObject Object(string path)
