@@ -25,6 +25,7 @@ namespace DragNWash.ModFramework.Bridge
 
         private ConfigEntry<bool> _enabled;
         private ConfigEntry<int> _port;
+        private ConfigEntry<string> _openIn;
         private string _note = "";
         private Vector2 _scroll;
 
@@ -36,6 +37,10 @@ namespace DragNWash.ModFramework.Bridge
                     null, new SettingMeta { DisplayName = "Let AI clients read the game (MCP)" }));
             _port = Config.Bind("Bridge", "Port", 47821,
                 new ConfigDescription("The port on 127.0.0.1 the Bridge listens on.", new AcceptableValueRange<int>(1024, 65535), new SettingMeta { Advanced = true }));
+
+            _openIn = Config.Bind("Bridge", "OpenPageIn", "App",
+                new ConfigDescription("Where the code graph opens: App (a window of its own, CodeGraph.exe, on Windows) or Browser. Without the app, and off Windows, it opens in the browser.",
+                    new AcceptableValueList<string>("App", "Browser"), new SettingMeta { DisplayName = "Open the code graph in" }));
 
             ModFramework.Register(new ModInfo
             {
@@ -130,13 +135,34 @@ namespace DragNWash.ModFramework.Bridge
                 args =>
                 {
                     if (Server == null) throw new InvalidOperationException(_enabled.Value ? "The Bridge is not listening (the developer tools are off, or the port is taken)." : "The Bridge is off: turn it on in the Bridge tab of the F1 window.");
-                    string url = $"http://127.0.0.1:{_port.Value}/page#code={PageDoor.NewCode()}";
                     string focus = args.String("focus");
+                    if (OpenInApp(focus)) return "Opened the code graph in its window.";
+                    string url = $"http://127.0.0.1:{_port.Value}/page#code={PageDoor.NewCode()}";
                     if (!string.IsNullOrEmpty(focus)) url += "&focus=" + Uri.EscapeDataString(focus);
                     Application.OpenURL(url);
                     return "Opened the page in the browser (the link works once, within a minute).";
                 },
                 Operations.Parameter("focus", OperationType.String, "What to show: m:<method id> or t:<type name>; the search when left out."));
+        }
+
+        // CodeGraph.exe, next to this DLL, on Windows: it signs in with the token by itself,
+        // and a window already open takes the focus instead of a second one opening.
+        private bool OpenInApp(string focus)
+        {
+            if (_openIn.Value != "App" || Application.platform != RuntimePlatform.WindowsPlayer) return false;
+            string exe = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(typeof(BridgePlugin).Assembly.Location) ?? "", "CodeGraph", "CodeGraph.exe");
+            if (!System.IO.File.Exists(exe)) return false;
+            try
+            {
+                string arguments = $"--port {_port.Value}" + (string.IsNullOrEmpty(focus) ? "" : " --focus \"" + focus.Replace("\"", "") + "\"");
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe, arguments) { UseShellExecute = false, WorkingDirectory = System.IO.Path.GetDirectoryName(exe) });
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.LogWarning($"[bridge] Could not start CodeGraph.exe ({ex.Message}); opening the browser instead.");
+                return false;
+            }
         }
 
         private string Setup => $"claude mcp add --transport http dragnwash http://127.0.0.1:{_port.Value}/mcp --header \"Authorization: Bearer {BridgeToken.Value}\"";

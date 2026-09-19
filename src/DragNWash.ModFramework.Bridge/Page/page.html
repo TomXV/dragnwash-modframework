@@ -130,10 +130,22 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
   }
   function setStatus(text, bad) { status.textContent = text; status.style.color = bad ? "var(--error)" : ""; }
 
+  // Inside the Code Graph app (CodeGraph.exe, WebView2): it follows where the page is, and signs
+  // in again when the game went away and came back. In a browser, these do nothing.
+  const app = window.chrome && window.chrome.webview;
+  function tellApp(message) { if (app) app.postMessage(message); }
+  window.dnwOpen = focus => go(focus);
+
   async function call(name, args) {
-    const r = await fetch("/page/api/op", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, args: args || {} }) });
+    let r;
+    try {
+      r = await fetch("/page/api/op", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, args: args || {} }) });
+    } catch (e) {
+      tellApp("lost");
+      throw new Error("The game is not answering (closed, or the Bridge is off).");
+    }
     const j = await r.json().catch(() => ({ ok: false, error: "The game gave no answer (" + r.status + ")." }));
-    if (r.status === 401) signedIn = false;
+    if (r.status === 401) { signedIn = false; tellApp("lost"); }
     if (!j.ok) throw new Error(j.error || "Failed.");
     return j.value;
   }
@@ -147,7 +159,7 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
     if (code) {
       const r = await fetch("/page/api/login", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
       const j = await r.json().catch(() => ({ ok: false }));
-      if (!j.ok) { setStatus(j.error || "Could not sign in: open the page again from the F1 window.", true); return; }
+      if (!j.ok) { setStatus(j.error || "Could not sign in: open the page again from the F1 window.", true); tellApp("lost"); return; }
     }
     signedIn = true;
     if (focus) go(focus, true);
@@ -166,6 +178,7 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
   function navButtons() { $("back").disabled = state.at <= 0; $("fwd").disabled = state.at >= hist.length - 1; }
 
   async function load(focus) {
+    tellApp("focus:" + focus);
     navButtons();
     setStatus("Loading…");
     try {

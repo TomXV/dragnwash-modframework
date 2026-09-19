@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    CodeGraph.exe: the code graph (docs/CODE_GRAPH.md) in a window of its own,
+    on Windows. It shows the same page the Bridge serves, in WebView2 (part of
+    Windows 10 and 11), signs in with the Bridge's token and signs in again when
+    the game comes back. The Bridge starts it from the Inspector's Graph buttons;
+    on other systems, or without it, the page opens in the browser.
+
+    Built deterministically, like CrashReporter.exe: antivirus reputation is tied
+    to the file's hash, so the file must not change unless the code does.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>CodeGraph</AssemblyName>
+    <RootNamespace>DragNWash.CodeGraph</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildProjectDirectory)=/codegraph</PathMap>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <GenerateSupportedRuntime>false</GenerateSupportedRuntime>
+    <!-- x64 only: the game is 64-bit, and one WebView2Loader.dll then sits next to the exe. -->
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+  </ItemGroup>
+
+</Project>

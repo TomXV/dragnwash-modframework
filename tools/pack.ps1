@@ -89,6 +89,20 @@ Copy-Item -LiteralPath (Join-Path $Root 'crashreporter/bin/Release/CrashReporter
 $ReporterHash = (Get-FileHash -LiteralPath (Join-Path $Stage 'BepInEx/plugins/DragNWash.ModFramework/CrashReporter.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
 Write-Host "CrashReporter.exe sha256 $ReporterHash"
 
+# The code graph's window (docs/CODE_GRAPH.md), with the WebView2 parts it needs,
+# in the Bridge's folder. Built deterministically, like the crash reporter.
+$GraphProject = Join-Path $Root 'codegraph/DragNWash.CodeGraph.csproj'
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue (Join-Path $Root 'codegraph/bin'), (Join-Path $Root 'codegraph/obj')
+dotnet build $GraphProject -c Release
+if ($LASTEXITCODE -ne 0) { throw 'Build of the code graph app failed.' }
+$GraphStage = Join-Path $Stage 'BepInEx/plugins/DragNWash.ModFramework.Bridge/CodeGraph'
+New-Item -ItemType Directory -Force -Path $GraphStage | Out-Null
+foreach ($file in 'CodeGraph.exe', 'Microsoft.Web.WebView2.Core.dll', 'Microsoft.Web.WebView2.WinForms.dll', 'WebView2Loader.dll') {
+    Copy-Item -LiteralPath (Join-Path $Root "codegraph/bin/Release/$file") -Destination $GraphStage
+}
+$GraphHash = (Get-FileHash -LiteralPath (Join-Path $GraphStage 'CodeGraph.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
+Write-Host "CodeGraph.exe sha256 $GraphHash"
+
 foreach ($doc in 'README.md', 'README.ja.md', 'CHANGELOG.md') {
     Copy-Item -LiteralPath (Join-Path $Root $doc) -Destination $Stage
 }

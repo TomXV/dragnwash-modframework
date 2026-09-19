@@ -69,6 +69,17 @@ namespace DragNWash.ModFramework.Bridge
                 return new PageAnswer { Status = 200, Type = "text/html", Body = Html(), Headers = Common + "\r\n" + PagePolicy };
             }
             if (method != "POST") return Text(405, "The page's calls are POST.");
+            // The Code Graph app (CodeGraph.exe) signs in with the Bridge's token instead of a
+            // button press. Programs send no Origin; a browser always does on POST, so no web
+            // page can use this door even if it knew the token.
+            if (path == "/page/api/code")
+            {
+                if (headers.ContainsKey("Origin")) return Text(403, "Web pages may not ask for a sign-in code.");
+                headers.TryGetValue("Authorization", out string auth);
+                string given = auth != null && auth.StartsWith("Bearer ", StringComparison.Ordinal) ? auth.Substring(7).Trim() : null;
+                if (!BridgeToken.Matches(given)) return Text(401, "The Bridge needs its token.");
+                return JsonAnswer(200, new Dictionary<string, object> { ["code"] = NewCode() });
+            }
             // Only the page itself: a browser sends the page's own address as Origin.
             headers.TryGetValue("Origin", out string origin);
             headers.TryGetValue("Host", out string host);
