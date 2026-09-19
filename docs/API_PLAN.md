@@ -2,7 +2,7 @@
 
 [日本語](API_PLAN.ja.md)
 
-> **Plan, not built.** On the `experimental/api-mcp` branch. Each stage gets its own design and research before code; this page says what the stages are, in what order, and what holds them together.
+> **Stage 1 is built** (experimental): the registry in the core, the console's `op`, and read operations from the core, the Tool window, the Inspector and the flags and saves library; Assets, Dialogue and Text follow. The later stages are still a plan, first written on the `experimental/api-mcp` branch. Each stage gets its own design and research before code; this page says what the stages are, in what order, and what holds them together.
 
 Three wishes, one foundation:
 
