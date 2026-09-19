@@ -26,7 +26,6 @@
     <Reference Include="BepInEx"><HintPath>../DragNWash.ModFramework/libs/BepInEx.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine"><HintPath>../DragNWash.ModFramework/libs/UnityEngine.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine.CoreModule"><HintPath>../DragNWash.ModFramework/libs/UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
-    <Reference Include="UnityEngine.JSONSerializeModule"><HintPath>../DragNWash.ModFramework/libs/UnityEngine.JSONSerializeModule.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
 
 </Project>

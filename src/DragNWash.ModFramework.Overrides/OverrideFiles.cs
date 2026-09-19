@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using UnityEngine;
 
 namespace DragNWash.ModFramework.Overrides
 {
-    // The files of an overrides mod, read with JsonUtility:
+    // The files of an overrides mod, read with Json (not JsonUtility, which
+    // left the overrides array empty in the game):
     //
     //   BepInEx/plugins/<Mod>/mod.json          name, authors, description, version
     //   BepInEx/plugins/<Mod>/overrides/*.json  { "format": 1, "overrides": [ ... ] }
@@ -18,27 +18,38 @@ namespace DragNWash.ModFramework.Overrides
         // A file larger than this is not read.
         private const long MaxFileBytes = 2L * 1024 * 1024;
 
-#pragma warning disable 0649 // filled by JsonUtility
-        [Serializable]
-        internal sealed class Manifest
+internal sealed class Manifest
         {
             public string guid;
             public string name;
             public string[] authors;
-            public string author;
             public string description;
             public string version;
             public string website;
+
+            internal static Manifest From(object json)
+            {
+                var o = json as Dictionary<string, object> ?? throw new FormatException("mod.json is not a JSON object");
+                var m = new Manifest
+                {
+                    guid = Json.String(o, "guid"),
+                    name = Json.String(o, "name"),
+                    description = Json.String(o, "description"),
+                    version = Json.String(o, "version"),
+                    website = Json.String(o, "website"),
+                };
+                if (o.TryGetValue("authors", out object list) && list is List<object> names)
+                {
+                    m.authors = names.Where(n => n != null).Select(n => n.ToString()).ToArray();
+                }
+                else if (Json.String(o, "author") is string one)
+                {
+                    m.authors = new[] { one };
+                }
+                return m;
+            }
         }
 
-        [Serializable]
-        internal sealed class File
-        {
-            public int format;
-            public Entry[] overrides;
-        }
-
-        [Serializable]
         internal sealed class Entry
         {
             public string scene;
@@ -46,12 +57,28 @@ namespace DragNWash.ModFramework.Overrides
             public string component;
             public int index;
             public string member;
-            public bool @private;
+            public bool isPrivate;
             public string material;
             public string property;
             public string value;
+
+            internal static Entry From(object json)
+            {
+                if (!(json is Dictionary<string, object> o)) return null;
+                return new Entry
+                {
+                    scene = Json.String(o, "scene"),
+                    path = Json.String(o, "path"),
+                    component = Json.String(o, "component"),
+                    index = Json.Int(o, "index"),
+                    member = Json.String(o, "member"),
+                    isPrivate = Json.Bool(o, "private"),
+                    material = Json.String(o, "material"),
+                    property = Json.String(o, "property"),
+                    value = Json.String(o, "value"),
+                };
+            }
         }
-#pragma warning restore 0649
 
         internal sealed class Mod
         {
@@ -116,7 +143,7 @@ namespace DragNWash.ModFramework.Overrides
             var mod = new Mod { Folder = folder, ManifestPath = manifestPath, Name = folderName };
             try
             {
-                mod.Manifest = JsonUtility.FromJson<Manifest>(System.IO.File.ReadAllText(manifestPath)) ?? new Manifest();
+                mod.Manifest = Manifest.From(Json.Parse(System.IO.File.ReadAllText(manifestPath)));
             }
             catch (Exception ex)
             {
@@ -137,20 +164,21 @@ namespace DragNWash.ModFramework.Overrides
                         mod.Problems.Add($"{name} is larger than {MaxFileBytes / (1024 * 1024)} MB and was not read.");
                         continue;
                     }
-                    File file = JsonUtility.FromJson<File>(System.IO.File.ReadAllText(path));
-                    if (file == null || file.overrides == null)
+                    var file = Json.Parse(System.IO.File.ReadAllText(path)) as Dictionary<string, object>;
+                    if (file == null || !file.TryGetValue("overrides", out object listed) || !(listed is List<object> rows))
                     {
                         mod.Problems.Add($"{name} has no \"overrides\" list.");
                         continue;
                     }
-                    if (file.format > Format)
+                    int format = Json.Int(file, "format");
+                    if (format > Format)
                     {
-                        mod.Problems.Add($"{name} is format {file.format}; this library reads up to {Format}. Update Drag'n Wash ModFramework.");
+                        mod.Problems.Add($"{name} is format {format}; this library reads up to {Format}. Update Drag'n Wash ModFramework.");
                         continue;
                     }
-                    for (int i = 0; i < file.overrides.Length; i++)
+                    for (int i = 0; i < rows.Count; i++)
                     {
-                        Override o = Check(mod, name, i + 1, file.overrides[i]);
+                        Override o = Check(mod, name, i + 1, Entry.From(rows[i]));
                         if (o != null) mod.Overrides.Add(o);
                     }
                 }
@@ -188,7 +216,7 @@ namespace DragNWash.ModFramework.Overrides
                 Component = string.IsNullOrEmpty(e.component) ? null : e.component.Trim(),
                 Index = Math.Max(0, e.index),
                 Member = material ? null : e.member.Trim(),
-                Private = e.@private,
+                Private = e.isPrivate,
                 Material = material ? e.material.Trim() : null,
                 Property = material ? e.property.Trim() : null,
                 Value = e.value,

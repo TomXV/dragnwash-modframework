@@ -82,7 +82,7 @@ namespace DragNWash.ModFramework.Overrides
         private static void Register(OverrideFiles.Mod mod)
         {
             OverrideFiles.Manifest m = mod.Manifest;
-            string[] authors = m.authors != null && m.authors.Length > 0 ? m.authors : !string.IsNullOrEmpty(m.author) ? new[] { m.author } : null;
+            string[] authors = m.authors != null && m.authors.Length > 0 ? m.authors : null;
             string description = string.IsNullOrEmpty(m.description) ? "Changes values in the game (overrides, no code)." : m.description;
             if (mod.UsesPrivate)
             {
