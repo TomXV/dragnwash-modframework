@@ -44,6 +44,9 @@ button[disabled] { opacity: .45; cursor: default; }
 button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 #status { color: var(--muted); font-size: 12px; margin-left: auto; }
 main { display: grid; grid-template-columns: 240px 1fr 6px var(--right, 650px); min-height: 0; }
+/* Results folded away: the graph takes its room. */
+main.folded { grid-template-columns: 0 1fr 6px var(--right, 650px); }
+main.folded #left { padding: 0; border: 0; overflow: hidden; }
 /* The line between the graph and the details: drag it to make the details wider or narrower. */
 #split { cursor: col-resize; background: var(--line); opacity: .5; }
 #split:hover, #split.dragging { background: var(--accent); opacity: 1; }
@@ -92,13 +95,14 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
 .node text.patched { fill: var(--warn); }
 .edge { fill: none; stroke-width: 1.6; }
 .edge-label { font-family: var(--sans); font-size: 10.5px; paint-order: stroke; stroke: var(--ground); stroke-width: 3px; }
-@media (max-width: 900px) { #split { display: none; } main { grid-template-columns: 1fr; grid-template-rows: auto 60vh auto; } #left, #right { border: 0; border-bottom: 1px solid var(--line); max-height: 40vh; } }
+@media (max-width: 900px) { #split { display: none; } main, main.folded { grid-template-columns: 1fr; grid-template-rows: auto 60vh auto; } main.folded #left { display: none; } #left, #right { border: 0; border-bottom: 1px solid var(--line); max-height: 40vh; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
 <header>
   <h1><b>Drag'n Wash</b> code graph</h1>
+  <button id="side" type="button" title="Show or fold the search results" aria-pressed="true">Results</button>
   <button id="back" type="button" title="Back" disabled>←</button>
   <button id="fwd" type="button" title="Forward" disabled>→</button>
   <input id="q" type="search" placeholder="Search types and methods (e.g. Dragon, Update)" autocomplete="off" spellcheck="false">
@@ -198,7 +202,7 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
 
   // ---- search ----
   let timer = 0;
-  $("q").addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(search, 250); });
+  $("q").addEventListener("input", () => { fold(false); clearTimeout(timer); timer = setTimeout(search, 250); });
   $("q").addEventListener("keydown", e => { if (e.key === "Enter") { clearTimeout(timer); search(); } });
   async function search() {
     const text = $("q").value.trim();
@@ -456,6 +460,18 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
     e.preventDefault(); apply();
   });
   window.addEventListener("resize", () => { if (current) fit(); });
+
+  // The results column, folded or not, kept in this browser.
+  function fold(on) {
+    const main = document.querySelector("main");
+    if (main.classList.contains("folded") === on) return;
+    main.classList.toggle("folded", on);
+    $("side").setAttribute("aria-pressed", on ? "false" : "true");
+    try { localStorage.setItem("dnw-graph-folded", on ? "1" : "0"); } catch (e) { }
+    if (current) requestAnimationFrame(fit);
+  }
+  $("side").onclick = () => fold(!document.querySelector("main").classList.contains("folded"));
+  try { if (localStorage.getItem("dnw-graph-folded") === "1") fold(true); } catch (e) { }
 
   // The details' width, kept in this browser (it may refuse: then the default).
   const main = document.querySelector("main"), split = $("split");
