@@ -67,6 +67,8 @@ Decided 2026-09-20: the page also opens in a window of its own, **CodeGraph.exe*
 
 Found while trying it: started directly by the game, it inherited the game's handles, the Bridge's listening socket among them, and kept the port after the game exited. The Bridge now marks its socket as not inherited and starts the app through the shell.
 
+Outside the game, the same graph of any .NET assembly: [Code graph without the game](CODE_GRAPH_STANDALONE.md) (experimental).
+
 ## Not in this stage
 
 Changing code, or anything that writes; stage 4 (building graphs) uses the same page later. Mods' own code is not drawn: a mod shows up as its patches (owner and patch method), not its IL. Debugging (breakpoints, stepping) is out of scope.
