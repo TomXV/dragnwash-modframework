@@ -2,7 +2,7 @@
 
 [English](BRIDGE.md)
 
-> **設計のみ、未実装。** [API の計画](API_PLAN.ja.md)の第 2 段階です。先に調査をします（[作る前の調査](#作る前の調査)）。
+> **設計のみ、未実装。** [API の計画](API_PLAN.ja.md)の第 2 段階です。調査は終わりました（[作る前の調査](#作る前の調査)）。Proton はまだです。
 
 [操作の登録簿](API_PLAN.ja.md)によって、ライブラリにできることを名前で呼べるようになりました。Bridge は、そのうち**読む**操作を、[Model Context Protocol](https://modelcontextprotocol.io/specification/2025-06-18) で AI クライアント（Claude Code、VS Code、Cursor など）に見せます。AI クライアントは、動いているゲームを見られるようになります。オブジェクトとその値、ログ、Mod、セーブ、会話です。何かを変えることはできません。
 
@@ -86,11 +86,21 @@ VS Code（`.vscode/mcp.json`）と Cursor（`mcp.json`）は、HTTP のサーバ
 
 ## 作る前の調査
 
-1. **ゲームの中の TcpListener**：Unity 6 の Mono で、Windows と Proton（Steam Deck）の両方で 127.0.0.1 に待ち受けられるか。Linux 側のクライアントが、Wine のプロセスのループバックに届くか。
-2. **ファイアウォール**：127.0.0.1 で待ち受けても、Windows Defender ファイアウォールの許可を求める画面が出ないか。
-3. **NetworkWatch**：フレームワークの通信の見張りが、Bridge が受けた接続を「Mod がネットにつないだ」と数えないか（見張っているのは、外へ出る接続です）。
-4. **クライアント**：Claude Code がヘッダーつきでつながり、ツールを一覧にし、1 つ呼べるか。ツールの名前と「読むだけ」の印がどう見えるか。
-5. **トークンのファイル**：Windows と Proton の `LocalApplicationData` の場所と、既定で利用者だけが読めるか。
+2026-09-19 に、Windows 11（Direct3D 12）で行いました。調査用の小さな Mod（公開しません）で、次のことを確かめました。
+- 127.0.0.1:47821 で待ち受け、登録簿を通して `initialize`、`tools/list`、`tools/call` に答える。
+- Host、Origin、トークンを確かめる。
+- トークンのファイルを書く。
+
+1. **ゲームの中の TcpListener：Windows では動く。** Awake で `TcpListener(IPAddress.Loopback, 47821)` を始め、裏のスレッドで接続を受け、呼び出しは `Operations.Call` でメインスレッドで動きました。`netstat` では、127.0.0.1:47821 だけで待ち受けています。**Proton（Steam Deck）はまだ確かめていません。**
+2. **ファイアウォール：画面は出ない。** ループバックのアドレスで待ち受けても、Windows Defender ファイアウォールの画面は出ませんでした。
+3. **NetworkWatch：数えない。** 十数本の接続を受けても、「ネットにつないだ」という記録は出ませんでした。見張っているのは、外へ出る接続だけです。
+4. **クライアント**
+   - curl：トークンなしは 401、違う Host は 403、ウェブページの Origin は 403、GET は 405、通知は 202 でした。`initialize` は `Mcp-Session-Id` つきで答え、`tools/list` は 22 の読む操作を `game_info`、`inspector_member_get` … として並べ、`tools/call` は結果を返しました。
+   - Claude Code（HTTP、ヘッダーつき）：2 回つながりました。`initialize`、`notifications/initialized`、405 で断った `GET`、`tools/list` の順です。
+   - Claude Code からツールを呼ぶところは、作った Bridge で確かめます（この PC のコマンドラインのクライアントは、ログインのやり直しが必要でした。それは利用者の操作です）。
+5. **トークンのファイル**：`LocalApplicationData` は `C:/Users/<利用者>/AppData/Local` です。そこのファイルを読めるのは、SYSTEM、Administrators、その利用者だけで、ほかのアカウントは読めません。
+
+調査の結果で、設計を変えるところはありませんでした。
 
 ## 作業の順番
 

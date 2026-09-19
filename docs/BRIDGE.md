@@ -2,7 +2,7 @@
 
 [日本語](BRIDGE.ja.md)
 
-> **Design, not built.** Stage 2 of the [API plan](API_PLAN.md). Research comes first (see [Research before building](#research-before-building)).
+> **Design, not built.** Stage 2 of the [API plan](API_PLAN.md). The research is done (see [Research before building](#research-before-building)); Proton is still to check.
 
 The [operations registry](API_PLAN.md) lets anyone call what the libraries can do by name. The Bridge offers the **read** operations to AI clients (Claude Code, VS Code, Cursor and others) through the [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-06-18), so a client can look at the running game: objects and their values, the log, the mods, the saves, the dialogue. It cannot change anything.
 
@@ -65,11 +65,15 @@ Write operations, resources, prompts, server-sent events, access from other comp
 
 ## Research before building
 
-1. **TcpListener in the game**: listening on 127.0.0.1 under Unity 6's Mono on Windows and under Proton (Steam Deck); a client on the Linux side reaching the Wine process's loopback.
-2. **Firewall**: that binding 127.0.0.1 raises no Windows Defender Firewall prompt.
-3. **NetworkWatch**: that the framework's network watch does not count the Bridge's accepted connections as a mod going online (it watches outgoing ones).
-4. **Clients**: Claude Code connecting with the header, listing the tools and calling one; how it shows tool names and read-only hints.
-5. **The token file**: `LocalApplicationData` on Windows and under Proton, and that it is readable by the user only by default.
+Done on 2026-09-19 on Windows 11 (Direct3D 12), with a small research mod (never released) that listened on 127.0.0.1:47821, answered `initialize`, `tools/list` and `tools/call` through the registry, applied the Host, Origin and token checks, and wrote a token file.
+
+1. **TcpListener in the game: works on Windows.** `TcpListener(IPAddress.Loopback, 47821)` started in Awake, a background thread accepted, and calls ran through `Operations.Call` on the main thread. `netstat` shows it listening on 127.0.0.1:47821 only. **Proton (Steam Deck) is still to check.**
+2. **Firewall: no prompt.** Binding the loopback address raised no Windows Defender Firewall window.
+3. **NetworkWatch: not counted.** A dozen accepted connections, and no "went online" record; the watch sees outgoing connections only.
+4. **Clients.** With curl: no token 401, another Host 403, a web page's Origin 403, GET 405, a notification 202, `initialize` with `Mcp-Session-Id`, `tools/list` with the 22 read operations as `game_info`, `inspector_member_get`..., and `tools/call` returning the result. Claude Code (HTTP transport with the header) connected twice: `initialize`, `notifications/initialized`, a `GET` it took the 405 for, `tools/list`. A tool call from Claude Code is left for the built Bridge (the command-line client on this machine needed a new login, which is the user's to do).
+5. **The token file.** `LocalApplicationData` is `C:/Users/<user>/AppData/Local`; the file there is readable by SYSTEM, Administrators and the user only (no other account).
+
+Nothing in the research changes the design.
 
 ## Order of work
 
