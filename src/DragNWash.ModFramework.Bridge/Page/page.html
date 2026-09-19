@@ -273,34 +273,51 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
     const edgeLayer = el("svg:g"), nodeLayer = el("svg:g"), labelLayer = el("svg:g");
     vg.append(edgeLayer, nodeLayer, labelLayer);
     // Several edges leave one block: spread their start points along its bottom.
-    const outs = new Map();
-    for (const e of g.edges) { if (!outs.has(e.from)) outs.set(e.from, []); outs.get(e.from).push(e); }
+    // How each forward edge travels: straight down to the next layer, or round the right side of
+    // blocks in between. Its start on the source's bottom follows where it goes, so edges leaving
+    // one block never cross each other: those going round leave from the right end, the others in
+    // the left-to-right order of their targets, a lone one from right above its target.
+    const around = e => { const a = g.byIndex.get(e.from), b = g.byIndex.get(e.to);
+      return g.blocks.some(c => c !== a && c !== b && c.y > a.y + a.h && c.y + c.h < b.y && c.x < Math.max(a.x + a.w, b.x + b.w) && c.x + c.w > Math.min(a.x, b.x)); };
+    const exitX = new Map();
+    const bySource = new Map();
+    for (const e of g.edges) if (!e.back) { if (!bySource.has(e.from)) bySource.set(e.from, []); bySource.get(e.from).push(e); }
+    for (const [from, list] of bySource) {
+      const a = g.byIndex.get(from);
+      const rounds = list.filter(around), downs = list.filter(e => !around(e));
+      rounds.forEach((e, k) => exitX.set(e, a.x + a.w - 22 - k * 14));
+      downs.sort((p, q) => g.byIndex.get(p.to).x - g.byIndex.get(q.to).x);
+      const right = rounds.length ? a.x + a.w - 40 - rounds.length * 14 : a.x + a.w - 22;
+      downs.forEach((e, k) => {
+        const b = g.byIndex.get(e.to), under = Math.min(right, Math.max(a.x + 22, b.x + b.w / 2));
+        exitX.set(e, downs.length === 1 ? under : a.x + 22 + (right - a.x - 22) * (k + 0.5) / downs.length);
+      });
+    }
     for (const e of g.edges) {
       const a = g.byIndex.get(e.from), b = g.byIndex.get(e.to);
       if (!a || !b) continue;
-      const list = outs.get(e.from), i = list.indexOf(e), n = list.length;
       const colour = e.back ? "--back" : (colours[e.kind] || "--false");
-      let d, lx, ly;
+      let d, lx, ly, anchor = "start";
       if (e.back) {
         const x1 = a.x + a.w, y1 = a.y + a.h / 2, x2 = b.x + b.w, y2 = b.y + 14, bulge = 50 + (a.index % 4) * 14;
         d = `M${x1},${y1} C${x1 + bulge},${y1} ${x2 + bulge},${y2} ${x2},${y2}`;
         lx = Math.max(x1, x2) + bulge * .75; ly = (y1 + y2) / 2;
-      } else if (g.blocks.some(c => c !== a && c !== b && c.y > a.y + a.h && c.y + c.h < b.y && c.x < Math.max(a.x + a.w, b.x + b.w) && c.x + c.w > Math.min(a.x, b.x))) {
-        // Over blocks in between: round their right side instead of crossing them.
-        const x1 = a.x + a.w * (i + 1) / (n + 1), y1 = a.y + a.h, x2 = b.x + b.w * 0.75, y2 = b.y;
+      } else if (around(e)) {
+        // Over blocks in between: down the right side of them, into the target's right part.
+        const x1 = exitX.get(e), y1 = a.y + a.h, x2 = b.x + b.w - 40, y2 = b.y;
         const between = g.blocks.filter(c => c.y > y1 && c.y + c.h < y2);
-        const xs = Math.max(a.x + a.w, b.x + b.w, ...between.map(c => c.x + c.w)) + 24 + (e.from % 3) * 10;
-        d = `M${x1},${y1} C${x1},${y1 + 26} ${xs},${y1 + 10} ${xs},${y1 + 40} L${xs},${y2 - 40} C${xs},${y2 - 10} ${x2},${y2 - 26} ${x2},${y2}`;
-        lx = x1 + 5; ly = y1 + 13;
+        const xs = Math.max(a.x + a.w, b.x + b.w, ...between.map(c => c.x + c.w)) + 28 + (e.from % 3) * 12;
+        d = `M${x1},${y1} C${x1},${y1 + 22} ${xs},${y1 + 4} ${xs},${y1 + 34} L${xs},${y2 - 34} C${xs},${y2 - 4} ${x2},${y2 - 22} ${x2},${y2}`;
+        lx = x1 - 5; ly = y1 + 13; anchor = "end";
       } else {
-        const x1 = a.x + a.w * (i + 1) / (n + 1), y1 = a.y + a.h, x2 = b.x + b.w / 2, y2 = b.y, my = (y1 + y2) / 2;
-        d = `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`;
-        // Beside where the branch leaves its block: the middle of a long edge may lie over another block.
+        const x1 = exitX.get(e), y1 = a.y + a.h, x2 = Math.abs(x1 - (b.x + b.w / 2)) < b.w / 2 - 20 ? x1 : b.x + b.w / 2, y2 = b.y, my = (y1 + y2) / 2;
+        // Straight down when the target lies below; else one smooth S.
+        d = x1 === x2 ? `M${x1},${y1} L${x2},${y2}` : `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`;
         lx = x1 + 5; ly = y1 + 13;
       }
       const dashed = e.kind === "resume" || e.kind === "catch" || e.kind === "finally" || e.kind === "fault";
       edgeLayer.append(el("svg:path", { d, class: "edge", stroke: "var(" + colour + ")", "marker-end": "url(#a" + colour + ")", "stroke-dasharray": dashed ? "5 4" : "none" }));
-      if (e.label) labelLayer.append(el("svg:text", { x: lx, y: ly, class: "edge-label", fill: "var(" + colour + ")" }, e.back ? "loop · " + e.label : e.label));
+      if (e.label) labelLayer.append(el("svg:text", { x: lx, y: ly, "text-anchor": anchor, class: "edge-label", fill: "var(" + colour + ")" }, e.back ? "loop · " + e.label : e.label));
     }
     for (const b of g.blocks) {
       const cls = "node" + (b.dispatch ? " dispatch" : "");
