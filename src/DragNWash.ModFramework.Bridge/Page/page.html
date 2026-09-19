@@ -61,6 +61,8 @@ pre.il { font-family: var(--mono); font-size: 11.5px; background: var(--inset); 
 #stage { position: relative; overflow: hidden; min-height: 0; background:
   radial-gradient(circle, var(--line) 1px, transparent 1.2px) 0 0 / 22px 22px, var(--ground); cursor: grab; }
 #stage.dragging { cursor: grabbing; }
+/* Dragging moves the graph: it selects no text. */
+#stage svg { user-select: none; -webkit-user-select: none; }
 #stage svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 #types { position: absolute; inset: 0; overflow: auto; padding: 18px; display: none; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); align-content: start; cursor: default; }
 #types section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
@@ -378,7 +380,7 @@ pre.il { font-family: var(--mono); font-size: 11.5px; background: var(--inset); 
   }
   $("fit").onclick = fit;
   let drag = null;
-  stage.addEventListener("pointerdown", e => { if (e.target.closest(".node") || e.target.closest("#types")) return; drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }; stage.classList.add("dragging"); stage.setPointerCapture(e.pointerId); });
+  stage.addEventListener("pointerdown", e => { if (e.target.closest(".node") || e.target.closest("#types")) return; e.preventDefault(); drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y }; stage.classList.add("dragging"); stage.setPointerCapture(e.pointerId); });
   stage.addEventListener("pointermove", e => { if (!drag) return; view.x = drag.vx + e.clientX - drag.x; view.y = drag.vy + e.clientY - drag.y; apply(); });
   stage.addEventListener("pointerup", () => { drag = null; stage.classList.remove("dragging"); });
   stage.addEventListener("wheel", e => {

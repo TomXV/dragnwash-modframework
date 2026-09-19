@@ -41,7 +41,7 @@ namespace DragNWash.ModFramework.Inspector
         private static bool _showInherited;
         private static bool _showPrivateMethods;
         private static bool _gameType;
-        private static GUIStyle _cell, _muted, _mono, _accent;
+        private static GUIStyle _cell, _muted, _mono, _accent, _wrapped;
 
         internal static void Reset()
         {
@@ -58,6 +58,7 @@ namespace DragNWash.ModFramework.Inspector
             if (_cell != null) return;
             _cell = new GUIStyle(s.Label) { wordWrap = false, clipping = TextClipping.Clip };
             _muted = new GUIStyle(s.MutedLabel) { wordWrap = false, clipping = TextClipping.Clip };
+            _wrapped = new GUIStyle(s.MutedLabel) { wordWrap = true };
             _mono = new GUIStyle(s.MutedLabel) { wordWrap = false, clipping = TextClipping.Clip };
             _accent = new GUIStyle(_cell);
             _accent.normal.textColor = TW.AccentColor;
@@ -401,8 +402,20 @@ namespace DragNWash.ModFramework.Inspector
                 OpenGraph("t:" + _type.FullName.Replace('+', '/'));
             }
             if (_gameType) bx += 118;
-            GUI.Label(new Rect(bx, y, w - (bx - x), row), "Copy gives Type:Method, for GameHooks.Require and AccessTools.Method; Patch gives the whole Harmony patch, guard and all.", _muted);
-            y += row + 4;
+            // Beside the buttons when it fits; else on lines of its own below them, wrapped, never cut.
+            var hint = new GUIContent("Copy gives Type:Method, for GameHooks.Require and AccessTools.Method; Patch gives the whole Harmony patch, guard and all.");
+            if (_muted.CalcSize(hint).x <= w - (bx - x))
+            {
+                GUI.Label(new Rect(bx, y, w - (bx - x), row), hint, _muted);
+                y += row + 4;
+            }
+            else
+            {
+                y += row + 2;
+                float h = _wrapped.CalcHeight(hint, w);
+                GUI.Label(new Rect(x, y, w, h), hint, _wrapped);
+                y += h + 4;
+            }
 
             // Rows: events first, then methods; an opened method's IL follows it.
             var lines = new List<Action<Rect>>();
