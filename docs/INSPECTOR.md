@@ -71,6 +71,16 @@ Experimental. The game moves things with Rigidbodies (its mass-spring controller
 - **Controls.** A selected Rigidbody or Rigidbody2D gets a line saying what it is doing and buttons above its members: **Stop** (velocity and turning to zero), **Kinematic** (on and off; `isKinematic`, or `bodyType` for a Rigidbody2D; kept in History, so Revert puts it back), **Sleep** / **Wake**.
 - **Pause physics** (experimental even within the Inspector). Switches `Physics.simulationMode` and `Physics2D.simulationMode` to Script, so bodies stay where they are, and **Step** moves the physics one fixed step (`Physics.Simulate(Time.fixedDeltaTime)`). The game's scripts keep running, so forces they add meanwhile arrive with the next step. **Resume physics**, closing the window and switching developer tools off all put the modes back as the game had them.
 
+## Animators
+
+Experimental. The game moves its characters with Animators, mostly by setting their parameters (Bool, Float, Trigger) and layer weights. Like the rigidbodies, the Animator is read by reflection, and the animation module is not referenced.
+
+- **Parameters and layer weights** are rows at the top of a selected Animator's members: drag a number, switch a Bool, set a Trigger (true) or reset it (false). They are kept in History like any member. The game sets many parameters every frame, so an edit to one of those lasts only until the game's next write.
+- **What is playing**: above the rows, one line per layer with its weight, the clips it plays (with their weights when blended), how far through the state is, and the clips it is blending to.
+- **Pause animation** sets the Animator's speed to 0 and remembers the speed it had; **Step** moves it on by 1/30 s, and a slider per layer puts the current state at any point. **Resume animation**, closing the window or turning developer tools off puts the speed back.
+- Not possible in the game: the state machine (states and transitions) and the curves inside a clip exist only in the Unity editor. A state is known by a hash, so the clips it plays stand for its name.
+- Later: a list of the controller's clips with a preview, and swapping a clip (AnimatorOverrideController), which ties into the Overrides design (branch `experimental/overrides`).
+
 ## Safety
 
 - **Developer tools only.** The tab exists only while the switch is on, like the rest of the window.

@@ -187,6 +187,11 @@ namespace DragNWash.ModFramework.Inspector
                 case null:
                     _members = new List<Member>();
                     break;
+                case Component animator when InspectorAnimators.IsAnimator(animator):
+                    // Its parameters and layer weights first, then its own members.
+                    _members = new List<Member>(InspectorAnimators.Members(animator));
+                    _members.AddRange(InspectorModel.MembersOf(_target.GetType()));
+                    break;
                 default:
                     _members = InspectorModel.MembersOf(_target.GetType());
                     break;
@@ -857,6 +862,52 @@ namespace DragNWash.ModFramework.Inspector
             return clicked;
         }
 
+        private static string _animatorNote = "";
+
+        // A selected Animator: its controller, what each layer plays, and a
+        // pause with a step and, while paused, a time slider per layer. Its
+        // parameters and layer weights are rows among the members below.
+        private static float DrawAnimatorControls(Component animator, float x, float y, float w, ToolWindowStyles s, float row)
+        {
+            bool paused = InspectorAnimators.IsPaused(animator);
+            GUI.Label(new Rect(x, y, w, row), Drawable($"{InspectorAnimators.ControllerName(animator)}, speed {(paused ? "0 (paused)" : InspectorAnimators.Speed(animator).ToString("0.##"))}"), _accentCell);
+            y += row;
+            int layers = InspectorAnimators.LayerCount(animator);
+            for (int layer = 0; layer < layers; layer++)
+            {
+                GUI.Label(new Rect(x, y, w, row), Drawable(InspectorAnimators.Describe(animator, layer)), _mutedCell);
+                y += row;
+                if (paused)
+                {
+                    float t = InspectorAnimators.NormalizedTime(animator, layer);
+                    float pass = t - Mathf.Floor(t);
+                    float next = GUI.HorizontalSlider(new Rect(x + 8, y + row / 2 - 6, w - 16, 12), pass, 0f, 0.999f);
+                    if (Mathf.Abs(next - pass) > 0.0005f)
+                    {
+                        InspectorAnimators.SetTime(animator, layer, Mathf.Floor(t) + next);
+                    }
+                    y += row;
+                }
+            }
+            float bx = x;
+            string pause = paused ? "Resume animation" : "Pause animation";
+            if (FlowButton(ref bx, ref y, x, w, ButtonWidth(s, pause), pause, paused, s, row))
+            {
+                _animatorNote = paused ? InspectorAnimators.Resume(animator) : InspectorAnimators.Pause(animator);
+            }
+            if (paused && FlowButton(ref bx, ref y, x, w, ButtonWidth(s, "Step"), "Step", false, s, row))
+            {
+                _animatorNote = InspectorAnimators.Step(animator);
+            }
+            y += row;
+            if (!string.IsNullOrEmpty(_animatorNote))
+            {
+                GUI.Label(new Rect(x, y, w, row), Drawable(_animatorNote), _mutedCell);
+                y += row;
+            }
+            return y + 4;
+        }
+
         private static float ButtonWidth(ToolWindowStyles s, string label) => Mathf.Max(60, s.Button.CalcSize(new GUIContent(label)).x + 14);
 
         // The physics pause and step, shared by the list and a selected body.
@@ -1254,6 +1305,10 @@ namespace DragNWash.ModFramework.Inspector
             if (_target is Component body && InspectorBodies.IsBody(body))
             {
                 y = DrawBodyControls(body, x, y, w, s, row);
+            }
+            if (_target is Component animator && InspectorAnimators.IsAnimator(animator))
+            {
+                y = DrawAnimatorControls(animator, x, y, w, s, row);
             }
 
             // The rows. Values are read on Repaint only, and kept while frozen.

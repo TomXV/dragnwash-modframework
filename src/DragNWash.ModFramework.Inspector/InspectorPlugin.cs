@@ -76,9 +76,9 @@ namespace DragNWash.ModFramework.Inspector
                     InspectorBones.OnGUI(window, InspectorTab.SelectedObject);
                     InspectorGizmo.OnGUI(window, InspectorTab.SelectedObject);
                 });
-                TW.OpenChanged += open => { if (!open) { InspectorPick.End(); if (InspectorBodies.Paused) InspectorBodies.Resume(); } };
+                TW.OpenChanged += open => { if (!open) { InspectorPick.End(); if (InspectorBodies.Paused) InspectorBodies.Resume(); InspectorAnimators.ResumeAll(); } };
                 // The free camera is a developer tool too: off with the switch.
-                DeveloperTools.Changed += () => { if (!DeveloperTools.Enabled) { InspectorFreeCamera.Stop(); if (InspectorBodies.Paused) InspectorBodies.Resume(); } };
+                DeveloperTools.Changed += () => { if (!DeveloperTools.Enabled) { InspectorFreeCamera.Stop(); if (InspectorBodies.Paused) InspectorBodies.Resume(); InspectorAnimators.ResumeAll(); } };
             }
             catch (Exception ex)
             {
