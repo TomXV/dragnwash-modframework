@@ -454,11 +454,11 @@ namespace DragNWash.ModFramework.Inspector
                 if (lines.Count == 0)
                 {
                     string where = last.Operand is Instruction to ? "IL_" + to.Offset.ToString("x4") : null;
-                    string text = ends == "leave" ? "leave the try → " + where
+                    string said = ends == "leave" ? "leave the try → " + where
                         : ends == "jump" ? "go to " + where
                         : ends == "end" ? "end of finally"
                         : "(only moves values)";
-                    lines.Add(new Dictionary<string, object> { ["text"] = text });
+                    lines.Add(new Dictionary<string, object> { ["text"] = said });
                 }
                 if (lines.Count > MaxLinesPerBlock)
                 {

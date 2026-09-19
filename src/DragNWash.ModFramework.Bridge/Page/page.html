@@ -275,6 +275,13 @@ pre.il { font-family: var(--mono); font-size: 11.5px; background: var(--inset); 
         const x1 = a.x + a.w, y1 = a.y + a.h / 2, x2 = b.x + b.w, y2 = b.y + 14, bulge = 50 + (a.index % 4) * 14;
         d = `M${x1},${y1} C${x1 + bulge},${y1} ${x2 + bulge},${y2} ${x2},${y2}`;
         lx = Math.max(x1, x2) + bulge * .75; ly = (y1 + y2) / 2;
+      } else if (g.blocks.some(c => c !== a && c !== b && c.y > a.y + a.h && c.y + c.h < b.y && c.x < Math.max(a.x + a.w, b.x + b.w) && c.x + c.w > Math.min(a.x, b.x))) {
+        // Over blocks in between: round their right side instead of crossing them.
+        const x1 = a.x + a.w * (i + 1) / (n + 1), y1 = a.y + a.h, x2 = b.x + b.w * 0.75, y2 = b.y;
+        const between = g.blocks.filter(c => c.y > y1 && c.y + c.h < y2);
+        const xs = Math.max(a.x + a.w, b.x + b.w, ...between.map(c => c.x + c.w)) + 24 + (e.from % 3) * 10;
+        d = `M${x1},${y1} C${x1},${y1 + 26} ${xs},${y1 + 10} ${xs},${y1 + 40} L${xs},${y2 - 40} C${xs},${y2 - 10} ${x2},${y2 - 26} ${x2},${y2}`;
+        lx = x1 + 5; ly = y1 + 13;
       } else {
         const x1 = a.x + a.w * (i + 1) / (n + 1), y1 = a.y + a.h, x2 = b.x + b.w / 2, y2 = b.y, my = (y1 + y2) / 2;
         d = `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`;
