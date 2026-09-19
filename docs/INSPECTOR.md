@@ -81,6 +81,14 @@ Experimental. The game moves its characters with Animators, mostly by setting th
 - Not possible in the game: the state machine (states and transitions) and the curves inside a clip exist only in the Unity editor. A state is known by a hash, so the clips it plays stand for its name.
 - **Clips**, a button among the Animator's: the controller's clips in place of the members, each with its length, frame rate, whether it loops and its events, and what it is swapped for. **Preview** plays a clip on the Animator in a graph of its own, over what the controller plays, with a time slider, pause and **Stop preview**. **Replace** lists every clip loaded in memory; **Use** makes the controller play that one instead (an AnimatorOverrideController built on the game's controller), **The game's clip** puts the original back. A swap is kept in History (Revert goes back one swap), and restarts the Animator's states. This ties into the Overrides design (branch `experimental/overrides`): a swap is the kind of edit an override would keep.
 
+## Scenes and levels
+
+Experimental. View → **Scenes and levels** opens a list in place of the members. The game has a few scenes (the title, PlayGame, the scenes after certain levels, the credits) and plays its levels inside PlayGame; everything here is read by reflection from the game's own types, so a game update that renames them turns these tools off.
+
+- **The level running** (in PlayGame): its number, dragon, weather, the dragon's state and how clean it is. **Skip level** and **Clean the dragon** call the game's own cheats, the ones its development builds show: Skip ends the level as if it was done, so the next one is saved as reached.
+- **Levels**: every level with its dragon and weather; **Start** plays that level now, in place of the current one. The flags earlier levels would have set are not set, so dialogue may differ from a normal play; nothing is written to the save until the level is finished (and the Saves library keeps a copy of every save the game writes).
+- **Scenes**: the scenes loaded, and every scene of the game with **Load**, which goes through the game's loading screen as its menus do; **Reload** loads the active scene again.
+
 ## Safety
 
 - **Developer tools only.** The tab exists only while the switch is on, like the rest of the window.

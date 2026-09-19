@@ -386,7 +386,7 @@ namespace DragNWash.ModFramework.Inspector
             bool viewOn = InspectorPick.Highlight || InspectorBones.Show || InspectorMesh.Wireframe || InspectorFreeCamera.Active || InspectorDebugView.Active;
             Tool(IconHighlight, "View \u25BE", "Highlight, bones, wireframe, free camera", viewOn, () => OpenToolMenu("view"));
             bx += 6;
-            Tool(IconHistory, InspectorHistory.Count > 0 ? "History " + InspectorHistory.Count : "History", "History of edits", _showHistory, () => { _showHistory = !_showHistory; _showBodies = false; });
+            Tool(IconHistory, InspectorHistory.Count > 0 ? "History " + InspectorHistory.Count : "History", "History of edits", _showHistory, () => { _showHistory = !_showHistory; _showBodies = false; _showScenes = false; });
             Tool(IconRefresh, "Refresh", "Rebuild the tree and reread the members", false, () => { _dirty = true; _members = null; });
             if (x + w - bx < 140)
             {
@@ -484,6 +484,7 @@ namespace DragNWash.ModFramework.Inspector
                 var pane = new Rect(x, y, w, bodyHeight);
                 if (_page == 0 && _showHierarchy) DrawHierarchy(pane, s, row);
                 else if (_showBodies) DrawBodies(pane, s, row);
+                else if (_showScenes) DrawScenes(pane, s, row);
                 else if (ShowingClips) DrawClips(pane, s, row);
                 else if (ShowingLayers) DrawLayers(pane, s, row);
                 else if (_showHistory) DrawHistory(pane, s, row);
@@ -495,6 +496,7 @@ namespace DragNWash.ModFramework.Inspector
                 float w1 = (w - gap) * 0.32f, w2 = (w - gap) - w1;
                 DrawHierarchy(new Rect(x, y, w1, bodyHeight), s, row);
                 if (_showBodies) DrawBodies(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
+                else if (_showScenes) DrawScenes(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
                 else if (ShowingClips) DrawClips(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
                 else if (ShowingLayers) DrawLayers(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
                 else if (_showHistory) DrawHistory(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
@@ -503,6 +505,7 @@ namespace DragNWash.ModFramework.Inspector
             else
             {
                 if (_showBodies) DrawBodies(new Rect(x, y, w, bodyHeight), s, row);
+                else if (_showScenes) DrawScenes(new Rect(x, y, w, bodyHeight), s, row);
                 else if (ShowingClips) DrawClips(new Rect(x, y, w, bodyHeight), s, row);
                 else if (ShowingLayers) DrawLayers(new Rect(x, y, w, bodyHeight), s, row);
                 else if (_showHistory) DrawHistory(new Rect(x, y, w, bodyHeight), s, row);
@@ -579,8 +582,9 @@ namespace DragNWash.ModFramework.Inspector
                 items.Add(("    names (near the pointer when many)", InspectorDebugView.Names, () => InspectorDebugView.Names = !InspectorDebugView.Names, true));
                 if (InspectorBodies.Available)
                 {
-                    items.Add(("Rigidbodies list", _showBodies, () => { _showBodies = !_showBodies; if (_showBodies) { _showHistory = false; if (_page == 0) _page = 1; } }, false));
+                    items.Add(("Rigidbodies list", _showBodies, () => { _showBodies = !_showBodies; if (_showBodies) { _showHistory = false; _showScenes = false; if (_page == 0) _page = 1; } }, false));
                 }
+                items.Add(("Scenes and levels", _showScenes, () => { _showScenes = !_showScenes; if (_showScenes) { _showHistory = false; _showBodies = false; if (_page == 0) _page = 1; } }, false));
             }
             float lineH = row - 2;
             float width = 200;
@@ -1219,6 +1223,86 @@ namespace DragNWash.ModFramework.Inspector
                     }
                 }
                 ry += lineH;
+            }
+            GUI.EndScrollView();
+        }
+
+        // ---- scenes and levels --------------------------------------------------------------
+
+        private static bool _showScenes;
+        private static Vector2 _scrollScenes;
+        private static string _scenesNote = "";
+
+        // The level running and the game's cheats for it, every level to start
+        // in its place, the scenes loaded and every scene of the build to load
+        // (experimental; see InspectorScenes).
+        private static void DrawScenes(Rect pane, ToolWindowStyles s, float row)
+        {
+            TW.Fill(pane, TW.InsetColor);
+            float x = pane.x + 4, y = pane.y + 2, w = pane.width - 8;
+            GUI.Label(new Rect(x, y, w, row), Drawable(InspectorScenes.Describe()), InspectorScenes.InLevel ? _accentCell : _mutedCell);
+            y += row;
+            float bx = x;
+            if (InspectorScenes.InLevel)
+            {
+                if (FlowButton(ref bx, ref y, x, w, ButtonWidth(s, "Skip level"), "Skip level", false, s, row)) _scenesNote = InspectorScenes.Skip();
+                if (FlowButton(ref bx, ref y, x, w, ButtonWidth(s, "Clean the dragon"), "Clean the dragon", false, s, row)) _scenesNote = InspectorScenes.Clean();
+            }
+            string active = InspectorScenes.ActiveScene;
+            string reload = "Reload " + active;
+            if (FlowButton(ref bx, ref y, x, w, ButtonWidth(s, reload), Drawable(reload), false, s, row)) _scenesNote = InspectorScenes.LoadScene(active);
+            if (FlowButton(ref bx, ref y, x, w, ButtonWidth(s, "< Members"), "< Members", false, s, row)) _showScenes = false;
+            y += row + 4;
+            if (!string.IsNullOrEmpty(_scenesNote))
+            {
+                GUI.Label(new Rect(x, y, w, row), Drawable(_scenesNote), _mutedCell);
+                y += row;
+            }
+
+            // One scrolling list: the levels (in PlayGame), then the scenes.
+            int levels = InspectorScenes.InLevel ? InspectorScenes.LevelCount : 0;
+            int current = InspectorScenes.CurrentLevel;
+            List<string> loaded = InspectorScenes.LoadedScenes();
+            List<string> build = InspectorScenes.BuildScenes();
+            var view = new Rect(x, y, w, pane.yMax - y - 2);
+            float inner = view.width - 20;
+            float total = (levels > 0 ? row * (levels + 2) : 0) + row * (loaded.Count + build.Count + 3);
+            TW.ApplyScroll(view, ref _scrollScenes);
+            _scrollScenes = GUI.BeginScrollView(view, _scrollScenes, new Rect(0, 0, inner, Mathf.Max(view.height, total)), false, false);
+            float ry = 0;
+            if (levels > 0)
+            {
+                GUI.Label(new Rect(0, ry, inner, row), "LEVELS: Start plays that level now, with the flags of the save as they are; the save changes only when it is finished.", _mutedCell);
+                ry += row;
+                for (int i = 0; i < levels; i++)
+                {
+                    GUI.Label(new Rect(0, ry, inner - 84, row), Drawable($"{i + 1}. {InspectorScenes.DragonOf(i)}, {InspectorScenes.WeatherOf(i)}"), i == current ? _accentCell : _cell);
+                    if (GUI.Button(new Rect(inner - 78, ry + 2, 74, row - 4), "Start", s.Button))
+                    {
+                        _scenesNote = InspectorScenes.StartLevel(i);
+                    }
+                    ry += row;
+                }
+                ry += row;
+            }
+            GUI.Label(new Rect(0, ry, inner, row), "SCENES LOADED", _mutedCell);
+            ry += row;
+            foreach (string line in loaded)
+            {
+                GUI.Label(new Rect(0, ry, inner, row), Drawable(line), _cell);
+                ry += row;
+            }
+            ry += row;
+            GUI.Label(new Rect(0, ry, inner, row), "SCENES OF THE GAME: Load goes through the game's loading screen.", _mutedCell);
+            ry += row;
+            foreach (string name in build)
+            {
+                GUI.Label(new Rect(0, ry, inner - 84, row), Drawable(name), name == active ? _accentCell : _cell);
+                if (GUI.Button(new Rect(inner - 78, ry + 2, 74, row - 4), "Load", s.Button))
+                {
+                    _scenesNote = InspectorScenes.LoadScene(name);
+                }
+                ry += row;
             }
             GUI.EndScrollView();
         }
