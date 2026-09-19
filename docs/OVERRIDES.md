@@ -2,7 +2,7 @@
 
 [日本語](OVERRIDES.ja.md)
 
-> **Design, not built.** On the `experimental/overrides` branch. Research comes first (see [Research before building](#research-before-building)); what is here may change with what it finds.
+> **Design, not built.** On the `experimental/overrides` branch. The research is done (see [Research before building](#research-before-building)); what it changed is marked **Change** there.
 
 The Inspector lets anyone change a value in the running game and see it at once, and forgets it all when the game quits ([INSPECTOR.md](INSPECTOR.md#what-it-is-for-and-what-it-is-not) leaves saving to "a later overrides design"). This is that design: **the edits in the History become a file, and the file becomes a mod that needs no code.** Someone who has never written C# makes a heavier dragon, a warmer light or a slower sponge, and hands it to a friend.
 
@@ -75,17 +75,21 @@ An override file holds values people changed by hand, and the names needed to fi
 
 ## Research before building
 
-Before any code, a short study of the game, written down as notes:
+Done on 2026-09-19, with a small research mod (never released) that wrote every object's path 1, 5 and 20 s after each scene load, timed the root objects appearing and going, sampled the dragon's components, the lights and the rigidbodies 20 times over 5 s, nudged the values that held still by 0.1% and read them back 1 s later (then put them back), and ran the values through the Inspector's `Format` and `Parse`. Played: the title, PlayGame, the title again, PlayGame again (Direct3D 12, the 2026-09-14 game build). Plus a reading of the framework's code for the Mods screen and the History.
 
-1. **Are paths stable?** The same object's path across loads, scenes and the last game update (the object census from the texture work already has most of this).
-2. **Objects made at run time.** How many of the things people will want to change are created after loading (`(Clone)` in the name), and whether scene load plus one retry reaches them.
-3. **Values the game writes back.** Which members people edit in the Inspector are set again by the game's scripts (the mass-spring controller, the lights), so an override would not stick.
-4. **A mod with no DLL.** What the Mods screen needs to show a folder as a mod, and how that sits with BepInEx's own plugin list.
-5. **Round trips.** Every supported type written with `Format` and read back with `Parse` gives the same value.
+1. **Paths are stable.** The title scene gave the same 1,360 paths on both loads, PlayGame the same 1,675 (apart from short-lived effects such as `TemporaryVFX` and `ParticleSpline (Clone)`). Paths are nearly unique: none repeat in the title scene, 9 do in PlayGame (66 objects, mostly inside `DickApprox(Clone)` and a few in `map_prefab`), so the `"index"` for repeats is needed but rare. Not checked yet: across a game update (the texture census compares builds; do the same for paths when the next update comes).
+2. **Objects made at run time.** The dragon (`DragonAlexander_1 (Clone)` here, 295 objects) and `DickApprox(Clone)` are there from the first frame of PlayGame, so scene load plus one retry reaches the first dragon. But each level spawns its own dragon, under its own name, when the level starts, long after the scene load. **Change:** besides the scene load, the library watches for new root objects (a cheap check of the scenes' root lists every half second) and applies the overrides whose path starts with that root. An override for `DragonRyanA (Clone)/...` then applies whenever that dragon comes.
+3. **Values the game writes back: few.** Of 972 members sampled, 17 change by themselves, all of them motion (the Animator's root and body positions and velocities, a Rigidbody's velocity, position and centre of mass, a VFX's particle count), which are not things to override. Of the 58 values nudged, 57 stayed; one was put back by the game (the dragon's `AudioSource.volume`, which a script sets). The lights (32 values) and the dragon's scripts kept every change. Bones are the exception the Inspector already names: an Animator writes them every frame.
+4. **Game scripts keep their settings in private fields.** The dragon's game scripts have only 38 public fields between them; what a player would want to change (speeds, strengths, thresholds) is mostly in private `[SerializeField]` fields, which the Inspector shows with **Show private**. **Change:** `"private": true` is not an edge case but the usual way to change a game script; the Mods screen still says a mod uses it.
+5. **A mod with no DLL.** The Mods screen builds its list from BepInEx's loaded plugins, the plugin DLLs it finds in the folder, and the preloader patchers, and switches a mod off by renaming its DLL at the next start. A data-only mod needs a fourth source in that list (the Overrides library registers the folders it found) and its own off switch: renaming `mod.json` to `mod.json.disabled`, the same way, so it is off from the next start and the library does not read it. Uninstalling works as for any mod folder.
+6. **Round trips.** Through the Inspector's `Format` and `Parse`, integers, booleans, enums, Vector2, Vector4 and Color32 come back exact; floats (16 of 149), Vector3 (18 of 26), Quaternion (6 of 8) and Color (8 of 8) come back close but not equal, because `Format` shows three decimals and a rotation as Euler angles. Written losslessly (floats with `R`, a rotation as x, y, z, w) all of them came back exact. **Change:** the files use a lossless form of their own (`Serialize` / `Deserialize` in the library), not the text a row shows; `Parse` still reads what a person types by hand.
+7. **The History.** An entry keeps a label for people and a key made of an instance id, which is gone after the game restarts. **Change:** each entry also records the scene, the path, the component type and its index among components of that type, the member and whether it is private, when the Inspector makes it.
+
+A side finding: every PlayGame load leaves about 24 `JigglePhysicsDummyTransform` objects in DontDestroyOnLoad that are never removed (a small leak in the game's jiggle physics, not in the framework).
 
 ## Order of work
 
-1. Research notes (above).
+1. Research notes (above): done.
 2. The Overrides library: read files, register data-only mods, apply, take back, report.
 3. The Inspector: record where each edit was made (scene, path, component, member; today the History keeps only a label and an instance id), and **Export as overrides** in the History view.
 4. Docs: a page for people who have never made a mod: "change it in the Inspector, press Export, send the folder".
