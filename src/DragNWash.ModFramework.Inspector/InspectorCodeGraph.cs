@@ -450,6 +450,16 @@ namespace DragNWash.ModFramework.Inspector
                     string decides = last.OpCode.Code == Code.Switch ? $"switch ({((Instruction[])last.Operand).Length} cases)" : Condition(last.OpCode.Code) + " → IL_" + ((Instruction)last.Operand).Offset.ToString("x4");
                     if (previous != decides) lines.Add(new Dictionary<string, object> { ["text"] = decides });
                 }
+                // A block with nothing else to say still says where it goes.
+                if (lines.Count == 0)
+                {
+                    string where = last.Operand is Instruction to ? "IL_" + to.Offset.ToString("x4") : null;
+                    string text = ends == "leave" ? "leave the try → " + where
+                        : ends == "jump" ? "go to " + where
+                        : ends == "end" ? "end of finally"
+                        : "(only moves values)";
+                    lines.Add(new Dictionary<string, object> { ["text"] = text });
+                }
                 if (lines.Count > MaxLinesPerBlock)
                 {
                     int more = lines.Count - MaxLinesPerBlock;
