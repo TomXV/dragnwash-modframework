@@ -79,7 +79,7 @@ Experimental. The game moves its characters with Animators, mostly by setting th
 - **What is playing**: above the rows, one line per layer with its weight, the clips it plays (with their weights when blended), how far through the state is, and the clips it is blending to.
 - **Pause animation** sets the Animator's speed to 0 and remembers the speed it had; **Step** moves it on by 1/30 s, and a slider per layer puts the current state at any point. **Resume animation**, closing the window or turning developer tools off puts the speed back.
 - Not possible in the game: the state machine (states and transitions) and the curves inside a clip exist only in the Unity editor. A state is known by a hash, so the clips it plays stand for its name.
-- Later: a list of the controller's clips with a preview, and swapping a clip (AnimatorOverrideController), which ties into the Overrides design (branch `experimental/overrides`).
+- **Clips**, a button among the Animator's: the controller's clips in place of the members, each with its length, frame rate, whether it loops and its events, and what it is swapped for. **Preview** plays a clip on the Animator in a graph of its own, over what the controller plays, with a time slider, pause and **Stop preview**. **Replace** lists every clip loaded in memory; **Use** makes the controller play that one instead (an AnimatorOverrideController built on the game's controller), **The game's clip** puts the original back. A swap is kept in History (Revert goes back one swap), and restarts the Animator's states. This ties into the Overrides design (branch `experimental/overrides`): a swap is the kind of edit an override would keep.
 
 ## Safety
 

@@ -484,6 +484,7 @@ namespace DragNWash.ModFramework.Inspector
                 var pane = new Rect(x, y, w, bodyHeight);
                 if (_page == 0 && _showHierarchy) DrawHierarchy(pane, s, row);
                 else if (_showBodies) DrawBodies(pane, s, row);
+                else if (ShowingClips) DrawClips(pane, s, row);
                 else if (_showHistory) DrawHistory(pane, s, row);
                 else DrawMembers(pane, s, row);
             }
@@ -493,12 +494,14 @@ namespace DragNWash.ModFramework.Inspector
                 float w1 = (w - gap) * 0.32f, w2 = (w - gap) - w1;
                 DrawHierarchy(new Rect(x, y, w1, bodyHeight), s, row);
                 if (_showBodies) DrawBodies(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
+                else if (ShowingClips) DrawClips(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
                 else if (_showHistory) DrawHistory(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
                 else DrawMembers(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
             }
             else
             {
                 if (_showBodies) DrawBodies(new Rect(x, y, w, bodyHeight), s, row);
+                else if (ShowingClips) DrawClips(new Rect(x, y, w, bodyHeight), s, row);
                 else if (_showHistory) DrawHistory(new Rect(x, y, w, bodyHeight), s, row);
                 else DrawMembers(new Rect(x, y, w, bodyHeight), s, row);
             }
@@ -863,6 +866,140 @@ namespace DragNWash.ModFramework.Inspector
         }
 
         private static string _animatorNote = "";
+        private static bool _showClips;
+        private static UnityEngine.Object _swapFrom;
+        private static string _clipsFilter = "";
+        private static Vector2 _scrollClips;
+
+        private static bool ShowingClips => _showClips && _target is Component c && InspectorAnimators.IsAnimator(c);
+
+        // The clip being previewed on this animator: its time, a slider, pause and stop.
+        private static float DrawPreview(Component animator, float x, float y, float w, ToolWindowStyles s, float row)
+        {
+            if (!InspectorAnimators.Previewing(animator))
+            {
+                return y;
+            }
+            UnityEngine.Object clip = InspectorAnimators.PreviewClip;
+            float length = InspectorAnimators.ClipLength(clip);
+            float t = InspectorAnimators.PreviewTime;
+            GUI.Label(new Rect(x, y, w, row), Drawable($"Previewing {(clip != null ? clip.name : "?")}: {t:0.00} / {length:0.00} s"), _accentCell);
+            y += row;
+            if (length > 0)
+            {
+                float next = GUI.HorizontalSlider(new Rect(x + 8, y + row / 2 - 6, w - 16, 12), t, 0f, length);
+                if (Mathf.Abs(next - t) > 0.001f)
+                {
+                    InspectorAnimators.SetPreviewPaused(true);
+                    InspectorAnimators.PreviewTime = next;
+                }
+                y += row;
+            }
+            float bx = x;
+            string play = InspectorAnimators.PreviewPaused ? "Play preview" : "Pause preview";
+            if (FlowButton(ref bx, ref y, x, w, ButtonWidth(s, play), play, InspectorAnimators.PreviewPaused, s, row))
+            {
+                InspectorAnimators.SetPreviewPaused(!InspectorAnimators.PreviewPaused);
+            }
+            if (FlowButton(ref bx, ref y, x, w, ButtonWidth(s, "Stop preview"), "Stop preview", false, s, row))
+            {
+                InspectorAnimators.StopPreview();
+                _animatorNote = "Preview stopped.";
+            }
+            return y + row + 4;
+        }
+
+        // The controller's clips (the game's, with what each is swapped for),
+        // each with Preview and Replace; Replace lists every clip loaded, to
+        // pick the one to play instead.
+        private static void DrawClips(Rect pane, ToolWindowStyles s, float row)
+        {
+            TW.Fill(pane, TW.InsetColor);
+            var animator = (Component)_target;
+            float x = pane.x + 4, y = pane.y + 2, w = pane.width - 8;
+            y = DrawPreview(animator, x, y, w, s, row);
+            List<UnityEngine.Object> clips = _swapFrom != null ? InspectorAnimators.LoadedClips() : InspectorAnimators.ClipsOf(animator);
+            var shown = new List<UnityEngine.Object>();
+            foreach (UnityEngine.Object c in clips)
+            {
+                if (string.IsNullOrEmpty(_clipsFilter) || c.name.IndexOf(_clipsFilter, StringComparison.OrdinalIgnoreCase) >= 0) shown.Add(c);
+            }
+            string head = _swapFrom != null
+                ? $"Play {_swapFrom.name} as: {shown.Count} of {clips.Count} clips loaded."
+                : $"Clips of {InspectorAnimators.ControllerName(animator)}: {shown.Count} of {clips.Count}.";
+            GUI.Label(new Rect(x, y, w, row), Drawable(head), _mutedCell);
+            y += row;
+            float bx = x;
+            if (_swapFrom != null)
+            {
+                if (FlowButton(ref bx, ref y, x, w, ButtonWidth(s, "Cancel"), "Cancel", false, s, row)) _swapFrom = null;
+                if (_swapFrom != null && InspectorAnimators.SwappedFor(animator, _swapFrom) != null && FlowButton(ref bx, ref y, x, w, ButtonWidth(s, "The game's clip"), "The game's clip", false, s, row))
+                {
+                    _animatorNote = InspectorAnimators.Swap(animator, _swapFrom, null, WhereLabel());
+                    _swapFrom = null;
+                }
+            }
+            if (FlowButton(ref bx, ref y, x, w, ButtonWidth(s, "< Members"), "< Members", false, s, row))
+            {
+                _showClips = false;
+                _swapFrom = null;
+            }
+            y += row + 4;
+            var filterRect = new Rect(x, y, w, row);
+            _clipsFilter = GUI.TextField(filterRect, _clipsFilter ?? "", s.TextField);
+            Underline(filterRect);
+            if (string.IsNullOrEmpty(_clipsFilter))
+            {
+                GUI.Label(new Rect(filterRect.x + 6, filterRect.y, filterRect.width - 6, row), "Filter by name", s.MutedLabel);
+            }
+            y += row + 4;
+            if (!string.IsNullOrEmpty(_animatorNote))
+            {
+                GUI.Label(new Rect(x, y, w, row), Drawable(_animatorNote), _mutedCell);
+                y += row;
+            }
+            var view = new Rect(x, y, w, pane.yMax - y - 2);
+            float inner = view.width - 20;
+            float lineH = row * 2;
+            TW.ApplyScroll(view, ref _scrollClips);
+            _scrollClips = GUI.BeginScrollView(view, _scrollClips, new Rect(0, 0, inner, Mathf.Max(view.height, shown.Count * lineH)), false, false);
+            float ry = 0;
+            foreach (UnityEngine.Object clip in shown)
+            {
+                if (ry + lineH >= _scrollClips.y && ry <= _scrollClips.y + view.height)
+                {
+                    UnityEngine.Object swapped = _swapFrom == null ? InspectorAnimators.SwappedFor(animator, clip) : null;
+                    bool previewing = InspectorAnimators.Previewing(animator) && InspectorAnimators.PreviewClip == clip;
+                    float buttons = _swapFrom != null ? 78 : 166;
+                    GUI.Label(new Rect(0, ry, inner - buttons, row), Drawable(clip.name + (swapped != null ? "  ->  " + swapped.name : "")), swapped != null || previewing ? _accentCell : _cell);
+                    GUI.Label(new Rect(0, ry + row, inner - buttons, row), Drawable(InspectorAnimators.DescribeClip(clip)), _mutedCell);
+                    if (_swapFrom != null)
+                    {
+                        if (GUI.Button(new Rect(inner - 78, ry + 2, 74, row - 4), "Use", s.Button))
+                        {
+                            _animatorNote = InspectorAnimators.Swap(animator, _swapFrom, clip, WhereLabel());
+                            _swapFrom = null;
+                        }
+                    }
+                    else
+                    {
+                        if (GUI.Button(new Rect(inner - 166, ry + 2, 80, row - 4), previewing ? "Stop" : "Preview", previewing ? s.SelectedButton : s.Button))
+                        {
+                            if (previewing) InspectorAnimators.StopPreview();
+                            else _animatorNote = InspectorAnimators.Preview(animator, clip);
+                        }
+                        if (GUI.Button(new Rect(inner - 82, ry + 2, 78, row - 4), "Replace", s.Button))
+                        {
+                            _swapFrom = clip;
+                            _clipsFilter = "";
+                            _scrollClips = Vector2.zero;
+                        }
+                    }
+                }
+                ry += lineH;
+            }
+            GUI.EndScrollView();
+        }
 
         // A selected Animator: its controller, what each layer plays, and a
         // pause with a step and, while paused, a time slider per layer. Its
@@ -899,7 +1036,13 @@ namespace DragNWash.ModFramework.Inspector
             {
                 _animatorNote = InspectorAnimators.Step(animator);
             }
+            if (FlowButton(ref bx, ref y, x, w, ButtonWidth(s, "Clips"), "Clips", false, s, row))
+            {
+                _showClips = true;
+                _swapFrom = null;
+            }
             y += row;
+            y = DrawPreview(animator, x, y, w, s, row);
             if (!string.IsNullOrEmpty(_animatorNote))
             {
                 GUI.Label(new Rect(x, y, w, row), Drawable(_animatorNote), _mutedCell);
