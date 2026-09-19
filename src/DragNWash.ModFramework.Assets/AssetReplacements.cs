@@ -84,6 +84,14 @@ namespace DragNWash.ModFramework.Assets
         private static readonly Dictionary<TextureReplacement, LanguageFolder> FolderOf = new Dictionary<TextureReplacement, LanguageFolder>();
         private static string _loadedLanguage;
 
+        // Every replacement read: plain ones, then the current language's.
+        internal static List<TextureReplacement> AllRead()
+        {
+            var all = new List<TextureReplacement>(ByName.Values);
+            all.AddRange(LanguageByName.Values);
+            return all;
+        }
+
         // What was there before a replacement went in, so it can be taken back:
         // per material property, and per replacement sprite. Holding the
         // originals keeps Unity from unloading them while they are replaced.

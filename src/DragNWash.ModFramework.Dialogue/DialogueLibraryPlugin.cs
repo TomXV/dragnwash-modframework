@@ -34,6 +34,7 @@ namespace DragNWash.ModFramework.Dialogue
                 ModReload.PruneEvent(typeof(GameDialogue), nameof(GameDialogue.LineShowing), assembly);
                 ModReload.PruneEvent(typeof(GameDialogue), nameof(GameDialogue.OptionShowing), assembly);
             };
+            DialogueOperations.Register();
             ModFramework.Register(new ModInfo
             {
                 Guid = GameDialogue.Guid,

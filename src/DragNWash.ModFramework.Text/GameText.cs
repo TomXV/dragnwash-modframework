@@ -63,6 +63,15 @@ namespace DragNWash.ModFramework.Text
         }
 
         private static readonly List<Rewriter> Rewriters = new List<Rewriter>();
+
+        // Who rewrites text, in the order they run.
+        internal static List<KeyValuePair<string, int>> RewriterOwners()
+        {
+            lock (Rewriters)
+            {
+                return Rewriters.OrderBy(r => r.Order).Select(r => new KeyValuePair<string, int>(r.Owner, r.Order)).ToList();
+            }
+        }
         private static Rewriter[] _snapshot = new Rewriter[0];
         private static readonly Dictionary<TMP_Text, string> Sources = new Dictionary<TMP_Text, string>();
         // What the rewriters last put on each component. When the component shows

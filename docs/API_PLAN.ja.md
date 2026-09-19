@@ -2,7 +2,7 @@
 
 [English](API_PLAN.md)
 
-> **第 1 段階を作りました**（実験的）。中核の登録簿、Console の `op`、中核・Tool window・Inspector・Flags and saves の読む操作です。Assets、Dialogue、Text はこのあと。そのほかの段階はまだ計画で、最初は `experimental/api-mcp` ブランチに書きました。各段階は、コードの前にそれぞれ設計と調査をします。このページは、どんな段階があり、どの順番で進め、何がそれらをつなぐかを書いたものです。
+> **第 1 段階を作りました**（実験的）。中核の登録簿、Console の `op`、中核とすべてのライブラリ（Tool window、Inspector、Assets、Dialogue、Text、Flags and saves）の読む操作です。そのほかの段階はまだ計画で、最初は `experimental/api-mcp` ブランチに書きました。各段階は、コードの前にそれぞれ設計と調査をします。このページは、どんな段階があり、どの順番で進め、何がそれらをつなぐかを書いたものです。
 
 3 つの願いを、1 つの土台で叶えます。
 

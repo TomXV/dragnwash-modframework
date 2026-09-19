@@ -21,6 +21,7 @@ namespace DragNWash.ModFramework.Text
         {
             Log = Logger;
             ModReload.Unloading += GameText.RemoveOwned;
+            TextOperations.Register();
             ModFramework.Register(new ModInfo
             {
                 Guid = GameText.Guid,

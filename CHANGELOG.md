@@ -13,6 +13,10 @@ Versions of the core and of each library are separate, and follow semantic versi
 - Experimental. Read operations: `inspector.objects.find`, `inspector.objects.children`, `inspector.components.list`, `inspector.member.get` (a component's members as the rows show them, private ones on request) and `inspector.selection.get`.
 - Experimental. **Export as overrides** in the History view (with the Overrides library installed): the edits become a mod with no code in BepInEx/plugins/<name> (mod.json and overrides/main.json; a second export into the same mod adds a file), one row per place with the value it holds now. Each History entry now keeps where the edit was made (scene, path, component and its index, member, private or not; for a material, the renderer showing it and the property). Edits an override cannot hold are left out with the reason: list elements, mesh vertices, Animator parameters and clip swaps, GameObject rows.
 
+### Dialogue and Text, next version
+
+- Experimental. Read operations: `dialogue.current` (the node, whether lines or options show, the last line) and `dialogue.recent` (the last 100 lines and options shown this session); `text.rewriters` (the mods that rewrite text, in order) and `text.shown` (text on screen, as the game set it and as shown).
+
 ### Flags and saves, next version
 
 - Experimental. Read operations: `saves.list` (slots with their level and history copies), `saves.flags.list` and `saves.flags.get` (with what the flag catalog says).
@@ -41,6 +45,7 @@ Versions of the core and of each library are separate, and follow semantic versi
 
 ### Assets 1.2.0
 
+- Experimental. Read operations: `assets.textures.list`, `assets.materials.list`, `assets.meshes.list` (with a name filter), `assets.replacements.list` (which game texture, from which mod, for which language) and `assets.fonts.language`.
 - Experimental. Texture replacements per language: `AssetReplacements.AddLanguageFolder(guid, root, subfolder)` takes `<root>/<language>/<subfolder>/*.png`, which apply only while `GameFonts.Language` is that language and win over a plain replacement of the same texture (both are named in the log). Only the language in use is loaded. A language change takes the previous pictures back and loads the new ones; on Direct3D 12 the new ones wait for a restart (`AssetReplacements.PendingLanguage`). `SetLanguageFoldersEnabled(guid, on)` switches a mod's pictures off and on; `AssetReplacements.Changed` is raised afterwards. A texture with no picture in the language falls back to the languages its `fallback.txt` names (one per line, in order), then to a plain replacement, then to the game's own; a picture that cannot be loaded falls back the same way. `TextureReplacement.Language` names the language a picture came from, and the Assets tab shows it. For Drag'n Wash Localization's translated pictures.
 - Replacements can be taken back: the library remembers what each material property and each sprite user held before.
 

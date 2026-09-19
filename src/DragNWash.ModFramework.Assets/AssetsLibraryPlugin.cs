@@ -34,6 +34,7 @@ namespace DragNWash.ModFramework.Assets
             Log = Logger;
             // A reloaded mod's old handlers go (ModReload); the new build subscribes again.
             ModReload.Unloading += (guid, assembly) => ModReload.PruneEvent(typeof(GameFonts), nameof(GameFonts.CharactersPrepared), assembly);
+            AssetsOperations.Register();
             ModFramework.Register(new ModInfo
             {
                 Guid = GameFonts.Guid,
