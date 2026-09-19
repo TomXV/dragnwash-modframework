@@ -36,8 +36,27 @@ namespace DragNWash.ModFramework.Bridge
         {
             _listener = new TcpListener(IPAddress.Loopback, _port);
             _listener.Start();
+            NotInherited(_listener.Server);
             _thread = new Thread(AcceptLoop) { IsBackground = true, Name = "DragNWash Bridge" };
             _thread.Start();
+        }
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool SetHandleInformation(IntPtr handle, uint mask, uint flags);
+
+        // On Windows a socket can be inherited by any program the game (or another mod)
+        // starts, which then holds the port after the game exits. Not on other systems.
+        private static void NotInherited(Socket socket)
+        {
+            if (Environment.OSVersion.Platform != PlatformID.Win32NT) return;
+            try
+            {
+                SetHandleInformation(socket.Handle, 1 /* HANDLE_FLAG_INHERIT */, 0);
+            }
+            catch (Exception ex)
+            {
+                BridgePlugin.Log.LogDebug($"[bridge] Could not mark the socket as not inherited: {ex.Message}");
+            }
         }
 
         internal void Stop()

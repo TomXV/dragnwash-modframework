@@ -28,6 +28,7 @@ namespace DragNWash.CodeGraph
         private readonly int _port;
         private readonly WebView2 _view = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = Color.FromArgb(14, 18, 26) };
         private readonly System.Windows.Forms.Timer _retry = new System.Windows.Forms.Timer { Interval = 2000 };
+        private readonly System.Windows.Forms.Timer _alive = new System.Windows.Forms.Timer { Interval = 3000 };
         private string _focus;
         private bool _connecting;
         private bool _waiting;
@@ -43,6 +44,13 @@ namespace DragNWash.CodeGraph
             Bounds = SavedBounds();
             Controls.Add(_view);
             _retry.Tick += (s, e) => { _retry.Stop(); Connect(); };
+            _alive.Tick += async (s, e) =>
+            {
+                // The page only notices the game is gone when it calls it; this notices sooner.
+                if (!_pageShown || _connecting) return;
+                if (!await Task.Run(() => Answers())) { _pageShown = false; Connect(); }
+            };
+            _alive.Start();
             Load += async (s, e) => await Start();
             FormClosing += (s, e) => SaveBounds();
             HandleCreated += (s, e) => DarkTitleBar();
@@ -151,6 +159,28 @@ namespace DragNWash.CodeGraph
             {
                 why = ex.Message;
                 return null;
+            }
+        }
+
+        // Whether the Bridge answers at all (its page needs no sign-in to be fetched).
+        private bool Answers()
+        {
+            try
+            {
+                var request = (HttpWebRequest)WebRequest.Create(Origin + "/page");
+                request.Method = "HEAD";
+                request.Timeout = 2000;
+                request.Proxy = null;
+                using (request.GetResponse()) return true;
+            }
+            catch (WebException ex) when (ex.Response != null)
+            {
+                ex.Response.Dispose();
+                return true;   // it answered, if only to say no
+            }
+            catch
+            {
+                return false;
             }
         }
 

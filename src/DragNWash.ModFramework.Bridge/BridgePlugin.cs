@@ -155,7 +155,9 @@ namespace DragNWash.ModFramework.Bridge
             try
             {
                 string arguments = $"--port {_port.Value}" + (string.IsNullOrEmpty(focus) ? "" : " --focus \"" + focus.Replace("\"", "") + "\"");
-                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe, arguments) { UseShellExecute = false, WorkingDirectory = System.IO.Path.GetDirectoryName(exe) });
+                // Through the shell: a child started directly inherits the game's handles, the
+                // Bridge's listening socket among them, and would keep the port after the game exits.
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe, arguments) { UseShellExecute = true, WorkingDirectory = System.IO.Path.GetDirectoryName(exe) });
                 return true;
             }
             catch (Exception ex)
