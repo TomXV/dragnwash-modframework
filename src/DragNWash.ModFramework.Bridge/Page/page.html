@@ -262,9 +262,30 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
   function layout(g) {
     const blocks = g.blocks, rank = new Map(), byIndex = new Map(blocks.map(b => [b.index, b]));
     for (const b of blocks) rank.set(b.index, 0);
-    const fwd = g.edges.filter(e => !e.back).sort((a, b) => a.from - b.from);
-    for (let pass = 0; pass < 2; pass++)
-      for (const e of fwd) if (rank.get(e.to) < rank.get(e.from) + 1) rank.set(e.to, rank.get(e.from) + 1);
+    // A loop edge is one that returns to a block still being walked from the entry, not merely one
+    // that points to an earlier offset: a compiled foreach tests its condition after the body, and
+    // by offset alone the body would sit above the test.
+    const outs = new Map(blocks.map(b => [b.index, []]));
+    for (const e of g.edges) if (outs.has(e.from)) outs.get(e.from).push(e);
+    const state = new Map(), order = [];   // state: 1 on the walk, 2 done; order: finishing order
+    const walk = start => {
+      const stack = [[start, 0]];
+      state.set(start, 1);
+      while (stack.length) {
+        const top = stack[stack.length - 1], list = outs.get(top[0]) || [];
+        if (top[1] < list.length) {
+          const e = list[top[1]++];
+          if (!byIndex.has(e.to)) continue;
+          if (state.get(e.to) === 1) { e.back = true; continue; }
+          e.back = false;
+          if (!state.has(e.to)) { state.set(e.to, 1); stack.push([e.to, 0]); }
+        } else { state.set(top[0], 2); order.push(top[0]); stack.pop(); }
+      }
+    };
+    for (const b of blocks) if (!state.has(b.index)) walk(b.index);
+    // Longest path over what is left, in topological order (the reverse of finishing order).
+    for (const i of order.reverse())
+      for (const e of outs.get(i)) if (!e.back && byIndex.has(e.to) && rank.get(e.to) < rank.get(i) + 1) rank.set(e.to, rank.get(i) + 1);
     const layers = [];
     for (const b of blocks) { const r = rank.get(b.index); (layers[r] = layers[r] || []).push(b); }
     let y = 0;
