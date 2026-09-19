@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>DragNWash.ModFramework.Overrides</AssemblyName>
+    <RootNamespace>DragNWash.ModFramework.Overrides</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <!-- A library on top of the core, with its own version. Keep in sync with GameOverrides.Version. -->
+    <Version>0.1.0</Version>
+    <FileVersion>0.1.0</FileVersion>
+    <Nullable>disable</Nullable>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DragNWash.ModFramework\DragNWash.ModFramework.csproj" Private="false" />
+  </ItemGroup>
+
+  <!-- Shares libs/ with the core project; see tools/copy-libs.ps1. -->
+  <ItemGroup>
+    <Reference Include="BepInEx"><HintPath>../DragNWash.ModFramework/libs/BepInEx.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine"><HintPath>../DragNWash.ModFramework/libs/UnityEngine.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>../DragNWash.ModFramework/libs/UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.JSONSerializeModule"><HintPath>../DragNWash.ModFramework/libs/UnityEngine.JSONSerializeModule.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+
+</Project>

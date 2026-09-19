@@ -81,6 +81,51 @@ namespace DragNWash.ModFramework
             }
         }
 
+        internal sealed class DataMod
+        {
+            public ModInfo Info;
+            public string Version;
+            public string ManifestPath;
+        }
+
+        private static readonly List<DataMod> DataMods = new List<DataMod>();
+
+        /// <summary>
+        /// Lists a mod that has no DLL of its own on the Mods screen: a folder in
+        /// BepInEx/plugins whose files another library reads (the Overrides
+        /// library's <c>mod.json</c> and <c>overrides/</c>). It shows like a
+        /// plugin, with the details in <paramref name="info"/>, and switching it
+        /// off renames <paramref name="manifestPath"/> (which must be named
+        /// <c>mod.json</c> and lie in a folder under BepInEx/plugins) to
+        /// <c>mod.json.disabled</c> at the next launch, so the library that read
+        /// it no longer finds it. Experimental. Since 1.4.0.
+        /// </summary>
+        public static void RegisterDataMod(ModInfo info, string version, string manifestPath)
+        {
+            if (info == null || string.IsNullOrEmpty(info.Guid) || string.IsNullOrEmpty(manifestPath))
+            {
+                throw new ArgumentException("RegisterDataMod needs ModInfo.Guid and the manifest path.");
+            }
+            if (!string.Equals(System.IO.Path.GetFileName(manifestPath), "mod.json", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException("The manifest of a data mod is a file named mod.json.", nameof(manifestPath));
+            }
+            Register(info);
+            lock (DataMods)
+            {
+                DataMods.RemoveAll(d => d.Info.Guid == info.Guid);
+                DataMods.Add(new DataMod { Info = info, Version = version ?? "", ManifestPath = manifestPath });
+            }
+        }
+
+        internal static List<DataMod> AllDataMods()
+        {
+            lock (DataMods)
+            {
+                return DataMods.ToList();
+            }
+        }
+
         private static readonly List<ModsScreenPage> Pages = new List<ModsScreenPage>();
 
         /// <summary>Adds a page for a mod on the Mods screen, opened with a button in its details.</summary>

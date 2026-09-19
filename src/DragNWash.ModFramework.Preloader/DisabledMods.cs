@@ -181,7 +181,10 @@ namespace DragNWash.ModFramework
                     return null;
                 }
             }
-            return rel.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ? rel : null;
+            // A plugin DLL, or the mod.json of a data mod (a folder of files
+            // another library reads), which is switched off the same way.
+            if (rel.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)) return rel;
+            return rel.IndexOf('/') > 0 && string.Equals(Path.GetFileName(rel), "mod.json", StringComparison.OrdinalIgnoreCase) ? rel : null;
         }
 
         private static string Clean(string value)

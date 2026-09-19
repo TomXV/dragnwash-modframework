@@ -26,6 +26,7 @@ CHANGELOG_NAMES = {
     "DragNWash.ModFramework.Assets": "Assets",
     "DragNWash.ModFramework.Saves": "Flags and saves",
     "DragNWash.ModFramework.Inspector": "Inspector",
+    "DragNWash.ModFramework.Overrides": "Overrides",
 }
 
 errors = []

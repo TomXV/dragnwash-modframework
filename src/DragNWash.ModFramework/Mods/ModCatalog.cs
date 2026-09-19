@@ -64,6 +64,8 @@ namespace DragNWash.ModFramework.Mods
             public bool PendingUninstall;
         }
 
+        private static bool IsManifest(string rel) => string.Equals(Path.GetFileName(rel), "mod.json", StringComparison.OrdinalIgnoreCase);
+
         internal static List<Entry> Build()
         {
             var entries = new List<Entry>();
@@ -86,6 +88,28 @@ namespace DragNWash.ModFramework.Mods
                     IsFramework = meta.GUID == ModFramework.Guid || string.Equals(rel, FrameworkRelativePath, StringComparison.OrdinalIgnoreCase),
                     WantOn = rel == null || !desiredPaths.Contains(rel),
                     Scanned = scanned.FirstOrDefault(s => s.Guid == meta.GUID),
+                });
+            }
+
+            // Mods with no DLL, listed by the library that read their files
+            // (ModFramework.RegisterDataMod): on for this session; their mod.json
+            // is what gets renamed to switch them off.
+            foreach (ModFramework.DataMod data in ModFramework.AllDataMods())
+            {
+                string rel = RelativeToPlugins(data.ManifestPath);
+                if (rel == null || entries.Any(e => e.Guid == data.Info.Guid))
+                {
+                    continue;
+                }
+                entries.Add(new Entry
+                {
+                    Guid = data.Info.Guid,
+                    Name = data.Info.DisplayName ?? data.Info.Guid,
+                    Version = data.Version,
+                    Info = data.Info,
+                    RelativePath = rel,
+                    Loaded = true,
+                    WantOn = !desiredPaths.Contains(rel),
                 });
             }
 
@@ -168,10 +192,11 @@ namespace DragNWash.ModFramework.Mods
                 {
                     continue;
                 }
-                List<PluginScanner.Found> inFile = PluginScanner.Read(off);
+                // A data mod's mod.json is no assembly; its folder names it.
+                List<PluginScanner.Found> inFile = IsManifest(rel) ? new List<PluginScanner.Found>() : PluginScanner.Read(off);
                 if (inFile.Count == 0)
                 {
-                    entries.Add(new Entry { Name = Path.GetFileNameWithoutExtension(rel), RelativePath = rel, Loaded = false, WantOn = true });
+                    entries.Add(new Entry { Name = IsManifest(rel) ? Path.GetFileName(Path.GetDirectoryName(rel)) : Path.GetFileNameWithoutExtension(rel), RelativePath = rel, Loaded = false, WantOn = true });
                     continue;
                 }
                 foreach (PluginScanner.Found s in inFile)
@@ -205,7 +230,7 @@ namespace DragNWash.ModFramework.Mods
                     Loaded = false,
                     WantOn = false,
                     Info = ModFramework.GetInfo(record.Guid),
-                    Scanned = PluginScanner.Read(Path.Combine(Paths.PluginPath, record.RelativePath) + DisabledMods.DisabledSuffix)
+                    Scanned = IsManifest(record.RelativePath) ? null : PluginScanner.Read(Path.Combine(Paths.PluginPath, record.RelativePath) + DisabledMods.DisabledSuffix)
                         .FirstOrDefault(s => s.Guid == record.Guid),
                 });
             }

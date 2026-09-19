@@ -4,6 +4,14 @@ Versions of the core and of each library are separate, and follow semantic versi
 
 ## Unreleased
 
+### Overrides 0.1.0
+
+- New library, experimental: mods with no code. A folder in BepInEx/plugins with `mod.json` (name, authors, description, version) and `overrides/*.json` changes values in the game: a component's field or property (`"private": true` for the private fields where the game's scripts keep their settings) or a material's property, found by scene, path, component and member. Applied a frame after each scene load and a second later, and to root objects as they appear (each level's dragon comes long after the scene loads); the game's values are kept, and `GameOverrides.Reload()` puts them back and reads the files again. Values are written so they read back exactly and read leniently (Euler angles, `#RRGGBB`). When two mods change the same thing, the one that loads later (folder name order) wins and the log names both. Each mod is listed on the Mods screen and can be switched off there. See docs/OVERRIDES.md.
+
+### Core, next version
+
+- Experimental. `ModFramework.RegisterDataMod(info, version, manifestPath)`: a mod with no DLL (a folder another library reads) is listed on the Mods screen like a plugin, and switching it off renames its `mod.json` to `mod.json.disabled` at the next launch (the preloader patcher renames it, as it does DLLs).
+
 ### Inspector, next version
 
 - The wireframe is drawn whole for detailed meshes (parts of a dragon were missing): each renderer gets a mesh of its edges, built once (each edge once) and drawn with the camera's matrices. Before, every line went through GL immediate mode each frame, which dropped vertices past about 65,000 and, sent whole, uploaded megabytes a frame and crashed Direct3D 12 (UUM-140564); now only a skinned mesh's positions go up each frame.
