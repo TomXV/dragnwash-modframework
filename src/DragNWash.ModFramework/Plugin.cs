@@ -14,6 +14,8 @@ namespace DragNWash.ModFramework
             ModFramework.Initialize(Logger);
             DeveloperTools.Install(Config);
             ModReload.Install(Config, this);
+            Operations.Install();
+            CoreOperations.Register();
             var harmony = new Harmony(ModFramework.Guid);
             // First, so a crash while the rest starts is recorded too.
             CrashReports.Install(Config, harmony);
@@ -32,6 +34,7 @@ namespace DragNWash.ModFramework
             Options.OptionsRows.Tick();
             Title.TitleVersion.Tick();
             ModReload.Tick();
+            Operations.Tick();
             CrashReports.Tick();
         }
 

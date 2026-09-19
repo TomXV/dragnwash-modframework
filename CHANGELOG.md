@@ -10,10 +10,16 @@ Versions of the core and of each library are separate, and follow semantic versi
 
 ### Inspector, Export as overrides (next version)
 
+- Experimental. Read operations: `inspector.objects.find`, `inspector.objects.children`, `inspector.components.list`, `inspector.member.get` (a component's members as the rows show them, private ones on request) and `inspector.selection.get`.
 - Experimental. **Export as overrides** in the History view (with the Overrides library installed): the edits become a mod with no code in BepInEx/plugins/<name> (mod.json and overrides/main.json; a second export into the same mod adds a file), one row per place with the value it holds now. Each History entry now keeps where the edit was made (scene, path, component and its index, member, private or not; for a material, the renderer showing it and the property). Edits an override cannot hold are left out with the reason: list elements, mesh vertices, Animator parameters and clip swaps, GameObject rows.
+
+### Flags and saves, next version
+
+- Experimental. Read operations: `saves.list` (slots with their level and history copies), `saves.flags.list` and `saves.flags.get` (with what the flag catalog says).
 
 ### Core, next version
 
+- Experimental. **Operations** (docs/API_PLAN.md, stage 1): a registry of what each library can do, by name (`library.noun.verb`), with a description, plain parameters (text, number, true/false, with the accepted choices) and a kind (read or write). `Operations.Register`, `Find`, `All`; `CallNow` on the main thread and `Call` from any thread (queued to the next frame); arguments are checked and converted against the parameters; results are plain values (lists, dictionaries, text, numbers) with `Operations.ToJson`, capped at 200,000 characters; every call is logged with who made it (write calls at Info); an owner's operations go when it is reloaded. The core registers `mods.list`, `mods.network`, `game.info` and `scene.list`.
 - Experimental. `ModFramework.RegisterDataMod(info, version, manifestPath)`: a mod with no DLL (a folder another library reads) is listed on the Mods screen like a plugin, and switching it off renames its `mod.json` to `mod.json.disabled` at the next launch (the preloader patcher renames it, as it does DLLs).
 
 ### Inspector, next version
@@ -30,6 +36,7 @@ Versions of the core and of each library are separate, and follow semantic versi
 
 ### Tool window, next version
 
+- Experimental. Console `op`: lists the operations, `op help <name>` describes one, `op <name> key=value ...` runs it and prints the result as JSON, with completion of names and parameters. The Tool window registers `log.read` (the last console lines, by source and level).
 - The footer grows to fit a notice that wraps in a narrow window (up to three lines) instead of cutting off its second line.
 
 ### Assets 1.2.0

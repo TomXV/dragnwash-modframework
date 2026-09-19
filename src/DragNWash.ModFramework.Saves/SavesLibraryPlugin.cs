@@ -35,6 +35,7 @@ namespace DragNWash.ModFramework.Saves
             _keep = Config.Bind("History", "Keep", 30,
                 "How many copies to keep per save slot.");
 
+            SavesOperations.Register();
             GameSaves.HistoryFolder = Path.Combine(Paths.BepInExRootPath, "SaveHistory");
             GameFlags.AddCatalog(Path.Combine(Path.GetDirectoryName(Info.Location) ?? "", "FlagCatalog.csv"));
         }

@@ -40,6 +40,7 @@ namespace DragNWash.ModFramework.Inspector
         // Selection.
         private static GameObject _object;
         private static object _target;          // GameObject, Component or Material
+        internal static object Target => _target;
         private static List<Member> _members;
         private static int _rendererUsers = -1;
 
