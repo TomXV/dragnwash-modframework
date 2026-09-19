@@ -41,6 +41,7 @@ namespace DragNWash.ModFramework.Inspector
     [BepInPlugin(Inspector.Guid, "DragNWash.ModFramework.Inspector", Inspector.Version)]
     [BepInDependency(ModFramework.Guid, BepInDependency.DependencyFlags.HardDependency)]
     [BepInDependency(TW.Guid, BepInDependency.DependencyFlags.HardDependency)]
+    [BepInDependency(DragNWash.ModFramework.Overrides.GameOverrides.Guid, BepInDependency.DependencyFlags.SoftDependency)]
     internal sealed class InspectorPlugin : BaseUnityPlugin
     {
         internal static ManualLogSource Log;

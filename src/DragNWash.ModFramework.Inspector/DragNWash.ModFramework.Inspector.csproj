@@ -20,6 +20,8 @@
   <ItemGroup>
     <ProjectReference Include="..\DragNWash.ModFramework\DragNWash.ModFramework.csproj" Private="false" />
     <ProjectReference Include="..\DragNWash.ModFramework.ToolWindow\DragNWash.ModFramework.ToolWindow.csproj" Private="false" />
+    <!-- Optional at run time: Export as overrides shows only with the Overrides library installed. -->
+    <ProjectReference Include="..\DragNWash.ModFramework.Overrides\DragNWash.ModFramework.Overrides.csproj" Private="false" />
   </ItemGroup>
 
   <!-- Shares libs/ with the core project; see tools/copy-libs.ps1. -->

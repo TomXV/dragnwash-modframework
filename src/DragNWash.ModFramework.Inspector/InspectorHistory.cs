@@ -23,6 +23,10 @@ namespace DragNWash.ModFramework.Inspector
             public Func<object> Get;
             public Action<object> Set;
             public bool Reverted;
+            // Where the edit was, in the terms of an overrides file, taken when
+            // it was made (the object may be gone by the time it is exported).
+            public InspectorExport.Place Where;
+            public object Target;
         }
 
         private static readonly List<Entry> Entries = new List<Entry>();
@@ -44,7 +48,7 @@ namespace DragNWash.ModFramework.Inspector
             {
                 Originals[key] = before;
             }
-            Entries.Add(new Entry { Key = key, Label = label, Member = member, Before = before, After = after, Time = DateTime.Now, Get = get, Set = set });
+            Entries.Add(new Entry { Key = key, Label = label, Member = member, Before = before, After = after, Time = DateTime.Now, Get = get, Set = set, Target = target, Where = InspectorExport.PlaceOf(target, member) });
             if (Entries.Count > 500)
             {
                 Entries.RemoveAt(0);
