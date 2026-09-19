@@ -216,7 +216,9 @@ namespace DragNWash.ModFramework.Inspector
             float time = Get(api.StateTime, state) is float t ? t : 0f;
             float length = Get(api.StateLength, state) is float len ? len : 0f;
             bool loop = Get(api.StateLoop, state) is bool lp && lp;
-            string text = $"{LayerName(animator, layer)} (weight {weight:0.00}): {Clips(Call(api.CurrentClips, animator, layer))}, {Pass(time, loop)} of {length:0.00} s";
+            // A state with no clip reports an endless length.
+            string of = length > 0 && !float.IsInfinity(length) && !float.IsNaN(length) ? $" of {length:0.00} s" : "";
+            string text = $"{LayerName(animator, layer)} (weight {weight:0.00}): {Clips(Call(api.CurrentClips, animator, layer))}, {Pass(time, loop)}{of}";
             if (Call(api.InTransition, animator, layer) is bool blending && blending)
             {
                 text += $"  -> {Clips(Call(api.NextClips, animator, layer))}";

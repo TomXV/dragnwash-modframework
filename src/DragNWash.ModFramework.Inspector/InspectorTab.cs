@@ -485,6 +485,7 @@ namespace DragNWash.ModFramework.Inspector
                 if (_page == 0 && _showHierarchy) DrawHierarchy(pane, s, row);
                 else if (_showBodies) DrawBodies(pane, s, row);
                 else if (ShowingClips) DrawClips(pane, s, row);
+                else if (ShowingLayers) DrawLayers(pane, s, row);
                 else if (_showHistory) DrawHistory(pane, s, row);
                 else DrawMembers(pane, s, row);
             }
@@ -495,6 +496,7 @@ namespace DragNWash.ModFramework.Inspector
                 DrawHierarchy(new Rect(x, y, w1, bodyHeight), s, row);
                 if (_showBodies) DrawBodies(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
                 else if (ShowingClips) DrawClips(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
+                else if (ShowingLayers) DrawLayers(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
                 else if (_showHistory) DrawHistory(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
                 else DrawMembers(new Rect(x + w1 + gap, y, w2, bodyHeight), s, row);
             }
@@ -502,6 +504,7 @@ namespace DragNWash.ModFramework.Inspector
             {
                 if (_showBodies) DrawBodies(new Rect(x, y, w, bodyHeight), s, row);
                 else if (ShowingClips) DrawClips(new Rect(x, y, w, bodyHeight), s, row);
+                else if (ShowingLayers) DrawLayers(new Rect(x, y, w, bodyHeight), s, row);
                 else if (_showHistory) DrawHistory(new Rect(x, y, w, bodyHeight), s, row);
                 else DrawMembers(new Rect(x, y, w, bodyHeight), s, row);
             }
@@ -871,6 +874,73 @@ namespace DragNWash.ModFramework.Inspector
         private static string _clipsFilter = "";
         private static Vector2 _scrollClips;
 
+        private static bool _showLayers;
+        private static Vector2 _scrollLayers;
+
+        private static bool ShowingLayers => _showLayers && !_showClips && _target is Component c && InspectorAnimators.IsAnimator(c);
+
+        // Pause or Resume, and Step while paused.
+        private static void AnimatorButtons(Component animator, ref float bx, ref float y, float x, float w, ToolWindowStyles s, float row)
+        {
+            bool paused = InspectorAnimators.IsPaused(animator);
+            string pause = paused ? "Resume animation" : "Pause animation";
+            if (FlowButton(ref bx, ref y, x, w, ButtonWidth(s, pause), pause, paused, s, row))
+            {
+                _animatorNote = paused ? InspectorAnimators.Resume(animator) : InspectorAnimators.Pause(animator);
+            }
+            if (InspectorAnimators.IsPaused(animator) && FlowButton(ref bx, ref y, x, w, ButtonWidth(s, "Step"), "Step", false, s, row))
+            {
+                _animatorNote = InspectorAnimators.Step(animator);
+            }
+        }
+
+        // Every layer of the animator, what it plays, and while paused a time
+        // slider each, in place of the members.
+        private static void DrawLayers(Rect pane, ToolWindowStyles s, float row)
+        {
+            TW.Fill(pane, TW.InsetColor);
+            var animator = (Component)_target;
+            float x = pane.x + 4, y = pane.y + 2, w = pane.width - 8;
+            bool paused = InspectorAnimators.IsPaused(animator);
+            int layers = InspectorAnimators.LayerCount(animator);
+            GUI.Label(new Rect(x, y, w, row), Drawable($"Layers of {InspectorAnimators.ControllerName(animator)}: {layers}{(paused ? ". Drag a slider to put a layer's state at that point." : ". Pause to move them by hand.")}"), _mutedCell);
+            y += row;
+            float bx = x;
+            AnimatorButtons(animator, ref bx, ref y, x, w, s, row);
+            if (FlowButton(ref bx, ref y, x, w, ButtonWidth(s, "< Members"), "< Members", false, s, row)) _showLayers = false;
+            y += row + 4;
+            if (!string.IsNullOrEmpty(_animatorNote))
+            {
+                GUI.Label(new Rect(x, y, w, row), Drawable(_animatorNote), _mutedCell);
+                y += row;
+            }
+            var view = new Rect(x, y, w, pane.yMax - y - 2);
+            float inner = view.width - 20;
+            float lineH = paused ? row * 2 : row;
+            TW.ApplyScroll(view, ref _scrollLayers);
+            _scrollLayers = GUI.BeginScrollView(view, _scrollLayers, new Rect(0, 0, inner, Mathf.Max(view.height, layers * lineH)), false, false);
+            float ry = 0;
+            for (int layer = 0; layer < layers; layer++)
+            {
+                if (ry + lineH >= _scrollLayers.y && ry <= _scrollLayers.y + view.height)
+                {
+                    GUI.Label(new Rect(0, ry, inner, row), Drawable(InspectorAnimators.Describe(animator, layer)), _cell);
+                    if (paused)
+                    {
+                        float t = InspectorAnimators.NormalizedTime(animator, layer);
+                        float pass = t - Mathf.Floor(t);
+                        float next = GUI.HorizontalSlider(new Rect(8, ry + row + row / 2 - 6, inner - 16, 12), pass, 0f, 0.999f);
+                        if (Mathf.Abs(next - pass) > 0.0005f)
+                        {
+                            InspectorAnimators.SetTime(animator, layer, Mathf.Floor(t) + next);
+                        }
+                    }
+                }
+                ry += lineH;
+            }
+            GUI.EndScrollView();
+        }
+
         private static bool ShowingClips => _showClips && _target is Component c && InspectorAnimators.IsAnimator(c);
 
         // The clip being previewed on this animator: its time, a slider, pause and stop.
@@ -1009,36 +1079,25 @@ namespace DragNWash.ModFramework.Inspector
             bool paused = InspectorAnimators.IsPaused(animator);
             GUI.Label(new Rect(x, y, w, row), Drawable($"{InspectorAnimators.ControllerName(animator)}, speed {(paused ? "0 (paused)" : InspectorAnimators.Speed(animator).ToString("0.##"))}"), _accentCell);
             y += row;
+            // The base layer only; every layer, with its time slider, is in Layers.
             int layers = InspectorAnimators.LayerCount(animator);
-            for (int layer = 0; layer < layers; layer++)
+            if (layers > 0)
             {
-                GUI.Label(new Rect(x, y, w, row), Drawable(InspectorAnimators.Describe(animator, layer)), _mutedCell);
+                GUI.Label(new Rect(x, y, w, row), Drawable(InspectorAnimators.Describe(animator, 0)), _mutedCell);
                 y += row;
-                if (paused)
-                {
-                    float t = InspectorAnimators.NormalizedTime(animator, layer);
-                    float pass = t - Mathf.Floor(t);
-                    float next = GUI.HorizontalSlider(new Rect(x + 8, y + row / 2 - 6, w - 16, 12), pass, 0f, 0.999f);
-                    if (Mathf.Abs(next - pass) > 0.0005f)
-                    {
-                        InspectorAnimators.SetTime(animator, layer, Mathf.Floor(t) + next);
-                    }
-                    y += row;
-                }
             }
             float bx = x;
-            string pause = paused ? "Resume animation" : "Pause animation";
-            if (FlowButton(ref bx, ref y, x, w, ButtonWidth(s, pause), pause, paused, s, row))
+            AnimatorButtons(animator, ref bx, ref y, x, w, s, row);
+            string layersLabel = $"Layers ({layers})";
+            if (FlowButton(ref bx, ref y, x, w, ButtonWidth(s, layersLabel), layersLabel, false, s, row))
             {
-                _animatorNote = paused ? InspectorAnimators.Resume(animator) : InspectorAnimators.Pause(animator);
-            }
-            if (paused && FlowButton(ref bx, ref y, x, w, ButtonWidth(s, "Step"), "Step", false, s, row))
-            {
-                _animatorNote = InspectorAnimators.Step(animator);
+                _showLayers = true;
+                _showClips = false;
             }
             if (FlowButton(ref bx, ref y, x, w, ButtonWidth(s, "Clips"), "Clips", false, s, row))
             {
                 _showClips = true;
+                _showLayers = false;
                 _swapFrom = null;
             }
             y += row;
