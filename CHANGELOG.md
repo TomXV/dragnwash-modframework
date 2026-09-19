@@ -4,6 +4,10 @@ Versions of the core and of each library are separate, and follow semantic versi
 
 ## Unreleased
 
+### Bridge 0.1.0
+
+- New library, experimental: the registry's **read** operations for AI clients on this computer over MCP (Streamable HTTP at `http://127.0.0.1:47821/mcp`). Off by default (`[Bridge] Enabled`) and only while the developer tools are on. Checks the Host (DNS rebinding) and Origin (web pages) of every request and a token (`Authorization: Bearer`, kept in the user's profile, renewable); at most 8 connections, 4 sessions (30 minutes idle), 20 calls a second, 1 MB requests, 10 seconds a call. `initialize`, `ping`, `tools/list` (each read operation as a tool, `inspector.member.get` as `inspector_member_get`, with a JSON Schema and `readOnlyHint`) and `tools/call` (text and `structuredContent`). Declares itself in `ModInfo.Network`; a **Bridge** tab in the F1 window (status, clients, last calls, Copy setup, New token, Disconnect all) and a console command `bridge`. See docs/BRIDGE.md.
+
 ### Overrides 0.1.0
 
 - New library, experimental: mods with no code. A folder in BepInEx/plugins with `mod.json` (name, authors, description, version) and `overrides/*.json` changes values in the game: a component's field or property (`"private": true` for the private fields where the game's scripts keep their settings) or a material's property, found by scene, path, component and member. Applied a frame after each scene load and a second later, and to root objects as they appear (each level's dragon comes long after the scene loads); the game's values are kept, and `GameOverrides.Reload()` puts them back and reads the files again. Values are written so they read back exactly and read leniently (Euler angles, `#RRGGBB`). When two mods change the same thing, the one that loads later (folder name order) wins and the log names both. Each mod is listed on the Mods screen and can be switched off there. With the Tool window installed, the console's `overrides` lists the mods and how many of their values are written, and `overrides reload` reads the files again. See docs/OVERRIDES.md.

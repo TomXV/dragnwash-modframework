@@ -27,7 +27,8 @@ $Plugins = @(
     'DragNWash.ModFramework.Assets',
     'DragNWash.ModFramework.Saves',
     'DragNWash.ModFramework.Inspector',
-    'DragNWash.ModFramework.Overrides'
+    'DragNWash.ModFramework.Overrides',
+    'DragNWash.ModFramework.Bridge'
 )
 $Patcher = 'DragNWash.ModFramework.Preloader'
 

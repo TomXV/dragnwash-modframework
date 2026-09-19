@@ -2,7 +2,7 @@
 
 [日本語](BRIDGE.ja.md)
 
-> **Design, not built.** Stage 2 of the [API plan](API_PLAN.md). The research is done (see [Research before building](#research-before-building)); Proton is still to check.
+> **Bridge 0.1.0 is built** (experimental). Stage 2 of the [API plan](API_PLAN.md). The research is done (see [Research before building](#research-before-building)); Proton is still to check.
 
 The [operations registry](API_PLAN.md) lets anyone call what the libraries can do by name. The Bridge offers the **read** operations to AI clients (Claude Code, VS Code, Cursor and others) through the [Model Context Protocol](https://modelcontextprotocol.io/specification/2025-06-18), so a client can look at the running game: objects and their values, the log, the mods, the saves, the dialogue. It cannot change anything.
 
@@ -29,7 +29,7 @@ Following the transport's security rules:
 
 1. **Host**: the `Host` header must be `127.0.0.1:<port>` or `localhost:<port>`. A website that points its own name at 127.0.0.1 (DNS rebinding) sends its own name, and is refused.
 2. **Origin**: a request with an `Origin` header (only browsers send one) is refused unless it is `null`. No web page can call the Bridge.
-3. **Token**: every request needs `Authorization: Bearer <token>`, compared in constant time. The token is 32 random bytes (base64url), made on first start and kept in `%LOCALAPPDATA%/DragNWash ModFramework/bridge-token.txt` (the user's own profile, not the game folder that other accounts on the PC may read; under Proton, the Wine prefix's user folder). **New token** on the Bridge page (and `bridge token new` in the console) replaces it and drops every client.
+3. **Token**: every request needs `Authorization: Bearer <token>`, compared in constant time. The token is 32 random bytes (base64url), made on first start and kept in `%LOCALAPPDATA%/DragNWash ModFramework/bridge-token.txt` (the user's own profile, not the game folder that other accounts on the PC may read; under Proton, the Wine prefix's user folder). **New token** on the Bridge tab (and `bridge token new` in the console) replaces it and drops every client.
 4. **Limits**: a request body over 1 MB, more than 8 connections, or more than 20 calls a second from one session are refused. A result over 200,000 characters is an error (the registry's cap). An operation that takes more than 10 seconds on the main thread returns a time-out error.
 5. **Nothing else**: no files are read or written for a client, only what the operations return.
 
@@ -46,7 +46,7 @@ Following the transport's security rules:
 ## What the player sees
 
 - **Mods screen**: the Bridge declares itself in `ModInfo.Network` (host 127.0.0.1, incoming, "lets AI clients on this computer read the game"), so the Online tag and page show it, as for any mod that uses the network ([NETWORK.md](NETWORK.md)).
-- **Bridge page** (a Mods screen page): off / listening on the port; the clients connected, by the name they gave (`clientInfo`); the last calls; buttons **Disconnect all**, **New token**, and **Copy setup** (puts the command below on the clipboard).
+- **Bridge tab** (in the F1 window: the Bridge runs only with the developer tools on, and their screen is the F1 window): off / listening on the port; the clients connected, by the name they gave (`clientInfo`); the last calls; buttons **Disconnect all**, **New token**, and **Copy setup** (puts the command below on the clipboard).
 - **Console**: `bridge` (status and clients), `bridge token new`, `bridge disconnect`.
 
 ## Setting up a client
@@ -57,7 +57,7 @@ Claude Code:
 claude mcp add --transport http dragnwash http://127.0.0.1:47821/mcp --header "Authorization: Bearer <token>"
 ```
 
-VS Code (`.vscode/mcp.json`) and Cursor (`mcp.json`) take the same URL and header in their HTTP server entry. The Bridge page's **Copy setup** fills in the token.
+VS Code (`.vscode/mcp.json`) and Cursor (`mcp.json`) take the same URL and header in their HTTP server entry. The Bridge tab's **Copy setup** fills in the token.
 
 ## What it does not do (yet)
 
@@ -79,5 +79,5 @@ Nothing in the research changes the design.
 
 1. Research (above).
 2. The Bridge library: the listener, the security checks, sessions, `initialize`, `tools/list`, `tools/call` over the registry.
-3. The Bridge page, the console commands, `ModInfo.Network`.
+3. The Bridge tab, the console commands, `ModInfo.Network`.
 4. Docs: a page on setting up Claude Code, VS Code and Cursor.

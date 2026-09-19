@@ -2,7 +2,7 @@
 
 [English](BRIDGE.md)
 
-> **設計のみ、未実装。** [API の計画](API_PLAN.ja.md)の第 2 段階です。調査は終わりました（[作る前の調査](#作る前の調査)）。Proton はまだです。
+> **Bridge 0.1.0 を作りました**（実験的）。[API の計画](API_PLAN.ja.md)の第 2 段階です。調査は終わりました（[作る前の調査](#作る前の調査)）。Proton はまだです。
 
 [操作の登録簿](API_PLAN.ja.md)によって、ライブラリにできることを名前で呼べるようになりました。Bridge は、そのうち**読む**操作を、[Model Context Protocol](https://modelcontextprotocol.io/specification/2025-06-18) で AI クライアント（Claude Code、VS Code、Cursor など）に見せます。AI クライアントは、動いているゲームを見られるようになります。オブジェクトとその値、ログ、Mod、セーブ、会話です。何かを変えることはできません。
 
@@ -32,7 +32,7 @@ MCP の通信方式の安全のきまりに沿います。
 3. **トークン**：すべての要求に `Authorization: Bearer <トークン>` が要ります。比べるときは、かかる時間が一定になる比べ方をします。
    - トークンは 32 バイトの乱数（base64url）で、最初の起動で作ります。
    - 置き場所は `%LOCALAPPDATA%/DragNWash ModFramework/bridge-token.txt` です。利用者自身のプロファイルで、PC のほかのアカウントも読めるかもしれないゲームのフォルダーではありません。Proton では、Wine のプレフィックスの利用者フォルダーです。
-   - Bridge のページの **New token**（と Console の `bridge token new`）で作り直すと、すべてのクライアントを切ります。
+   - Bridge のタブの **New token**（と Console の `bridge token new`）で作り直すと、すべてのクライアントを切ります。
 4. **上限**：1 MB を超える要求、8 本を超える接続、1 つのセッションから 1 秒に 20 回を超える呼び出しは断ります。20 万文字を超える結果はエラーです（登録簿の上限）。メインスレッドで 10 秒を超える操作は、時間切れのエラーを返します。
 5. **それ以外はしない**：クライアントのためにファイルを読み書きすることはありません。返すのは、操作が返すものだけです。
 
@@ -64,7 +64,7 @@ MCP の通信方式の安全のきまりに沿います。
 ## 遊ぶ人から見えるもの
 
 - **Mods 画面**：Bridge は自分を `ModInfo.Network` で申告します（ホストは 127.0.0.1、受ける側、「この PC の AI クライアントがゲームを読めるようにする」）。なので、ネットワークを使うほかの Mod と同じく、Online の印とページに出ます（[NETWORK.ja.md](NETWORK.ja.md)）。
-- **Bridge のページ**（Mods 画面のページ）：
+- **Bridge のタブ**（F1 の窓。Bridge は開発者ツールがオンのときだけ動き、開発者ツールの画面は F1 の窓なので）：
   - 状態：オフ、またはどのポートで待ち受けているか。
   - つながっているクライアント（クライアントが名乗った名前、`clientInfo`）と、最近の呼び出し。
   - ボタン：**Disconnect all**、**New token**、**Copy setup**（下の設定のコマンドをクリップボードに入れる）。
@@ -78,7 +78,7 @@ Claude Code：
 claude mcp add --transport http dragnwash http://127.0.0.1:47821/mcp --header "Authorization: Bearer <トークン>"
 ```
 
-VS Code（`.vscode/mcp.json`）と Cursor（`mcp.json`）は、HTTP のサーバーの項目に、同じ URL とヘッダーを書きます。Bridge のページの **Copy setup** が、トークンを埋めてくれます。
+VS Code（`.vscode/mcp.json`）と Cursor（`mcp.json`）は、HTTP のサーバーの項目に、同じ URL とヘッダーを書きます。Bridge のタブの **Copy setup** が、トークンを埋めてくれます。
 
 ## まだしないこと
 
@@ -106,5 +106,5 @@ VS Code（`.vscode/mcp.json`）と Cursor（`mcp.json`）は、HTTP のサーバ
 
 1. 調査（上）。
 2. Bridge ライブラリ：待ち受け、安全の確認、セッション、登録簿の上の `initialize`、`tools/list`、`tools/call`。
-3. Bridge のページ、Console のコマンド、`ModInfo.Network`。
+3. Bridge のタブ、Console のコマンド、`ModInfo.Network`。
 4. ドキュメント：Claude Code、VS Code、Cursor の設定のページ。
