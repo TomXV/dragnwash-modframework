@@ -72,6 +72,8 @@ Mods register their own the same way; Drag'n Wash Localization could offer `loc.
 
 ## Stage 2: the local bridge and MCP
 
+Designed in detail in [BRIDGE.md](BRIDGE.md).
+
 A new, optional library, **Bridge**, its own plugin, so a mod's release can leave it out.
 
 - **This computer only.** It listens on `127.0.0.1` alone (a port in the config), with a token made for each session and written to a file only this user can read. Any other address is refused.
