@@ -19,7 +19,7 @@ For one method (the *focus*):
 
 - **Blocks**: the method's basic blocks, from IL, in order. Each block shows what it does in words the page can make without decompiling: the calls it makes, the fields it reads and writes, what it compares, what it returns or throws. Its IL is one click away (the same IL the F1 window already shows).
 - **Branches**: edges between blocks, labelled *true*/*false*, *case n*, *loop back*, *catch*, *finally*.
-- **Calls**: every called method, as a node beside the block that calls it. Methods of the game open on click; Unity's and .NET's are shown but not opened.
+- **Calls**: every called method, listed in the block that calls it. Methods of the game open on click; Unity's and .NET's are shown but not opened.
 - **Callers**: which methods of the game call the focus (a reverse index built once per session).
 - **Patches**: the Harmony prefixes, postfixes, transpilers and finalizers on the focus and on each called method, with the mod that owns them (the Mods screen's name, not only the Harmony ID).
 - **Events**: the UnityEvent listeners in the loaded scenes that call the focus, and the framework's `GameEvents` it raises or answers.
@@ -37,7 +37,7 @@ For one type: its methods as nodes, grouped (Unity messages such as `Update`, pu
 | Page-only operations | Core (`Operations`) | A new flag on an operation: *page only*. MCP's `tools/list` and `tools/call` leave these out; the console's `op` and the page can call them. |
 | The page | Bridge | `GET /page` (one HTML file: its script, its styles and the drawing code inside it; nothing from the internet), and `/page/api/…` for the page's calls. |
 | Page sign-in | Bridge | One-time code → cookie (below). |
-| The button | Inspector | **Graph** in the Code view (with the method or type selected), and `code open <Type:Method>` in the console. |
+| The button | Inspector | **Graph** on each method and **Type graph** in the Code view; in the console, `op bridge.page.open focus=m:<method id>` or `focus=t:<type>`. |
 
 The layout is drawn by the page's own code: at most 79 blocks per method (see research), so a simple layered layout is enough, and no library has to be shipped or fetched.
 
