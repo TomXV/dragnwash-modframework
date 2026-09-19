@@ -2,7 +2,7 @@
 
 [日本語](OVERRIDES.ja.md)
 
-> **Design, not built.** On the `experimental/overrides` branch. The research is done (see [Research before building](#research-before-building)); what it changed is marked **Change** there.
+> **Overrides 0.1.0 is built** (experimental) and tested in the game: files read, values applied on scene load and to dragons as they come, the Mods screen listing and switching, conflicts. The Inspector's **Export as overrides** is next. The research is done (see [Research before building](#research-before-building)); what it changed is marked **Change** there.
 
 The Inspector lets anyone change a value in the running game and see it at once, and forgets it all when the game quits ([INSPECTOR.md](INSPECTOR.md#what-it-is-for-and-what-it-is-not) leaves saving to "a later overrides design"). This is that design: **the edits in the History become a file, and the file becomes a mod that needs no code.** Someone who has never written C# makes a heavier dragon, a warmer light or a slower sponge, and hands it to a friend.
 

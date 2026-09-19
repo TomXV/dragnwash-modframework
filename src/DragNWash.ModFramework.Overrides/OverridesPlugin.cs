@@ -16,6 +16,7 @@ namespace DragNWash.ModFramework.Overrides
     // objects appear.
     [BepInPlugin(GameOverrides.Guid, "DragNWash.ModFramework.Overrides", GameOverrides.Version)]
     [BepInDependency(ModFramework.Guid, BepInDependency.DependencyFlags.HardDependency)]
+    [BepInDependency(ToolWindow.ToolWindow.Guid, BepInDependency.DependencyFlags.SoftDependency)]
     internal sealed class OverridesPlugin : BaseUnityPlugin
     {
         internal static ManualLogSource Log;
@@ -42,6 +43,7 @@ namespace DragNWash.ModFramework.Overrides
                 "Apply the overrides mods in BepInEx/plugins (folders with mod.json and overrides/). Each can also be switched off on the Mods screen.");
 
             Read();
+            AddConsoleCommand();
             SceneManager.sceneLoaded += (scene, mode) => { if (_enabled.Value) StartCoroutine(AfterLoad(scene.name)); };
         }
 
@@ -58,6 +60,47 @@ namespace DragNWash.ModFramework.Overrides
                 }
             }
             OverrideApplier.Use(_enabled.Value ? GameOverrides.Loaded : new List<OverrideFiles.Mod>());
+        }
+
+        // "overrides" in the Tool window's console, when the Tool window is installed.
+        private void AddConsoleCommand()
+        {
+            try
+            {
+                RegisterCommand();
+            }
+            catch (Exception ex) when (ex is System.IO.FileNotFoundException || ex is TypeLoadException || ex is MissingMethodException)
+            {
+                // No Tool window: no console, nothing to add.
+            }
+        }
+
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        private void RegisterCommand()
+        {
+            ToolWindow.ToolWindow.AddCommand(GameOverrides.Guid, "overrides",
+                "overrides | overrides reload  (the overrides mods and how many of their values are written; reload puts the game's values back and reads the files again)",
+                Command);
+        }
+
+        private string Command(string[] args)
+        {
+            if (args.Length > 0 && args[0].Equals("reload", StringComparison.OrdinalIgnoreCase))
+            {
+                return Reload();
+            }
+            if (GameOverrides.Loaded.Count == 0)
+            {
+                return "No overrides mods: a folder in BepInEx/plugins with mod.json and overrides/*.json is one.";
+            }
+            var lines = new List<string>();
+            foreach (GameOverrides.ModReport r in GameOverrides.Mods)
+            {
+                lines.Add($"{r.Name}: {r.Applied} of {r.Overrides} override(s) written so far{(r.UsesPrivate ? ", some on private members" : "")}{(r.Problems.Count > 0 ? $", {r.Problems.Count} problem(s) in its files" : "")}");
+                foreach (string p in r.Problems) lines.Add("  " + p);
+            }
+            if (!_enabled.Value) lines.Add("[General] Enabled is off: nothing is applied.");
+            return string.Join("\n", lines.ToArray());
         }
 
         // An older core has no data mods: the overrides still apply, and the

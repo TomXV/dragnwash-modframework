@@ -19,6 +19,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DragNWash.ModFramework\DragNWash.ModFramework.csproj" Private="false" />
+    <!-- Optional at run time: the console command is added only when the Tool window is installed. -->
+    <ProjectReference Include="..\DragNWash.ModFramework.ToolWindow\DragNWash.ModFramework.ToolWindow.csproj" Private="false" />
   </ItemGroup>
 
   <!-- Shares libs/ with the core project; see tools/copy-libs.ps1. -->

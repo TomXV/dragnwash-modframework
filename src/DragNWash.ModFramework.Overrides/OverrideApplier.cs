@@ -33,6 +33,9 @@ namespace DragNWash.ModFramework.Overrides
         private static readonly Dictionary<string, Written> Writes = new Dictionary<string, Written>(StringComparer.Ordinal);
         private static readonly HashSet<string> SaidConflict = new HashSet<string>(StringComparer.Ordinal);
         private static readonly HashSet<string> SaidProblem = new HashSet<string>(StringComparer.Ordinal);
+        // Overrides that found their object but could not be written (already
+        // warned about), so the "found nothing" report leaves them out.
+        private static readonly HashSet<Override> Failed = new HashSet<Override>();
         private static readonly HashSet<int> KnownRoots = new HashSet<int>();
         internal static readonly Dictionary<Override, int> AppliedCount = new Dictionary<Override, int>();
 
@@ -42,6 +45,8 @@ namespace DragNWash.ModFramework.Overrides
         {
             _all = mods.SelectMany(m => m.Overrides).ToList();
             AppliedCount.Clear();
+            Failed.Clear();
+            SaidProblem.Clear();
         }
 
         internal static int WriteCount => Writes.Count;
@@ -114,6 +119,7 @@ namespace DragNWash.ModFramework.Overrides
 
         private static void Problem(Override o, string message)
         {
+            Failed.Add(o);
             string key = o.Mod.Guid + "|" + o.File + "|" + o.Line;
             if (SaidProblem.Add(key))
             {
@@ -310,7 +316,7 @@ namespace DragNWash.ModFramework.Overrides
         // The overrides for a scene that found nothing in it, for the log.
         internal static List<Override> NotFoundIn(string scene)
         {
-            return _all.Where(o => o.Scene == scene && !AppliedCount.ContainsKey(o)).ToList();
+            return _all.Where(o => o.Scene == scene && !AppliedCount.ContainsKey(o) && !Failed.Contains(o)).ToList();
         }
     }
 }
