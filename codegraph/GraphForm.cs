@@ -24,6 +24,7 @@ namespace DragNWash.CodeGraph
         private static readonly string Home = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DragNWash ModFramework");
         private static readonly string TokenFile = Path.Combine(Home, "bridge-token.txt");
         private static readonly string BoundsFile = Path.Combine(Home, "CodeGraph", "window.txt");
+        private static readonly string OnTopFile = Path.Combine(Home, "CodeGraph", "on-top.txt");
 
         private readonly int _port;
         private readonly WebView2 _view = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = Color.FromArgb(14, 18, 26) };
@@ -42,6 +43,7 @@ namespace DragNWash.CodeGraph
             BackColor = Color.FromArgb(14, 18, 26);
             StartPosition = FormStartPosition.Manual;
             Bounds = SavedBounds();
+            try { TopMost = File.Exists(OnTopFile) && File.ReadAllText(OnTopFile).Trim() == "true"; } catch { }
             Controls.Add(_view);
             _retry.Tick += (s, e) => { _retry.Stop(); Connect(); };
             _alive.Tick += async (s, e) =>
@@ -85,6 +87,11 @@ namespace DragNWash.CodeGraph
             };
             core.NewWindowRequested += (s, e) => e.Handled = true;
             core.WebMessageReceived += OnMessage;
+            // The page shows its Keep on top button once it knows it is in this window, and in which state.
+            core.NavigationCompleted += async (s, e) =>
+            {
+                if (_pageShown) await core.ExecuteScriptAsync("window.dnwPinned && window.dnwPinned(" + (TopMost ? "true" : "false") + ")");
+            };
             Connect();
         }
 
@@ -98,6 +105,12 @@ namespace DragNWash.CodeGraph
             {
                 string f = message.Substring(6);
                 if (Valid(f)) _focus = f;
+            }
+            else if (message == "pin:true" || message == "pin:false")
+            {
+                TopMost = message == "pin:true";
+                try { Directory.CreateDirectory(Path.GetDirectoryName(OnTopFile)); File.WriteAllText(OnTopFile, TopMost ? "true" : "false"); } catch { }
+                _ = _view.CoreWebView2.ExecuteScriptAsync("window.dnwPinned && window.dnwPinned(" + (TopMost ? "true" : "false") + ")");
             }
             else if (message == "lost")
             {

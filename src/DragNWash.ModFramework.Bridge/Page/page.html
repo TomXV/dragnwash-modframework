@@ -41,6 +41,7 @@ button { font: inherit; color: var(--text); background: var(--inset); border: 1p
 button:hover { border-color: var(--accent); }
 button:focus-visible, input:focus-visible, a:focus-visible, .node:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 button[disabled] { opacity: .45; cursor: default; }
+button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 #status { color: var(--muted); font-size: 12px; margin-left: auto; }
 main { display: grid; grid-template-columns: 240px 1fr 6px var(--right, 650px); min-height: 0; }
 /* The line between the graph and the details: drag it to make the details wider or narrower. */
@@ -102,6 +103,7 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
   <button id="fwd" type="button" title="Forward" disabled>→</button>
   <input id="q" type="search" placeholder="Search types and methods (e.g. Dragon, Update)" autocomplete="off" spellcheck="false">
   <button id="fit" type="button" title="Fit the graph to the window">Fit</button>
+  <button id="pin" type="button" title="Keep this window above the game and other windows" aria-pressed="false" hidden>Keep on top</button>
   <span id="status">Structure only: read from the game's assemblies on this computer.</span>
 </header>
 <main>
@@ -137,6 +139,10 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
   const app = window.chrome && window.chrome.webview;
   function tellApp(message) { if (app) app.postMessage(message); }
   window.dnwOpen = focus => go(focus);
+  // Keep on top: the app's window setting; the app says what it is after each load.
+  const pin = $("pin");
+  window.dnwPinned = on => { pin.hidden = false; pin.setAttribute("aria-pressed", on ? "true" : "false"); };
+  pin.onclick = () => tellApp("pin:" + (pin.getAttribute("aria-pressed") !== "true"));
 
   async function call(name, args) {
     let r;
