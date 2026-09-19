@@ -101,7 +101,8 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
 </head>
 <body>
 <header>
-  <h1><b>Drag'n Wash</b> code graph</h1>
+  <h1 id="title"><b>Drag'n Wash</b> code graph</h1>
+  <button id="open" type="button" title="Open assemblies (a DLL, several, or a folder)" hidden>Open…</button>
   <button id="side" type="button" title="Show or fold the search results" aria-pressed="true">Results</button>
   <button id="back" type="button" title="Back" disabled>←</button>
   <button id="fwd" type="button" title="Forward" disabled>→</button>
@@ -115,7 +116,7 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
   <div id="stage" tabindex="0" aria-label="Graph">
     <svg id="svg" role="img" aria-label="Blocks and branches of the method"><defs id="defs"></defs><g id="view"></g></svg>
     <div id="types"></div>
-    <div id="empty"><div><p><strong>Open a method or a type.</strong></p><p>Search above, or in the game: F1 → Inspector → a component → Code → <em>Graph</em> on a method.</p></div></div>
+    <div id="empty"><div><p><strong>Open a method or a type.</strong></p><p id="hint">Search above, or in the game: F1 → Inspector → a component → Code → <em>Graph</em> on a method.</p></div></div>
   </div>
   <div id="split" role="separator" aria-orientation="vertical" aria-label="Drag to resize the details" tabindex="0"></div>
   <aside id="right"><div id="details"><h2>Details</h2><p class="muted">Nothing open yet.</p></div></aside>
@@ -148,13 +149,25 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
   window.dnwPinned = on => { pin.hidden = false; pin.setAttribute("aria-pressed", on ? "true" : "false"); };
   pin.onclick = () => tellApp("pin:" + (pin.getAttribute("aria-pressed") !== "true"));
 
+  // In the standalone app (codegraph-standalone), which shows any assembly without the game:
+  // it sets window.dnwHost before this script runs, with its own words and an Open button.
+  const host = window.dnwHost || null;
+  const source = host && host.source || "Structure only: read from the game's assemblies on this computer.";
+  const away = host ? "The app is not answering." : "The game is not answering (closed, or the Bridge is off).";
+  if (host) {
+    $("title").replaceChildren(el("b", null, host.name || "Code graph"), document.createTextNode(host.name ? " code graph" : ""));
+    if (host.hint) $("hint").textContent = host.hint;
+    setStatus(source);
+    if (host.open) { $("open").hidden = false; $("open").onclick = () => tellApp("open"); }
+  }
+
   async function call(name, args) {
     let r;
     try {
       r = await fetch("/page/api/op", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, args: args || {} }) });
     } catch (e) {
       tellApp("lost");
-      throw new Error("The game is not answering (closed, or the Bridge is off).");
+      throw new Error(away);
     }
     const j = await r.json().catch(() => ({ ok: false, error: "The game gave no answer (" + r.status + ")." }));
     if (r.status === 401) { signedIn = false; tellApp("lost"); }
@@ -196,7 +209,7 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
     try {
       if (focus.startsWith("t:")) showType(await call("code.type", { type: focus.slice(2) }));
       else showMethod(await call("code.graph", { method: focus.startsWith("m:") ? focus.slice(2) : focus }));
-      setStatus("Structure only: read from the game's assemblies on this computer.");
+      setStatus(source);
     } catch (e) { setStatus(e.message, true); }
   }
 
