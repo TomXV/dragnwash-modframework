@@ -20,7 +20,8 @@ namespace DragNWash.ModFramework.Bridge
     // page from the Bridge's own address, which MCP's door refuses. The F1
     // window's button makes a one-time code and opens the page with it after
     // '#'; the page trades it for a cookie (HttpOnly, SameSite=Strict); every
-    // call after that needs the cookie and an Origin equal to the Bridge's own.
+    // call after that needs the cookie and an Origin equal to one of the
+    // Bridge's own addresses (http://127.0.0.1:<port>, http://localhost:<port>).
     internal static class PageDoor
     {
         private const string Cookie = "dnw_page";
@@ -63,6 +64,13 @@ namespace DragNWash.ModFramework.Bridge
 
         internal static PageAnswer Handle(string method, string path, Dictionary<string, string> headers, string body, int port)
         {
+            // The two addresses the Bridge listens on, made from the port it was given, not
+            // from the request's own headers: a website that points its own name at 127.0.0.1
+            // (DNS rebinding) sends that name as both Host and Origin, so the two would agree
+            // with each other. The server checks the Host as well before anything reaches here.
+            string own = $"127.0.0.1:{port}", byName = $"localhost:{port}";
+            headers.TryGetValue("Host", out string host);
+            if (host != own && host != byName) return Text(403, "Only this computer's address may call the page.");
             if (path == "/page" || path == "/page/")
             {
                 if (method != "GET") return Text(405, "The page is read with GET.");
@@ -80,10 +88,10 @@ namespace DragNWash.ModFramework.Bridge
                 if (!BridgeToken.Matches(given)) return Text(401, "The Bridge needs its token.");
                 return JsonAnswer(200, new Dictionary<string, object> { ["code"] = NewCode() });
             }
-            // Only the page itself: a browser sends the page's own address as Origin.
+            // Only the page itself: a browser sends the page's own address as Origin, which
+            // is one of the Bridge's own two addresses above and nothing else.
             headers.TryGetValue("Origin", out string origin);
-            headers.TryGetValue("Host", out string host);
-            if (origin == null || origin != "http://" + host) return Text(403, "Only the Bridge's own page may call here.");
+            if (origin != "http://" + own && origin != "http://" + byName) return Text(403, "Only the Bridge's own page may call here.");
 
             if (path == "/page/api/login") return Login(body);
             if (!SignedInWith(headers)) return JsonAnswer(401, new Dictionary<string, object> { ["ok"] = false, ["error"] = "Not signed in: open the page again from the F1 window (Inspector → Code → Graph)." });
