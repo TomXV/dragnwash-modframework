@@ -6,17 +6,14 @@
 
 The [code graph](CODE_GRAPH.md) draws a method as blocks and branches, with its calls, callers and fields. Today it only works inside Drag'n Wash: the Inspector builds the graph, the Bridge serves the page. Nothing in the drawing itself needs the game, though, so the same graph can show **any .NET assembly**: another Unity game's `Managed` folder, a mod, a library, a DLL of your own. This record says what has to be split off for that, how the page gets its data without the game, and what the prototype does.
 
-## Open decisions
+## Decisions
 
-For the owner; the prototype lives on its branch until then.
+Decided by the owner on 2026-09-20.
 
-1. **Where it lives.**
-   - **A. In this repository, as `codegraph-standalone/`** (the prototype). The shared file is compiled into both builds from one place; a fix to the graph reaches the Inspector and the app in one commit, one CI builds both.
-   - **B. A repository of its own** (a neutral name, since it is no longer about Drag'n Wash). It would own the graph model and the page, and this repository would take them as a copy checked by CI (a hash compared on every build) or as a git submodule.
-   - **Recommended: A now, B once it is released on its own.** The tool's job is small and bounded (read the files the user opens, draw them), and the boundary that matters is a file, `CodeGraphModel.cs`, not a repository. While it is experimental, one place for the shared code keeps the two from drifting. When it gets users of its own (issues from people who never played the game, its own releases), it should move out with the model and the page, so neither side carries the other: the framework keeps what only the game knows (patches, listeners, the game's assemblies), the tool keeps the rest, and each can be continued without the other.
-2. **Its name.** The prototype is `CodeGraphStandalone.exe`, "Code Graph" in its window. Outside the game it should not carry the Drag'n Wash name; the page's header already drops it when the app is the host.
-3. **Unity messages outside Unity.** The model marks a method named `Update`, `Awake`… as "Unity calls it", as in the game. For a DLL that is not a Unity game this is wrong. Recommended: leave the model as it is (the Inspector's answers must stay identical) and add a hook later that asks "is this a MonoBehaviour?" through the base types, when the app is used on non-Unity code for real.
-4. **Released with the framework or on its own.** Recommended: on its own (a zip on the tool's releases), not inside the framework's zip, which is for players of the game.
+1. **Where it lives: in this repository, as `codegraph-standalone/`**, while it is experimental. The shared file is compiled into both builds from one place, so a fix to the graph reaches the Inspector and the app in one commit. When it gets users of its own (issues from people who never played the game, releases of its own), it moves to a repository of its own with the model and the page, and neither side carries the other: the framework keeps what only the game knows (patches, listeners, the game's assemblies), the tool keeps the rest.
+2. **Its name is Code Graph**, with no game's name in the window, in the page's header or in what Windows shows. The file stays `CodeGraphStandalone.exe` in this repository, so it is never mistaken for the game's own `CodeGraph.exe` next to the Bridge; the zip it is released in may name it `CodeGraph.exe`.
+3. **Unity messages outside Unity**: the model stays as it is, so the Inspector's answers do not change. A method named `Update` or `Awake` in a DLL that is not a Unity game is marked wrongly; a hook that asks "is this a MonoBehaviour?" through the base types comes when the app is used on non-Unity code for real.
+4. **Released on its own**, as a zip of the tool's own, not inside the framework's zip, which is for people who play the game.
 
 ## What is shared, what is split off
 
