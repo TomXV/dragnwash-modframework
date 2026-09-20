@@ -11,7 +11,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Look for binaries and game assets
         run: |
           found=$(git ls-files | grep -Ei '(^|/)libs/|\.(dll|pdb|exe|so|dylib|assets|ress|resource|bundle|unity3d)$' || true)
