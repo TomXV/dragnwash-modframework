@@ -1,0 +1,38 @@
+name: Commit checker
+
+# The history of this repository is written in one voice: a commit message
+# names the people who decided what the commit should say, not the editor, the
+# assistant or the IDE that typed it. A human co-author is welcome; a tool's
+# attribution is not, and this check refuses it before it can reach main.
+#
+# It looks only at the commits a push or a pull request brings, never at the
+# whole history. A range it cannot resolve - a brand-new branch, or a push that
+# followed a rewrite - is reported and passed, not failed.
+#
+# A failure's reason is an annotation on the run, and it says how to fix it.
+# The same check runs locally:
+#   python tools/check-commits.py
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  commits:
+    runs-on: ubuntu-latest
+    steps:
+      # The whole history: the check walks from the base to the head.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: No tool's attribution in the commit messages
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: python tools/check-commits.py "$BASE" "$HEAD"

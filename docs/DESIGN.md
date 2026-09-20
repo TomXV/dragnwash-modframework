@@ -2,9 +2,9 @@
 
 [日本語](DESIGN.ja.md)
 
-Status: September 2026. The core is released as 1.1.2 and the libraries as 1.0.0; parts marked planned or future are not done yet. Open an issue to discuss any part of it.
+Status: September 2026. The core is released as 1.3.0, with the libraries at Text 1.0.0, Dialogue 1.1.0, Tool window 1.1.1, Assets 1.2.0, Flags and saves 1.0.1 and Inspector 1.0.0; Overrides and Bridge are 0.1.0 on `main` and not released yet. Parts marked planned or future are not done yet. Open an issue to discuss any part of it.
 
-Design memos for features not built yet: [Mod reload (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Mod-reload) (a mod's DLL reloaded while the game runs) and [Inspector (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Inspector) (an Inspector tab in the Tool window). Built since 1.1.2 and on `main`: [Console (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Console), [Assets (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Assets), [Dialogue (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Dialogue).
+The features this memo once listed as designs are built: [Mod reload (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Mod-reload), the [Inspector (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Inspector), the [Console (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Console), [Assets (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Assets) and [Dialogue (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Dialogue) all shipped in 1.2.0 or earlier, and their wiki pages describe them as they are now. What is designed but not built is in [ROADMAP.md](ROADMAP.md).
 
 ## Why a framework
 

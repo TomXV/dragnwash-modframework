@@ -87,7 +87,24 @@ CI runs what needs no game files, and you can run all of it yourself:
 ```bash
 python tools/check-repo.py        # versions, GUIDs, changelog, documentation links
 python tools/linekeys.py --check  # line keys still match the vectors
+python tools/check-commits.py     # no tool's attribution in the commit messages
 ```
+
+The last one is the **Commit checker**. This history names the people who
+decided what a commit should say, not the editor, the assistant or the IDE that
+typed it. It fails the build on two things:
+
+- **The message** — a `Co-authored-by` line naming a tool, a "Generated with"
+  footer, or a link to an assistant's session. A human co-author is welcome.
+- **The author or the committer** — a commit signed by a tool's account, even
+  when its message reads perfectly well. `dependabot[bot]`, `github-actions[bot]`
+  and the `GitHub <noreply@github.com>` committer of a web merge all pass, and so
+  does a person whatever they are called: Claude is somebody's name, so the rule
+  asks for a model or a bot suffix after it before refusing anything.
+
+If it catches you, fix the commit (`git commit --amend`, adding
+`--reset-author` when the author is wrong, or `git rebase -i` for an older one)
+and push again.
 
 The core and the libraries cannot be built on a runner — they need the game's
 assemblies — so **you** are the one who checked them. Say in the pull request

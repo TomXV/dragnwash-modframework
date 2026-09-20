@@ -27,7 +27,7 @@ A new library, **Bridge** (`DragNWash.ModFramework.Bridge`), separate from the c
 
 Following the transport's security rules:
 
-1. **Host**: the `Host` header must be `127.0.0.1:<port>` or `localhost:<port>`. A website that points its own name at 127.0.0.1 (DNS rebinding) sends its own name, and is refused.
+1. **Host**: the `Host` header must be `127.0.0.1:<port>` or `localhost:<port>`, compared with the port the Bridge listens on. A website that points its own name at 127.0.0.1 (DNS rebinding) sends its own name, and is refused. The page's own door (docs/CODE_GRAPH.md) checks the `Host`, and the `Origin` against those same two addresses, once more for itself.
 2. **Origin**: a request with an `Origin` header (only browsers send one) is refused unless it is `null`. No web page can call the Bridge.
 3. **Token**: every request needs `Authorization: Bearer <token>`, compared in constant time. The token is 32 random bytes (base64url), made on first start and kept in `%LOCALAPPDATA%/DragNWash ModFramework/bridge-token.txt` (the user's own profile, not the game folder that other accounts on the PC may read; on Linux and the Steam Deck, `~/.local/share/DragNWash ModFramework/`, and under Proton the Wine prefix's user folder). **New token** on the Bridge tab (and `bridge token new` in the console) replaces it and drops every client.
 4. **Limits**: a request body over 1 MB, more than 8 connections, or more than 20 calls a second from one session are refused. A result over 200,000 characters is an error (the registry's cap). An operation that takes more than 10 seconds on the main thread returns a time-out error.

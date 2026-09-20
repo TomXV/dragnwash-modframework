@@ -85,7 +85,7 @@ Actions の **Build** ワークフローが、リリース用の zip を GitHub 
 ## 参加について
 
 - **コントリビューション：** [CONTRIBUTING.ja.md](CONTRIBUTING.ja.md)（準備の手順、上の決まりの実際、プルリクエストに書くこと）
-- **行動規範：** [CODE_OF_CONDUCT.ja.md](CODE_OF_CONDUCT.ja.md)
+- **行動規範：** [docs/CODE_OF_CONDUCT.ja.md](docs/CODE_OF_CONDUCT.ja.md)
 - **セキュリティ：** 脆弱性は Issue ではなく非公開で報告してください。[SECURITY.ja.md](SECURITY.ja.md)
 - **スポンサー：** [GitHub Sponsors](https://github.com/sponsors/TomXV)。そうしたくて、できるならば。いずれにせよフレームワークは無料のままです。
 

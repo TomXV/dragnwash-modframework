@@ -48,7 +48,7 @@ The Bridge refuses web pages today (any `Origin` but `null`). The page is a web 
 1. **Graph** makes a one-time code (32 random bytes; one use; 60 seconds) and opens `http://127.0.0.1:<port>/page#<code>` with the system's browser.
 2. The page reads the code from after `#` (a browser never sends that part to a server, so it is in no log), removes it from the address bar, and posts it to `/page/api/login`.
 3. The Bridge answers with a cookie: `HttpOnly`, `SameSite=Strict`, `Path=/page`, lasting while the game runs. The code is spent.
-4. Every later call to `/page/api/…` needs that cookie **and** an `Origin` equal to the Bridge's own address (`http://127.0.0.1:<port>`); the Host check stays as it is. Other sites cannot call it (no cookie is sent from another site with `SameSite=Strict`, and their `Origin` differs), and the MCP door does not accept the cookie.
+4. Every later call to `/page/api/…` needs that cookie **and** an `Origin` equal to one of the Bridge's own addresses (`http://127.0.0.1:<port>` or `http://localhost:<port>`). The page's door checks the `Host` against those two as well, so it does not rest on the server's check before it. Both are compared with the port the Bridge listens on, never with the request's own `Host`: a site that points its own name at 127.0.0.1 (DNS rebinding) sends that name as both, which would agree with each other. Other sites cannot call it (no cookie is sent from another site with `SameSite=Strict`, and their `Origin` differs), and the MCP door does not accept the cookie.
 5. **New token** and turning the Bridge off end the page's sign-ins too.
 
 The page is only for this computer, like the rest of the Bridge. On the Steam Deck it opens in Desktop Mode's browser.

@@ -13,9 +13,11 @@ namespace DragNWash.ModFramework.ToolWindow
     // IMGUI did not see, treat the GUI.Button under the pointer as clicked.
     // Hooked into GUI.Button through Harmony so every button in the menu
     // gets it without changes. Pad buttons (A, R2, R3/L3) click, and the
-    // sticks / d-pad scroll the lists. Where the system takes real mouse input
-    // (OsPointer: XTest on Linux, SendInput on Windows) they become a real left
-    // button and wheel instead, and every control works, not buttons only.
+    // sticks / d-pad scroll the lists. Where the system takes real mouse and key
+    // input (OsPointer: XTest on Linux, SendInput on Windows) they become a real
+    // left button and wheel instead, and every control works, not buttons only;
+    // there the d-pad is the arrow keys, which move through a list a row at a
+    // time, and the sticks are left to scroll it.
     internal static class VirtualClick
     {
         private static bool _pending;
@@ -56,10 +58,11 @@ namespace DragNWash.ModFramework.ToolWindow
         private static float _wheel;
 
         // Called from Update while the menu is open. Where the system takes real
-        // mouse input (OsPointer), a press over the window is a real left button,
-        // held until the pad button is let go, and the sticks send real wheel
-        // steps: every control then works as with a mouse. Elsewhere, presses
-        // click buttons only and the sticks scroll the lists that ask (below).
+        // mouse and key input (OsPointer), a press over the window is a real left
+        // button, held until the pad button is let go, the sticks send real wheel
+        // steps and the d-pad real arrow keys: every control then works as with a
+        // mouse and a keyboard. Elsewhere, presses click buttons only and the
+        // sticks and the d-pad scroll the lists that ask (below).
         public static void Poll(Rect window)
         {
             Gamepad real = Gamepad.current;
@@ -72,7 +75,7 @@ namespace DragNWash.ModFramework.ToolWindow
                     || real.rightStickButton.isPressed || real.leftStickButton.isPressed;
                 if (pressed && over) OsPointer.Down();
                 if (!holding) OsPointer.Up();
-                float sy = real.rightStick.ReadValue().y + real.leftStick.ReadValue().y + real.dpad.ReadValue().y;
+                float sy = real.rightStick.ReadValue().y + real.leftStick.ReadValue().y;
                 if (over && Mathf.Abs(sy) > 0.25f)
                 {
                     _wheel += Mathf.Clamp(sy, -1f, 1f) * WheelStepsPerSecond * Time.unscaledDeltaTime;
@@ -83,6 +86,7 @@ namespace DragNWash.ModFramework.ToolWindow
                 {
                     _wheel = 0f;
                 }
+                PadKeys(real.dpad.ReadValue(), over);
                 _pending = false;
                 _held = false;
                 _scrollDelta = 0f;
@@ -126,6 +130,57 @@ namespace DragNWash.ModFramework.ToolWindow
             // would move the window twice as far.
             _held = held;
             if (!_held) { _dragMode = DragMode.None; _dragDecided = false; }
+        }
+
+        // The d-pad walks a list the way the arrow keys do: up and down a row,
+        // left and right closing and opening what has children. Steam Input
+        // sends no keyboard at all, so without this the Deck could only scroll a
+        // list and aim at a row; the same movement the keys give on Windows now
+        // needs no keyboard. Sent as real keys, so every tab that reads the
+        // arrows - the Inspector's lists, the console's history - follows the
+        // d-pad too, and each tab decides for itself what a direction means.
+        // A held direction repeats like a key: one step, a pause, then more.
+        private const float KeyRepeatDelay = 0.4f;
+        private const float KeyRepeatInterval = 0.08f;
+        private static KeyCode _padKey;
+        private static float _padKeyNext;
+
+        private static void PadKeys(Vector2 dpad, bool over)
+        {
+            KeyCode key = KeyCode.None;
+            if (over)
+            {
+                // One direction at a time: the larger axis wins, so a corner of
+                // the d-pad does not send two keys at once.
+                if (Mathf.Abs(dpad.y) >= Mathf.Abs(dpad.x))
+                {
+                    if (dpad.y > 0.5f) key = KeyCode.UpArrow;
+                    else if (dpad.y < -0.5f) key = KeyCode.DownArrow;
+                }
+                else
+                {
+                    if (dpad.x > 0.5f) key = KeyCode.RightArrow;
+                    else if (dpad.x < -0.5f) key = KeyCode.LeftArrow;
+                }
+            }
+            if (key == KeyCode.None)
+            {
+                _padKey = KeyCode.None;
+                return;
+            }
+            float now = Time.unscaledTime;
+            if (key != _padKey)
+            {
+                _padKey = key;
+                _padKeyNext = now + KeyRepeatDelay;
+                OsPointer.Key(key);
+                return;
+            }
+            if (now >= _padKeyNext)
+            {
+                _padKeyNext = now + KeyRepeatInterval;
+                OsPointer.Key(key);
+            }
         }
 
         private enum DragMode { None, Move, Resize }

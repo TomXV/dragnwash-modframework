@@ -1,6 +1,6 @@
 # 行動規範
 
-[English](CODE_OF_CONDUCT.md)
+[English](../CODE_OF_CONDUCT.md)
 
 Drag'n Wash は、物語のある一人称の洗浄ゲームです。プレイヤーは洗い場を切り盛りする
 コボルドで、お客である 3 匹のドラゴンとは、レベルが進むにつれて親しくなって

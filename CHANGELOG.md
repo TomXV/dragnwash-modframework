@@ -65,7 +65,7 @@ Versions of the core and of each library are separate, and follow semantic versi
 
 - Experimental. Console `op`: lists the operations, `op help <name>` describes one, `op <name> key=value ...` runs it and prints the result as JSON, with completion of names and parameters. The Tool window registers `log.read` (the last console lines, by source and level).
 - The footer grows to fit a notice that wraps in a narrow window (up to three lines) instead of cutting off its second line.
-- Steam Deck and gamepads: a trackpad click (or A, R2) over the window is now a real left mouse button, held while the button is, and the sticks and d-pad send real wheel steps (XTest on Linux, SendInput on Windows). Every control works with them, not buttons only: text fields, tree rows, value drags, sliders, scroll bars, moving and resizing the window. Where the system takes no such input, presses still click buttons as before.
+- Steam Deck and gamepads: a trackpad click (or A, R2) over the window is now a real left mouse button, held while the button is, the sticks send real wheel steps and the d-pad real arrow keys (XTest on Linux, SendInput on Windows). Every control works with them, not buttons only: text fields, tree rows, value drags, sliders, scroll bars, moving and resizing the window. The d-pad walks a list a row at a time the way the arrow keys do - up and down a row, left and right closing and opening what has children, repeating while it is held - so the Inspector's lists and the console's history need no keyboard; the sticks are left to scroll. Where the system takes no such input, presses still click buttons and the sticks and the d-pad scroll, as before.
 
 ### Assets 1.2.0
 

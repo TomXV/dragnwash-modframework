@@ -16,9 +16,9 @@
 
 - [ ] `python tools/check-repo.py` and `python tools/linekeys.py --check` pass / 通る
 - [ ] No game files, BepInEx binaries or anything from `libs/` is committed / ゲームのファイル・BepInEx のバイナリ・`libs/` の中身を含めていない
-- [ ] Material from the game follows [docs/CONTENT_POLICY.md](../docs/CONTENT_POLICY.md) / ゲーム由来の素材が方針に沿っている
+- [ ] Material from the game follows [docs/CONTENT_POLICY.md](https://github.com/TomXV/dragnwash-modframework/blob/main/docs/CONTENT_POLICY.md) / ゲーム由来の素材が方針に沿っている
 - [ ] Code that touches game classes stays `internal`; only the framework's own types are `public` / ゲームのクラスに触れるコードは `internal` のまま
-- [ ] A changed `<Version>` matches the `Version` constant in the code and has an entry in [CHANGELOG.md](../CHANGELOG.md) / バージョンを変えたなら、コード中の定数と CHANGELOG も合わせた
+- [ ] A changed `<Version>` matches the `Version` constant in the code and has an entry in [CHANGELOG.md](https://github.com/TomXV/dragnwash-modframework/blob/main/CHANGELOG.md) / バージョンを変えたなら、コード中の定数と CHANGELOG も合わせた
 - [ ] A public API change is documented, and a breaking one is called out here / 公開 API の変更は文書化した。互換性を壊すならここに明記した
 - [ ] Documentation changed in both languages, or the missing side is noted here / ドキュメントは英語と日本語の両方を直した（片方だけならここに書いた）
 

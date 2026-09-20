@@ -1,6 +1,6 @@
 # Code of conduct
 
-[日本語](CODE_OF_CONDUCT.ja.md)
+[日本語](docs/CODE_OF_CONDUCT.ja.md)
 
 Drag'n Wash is a first-person washing game with a story: you play a kobold
 who runs a wash service, and the three dragons who are your customers get to
