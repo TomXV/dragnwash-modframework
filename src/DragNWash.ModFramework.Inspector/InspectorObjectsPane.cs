@@ -109,6 +109,7 @@ namespace DragNWash.ModFramework.Inspector
             _assetObject = owner;
             SetTarget(target);
             _selectedEntryId = id;
+            _cursorFolder = null;
             _page = 1;
             if (e == null)
             {
@@ -143,6 +144,7 @@ namespace DragNWash.ModFramework.Inspector
             _assetObject = o as GameObject;
             SetTarget(o);
             _selectedEntryId = e.Id;
+            _cursorFolder = null;
             _page = 1;
         }
 
@@ -217,6 +219,7 @@ namespace DragNWash.ModFramework.Inspector
                 GUI.Label(new Rect(x, y, w, row), query.Active ? "Nothing matches." : "Nothing listed.", _mutedCell);
                 return;
             }
+            _objectsViewHeight = view.height;
             TW.ApplyScroll(view, ref _scrollObjects);
             _scrollObjects = GUI.BeginScrollView(view, _scrollObjects, new Rect(0, 0, inner, Mathf.Max(view.height, rows.Count * row)), false, false);
             // Only the rows in view are drawn: tens of thousands scroll like a few.
@@ -232,10 +235,17 @@ namespace DragNWash.ModFramework.Inspector
                     bool open = query.Active ? !ClosedWhileSearching.Contains(r.Key) : OpenFolders.Contains(r.Key);
                     string name = r.Group ?? ObjectList.FolderName(r.Kind);
                     string count = query.Active ? $"{r.Shown.ToString("N0", CultureInfo.InvariantCulture)} of {r.Total.ToString("N0", CultureInfo.InvariantCulture)}" : r.Total.ToString("N0", CultureInfo.InvariantCulture);
+                    // A folder is no selection, so where the keys are on one is
+                    // shown in its stead.
+                    if (_cursorFolder == r.Key)
+                    {
+                        TW.Fill(new Rect(0, ry, inner, row), TW.PanelColor);
+                    }
                     GUI.Label(new Rect(indent, ry, 18, row), open ? "-" : "+", _toggleStyle ?? (_toggleStyle = new GUIStyle(s.MutedLabel) { alignment = TextAnchor.MiddleCenter }));
                     if (GUI.Button(new Rect(indent, ry, inner - indent, row), "", _mutedCell))
                     {
                         ToggleFolder(r.Key, query.Active);
+                        _cursorFolder = r.Key;
                     }
                     GUI.Label(new Rect(indent + 20, ry, inner - indent - 20, row), Drawable((r.Group == null ? name.ToUpperInvariant() : name) + "   " + count), r.Group == null ? _cell : _mutedCell);
                     continue;

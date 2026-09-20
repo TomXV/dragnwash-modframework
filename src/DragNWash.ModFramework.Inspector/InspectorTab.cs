@@ -319,7 +319,7 @@ namespace DragNWash.ModFramework.Inspector
             if (!_noteShown)
             {
                 _noteShown = true;
-                _status = "Experimental. Edits are not saved. Keys: W/E/R gizmo, Q off, P pick, H highlight, T tree, C camera, B bones, N wireframe, M edit mesh, Ctrl+Z undo, Ctrl+Up parent.";
+                _status = "Experimental. Edits are not saved. Keys: arrows move in the list (left and right close and open), W/E/R gizmo, Q off, P pick, H highlight, T tree, C camera, B bones, N wireframe, M edit mesh, Ctrl+Z undo, Ctrl+Up parent.";
             }
             // Shortcuts, only while no field has the keyboard (typing must not
             // trigger them), and only for keys the fields never use anyway.
@@ -345,7 +345,19 @@ namespace DragNWash.ModFramework.Inspector
                     case KeyCode.H: if (!ctrl) InspectorPick.Highlight = !InspectorPick.Highlight; else handled = false; break;
                     case KeyCode.T: if (!ctrl) { bool shown = _objectsMode ? (_showObjectList = !_showObjectList) : (_showHierarchy = !_showHierarchy); if (narrowWindow(area)) _page = shown ? 0 : 1; } else handled = false; break;
                     case KeyCode.Z: if (ctrl) _status = InspectorHistory.Undo(); else handled = false; break;
-                    case KeyCode.UpArrow: if (ctrl && SelectedObject != null && SelectedObject.transform.parent != null) Select(SelectedObject.transform.parent.gameObject); else handled = false; break;
+                    case KeyCode.UpArrow:
+                        if (ctrl && SelectedObject != null && SelectedObject.transform.parent != null) Select(SelectedObject.transform.parent.gameObject);
+                        else handled = !ctrl && ListKey(KeyCode.UpArrow);
+                        break;
+                    case KeyCode.DownArrow:
+                    case KeyCode.LeftArrow:
+                    case KeyCode.RightArrow:
+                    case KeyCode.Home:
+                    case KeyCode.End:
+                    case KeyCode.PageUp:
+                    case KeyCode.PageDown:
+                        handled = !ctrl && ListKey(ev.keyCode);
+                        break;
                     case KeyCode.Escape:
                         if (_menuRow != null) _menuRow = null;
                         else if (InspectorPick.Picking) InspectorPick.End();
@@ -1531,6 +1543,7 @@ namespace DragNWash.ModFramework.Inspector
                     }
                 }
             }
+            _treeViewHeight = pane.height;
             TW.ApplyScroll(pane, ref _scrollTree);
             _scrollTree = GUI.BeginScrollView(pane, _scrollTree, new Rect(0, 0, inner, Mathf.Max(pane.height, nodes.Count * row)), false, false);
             // A deep tree (a rig's bones) would push names out of the pane: the
