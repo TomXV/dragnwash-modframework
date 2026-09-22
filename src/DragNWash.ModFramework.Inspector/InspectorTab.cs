@@ -554,6 +554,29 @@ namespace DragNWash.ModFramework.Inspector
             IconMove = "\u2725", IconRotate = "\u21BB", IconScale = "\u229E", IconResetTransform = "Reset", IconHistory = "\u25D0", IconCamera = "\u25C9", IconBones = "\u2442", IconWire = "\u25A6", IconEditMesh = "\u25B3", IconRefresh = "\u21BA";
         private static bool _showHierarchy;
 
+        // The tab as it was left, for the config: "objects|tree|list|folder,folder".
+        // Set only at startup, before anything is selected.
+        internal static string Layout
+        {
+            get => string.Join("|", _objectsMode ? "objects" : "scene", _showHierarchy ? "tree" : "notree", _showObjectList ? "list" : "nolist", string.Join(",", OpenFolders));
+            set
+            {
+                string[] parts = (value ?? "").Split('|');
+                if (parts.Length != 4)
+                {
+                    return;
+                }
+                _objectsMode = parts[0] == "objects";
+                _showHierarchy = parts[1] == "tree";
+                _showObjectList = parts[2] == "list";
+                OpenFolders.Clear();
+                foreach (string folder in parts[3].Split(','))
+                {
+                    if (folder.Length > 0) OpenFolders.Add(folder);
+                }
+            }
+        }
+
         private static string MemberId(RowInfo r)
         {
             return r.Key.Substring(ControlPrefix.Length);

@@ -1,5 +1,6 @@
 using System;
 using BepInEx;
+using BepInEx.Configuration;
 using BepInEx.Logging;
 using DragNWash.ModFramework.ToolWindow;
 using TW = global::DragNWash.ModFramework.ToolWindow.ToolWindow;
@@ -47,6 +48,7 @@ namespace DragNWash.ModFramework.Inspector
     {
         internal static ManualLogSource Log;
         private IDisposable _overlay;
+        private ConfigEntry<string> _layout;
 
         private void Awake()
         {
@@ -85,7 +87,12 @@ namespace DragNWash.ModFramework.Inspector
                     InspectorBones.OnGUI(window, InspectorTab.SelectedObject);
                     InspectorGizmo.OnGUI(window, InspectorTab.SelectedObject);
                 });
-                TW.OpenChanged += open => { if (!open) { InspectorPick.End(); if (InspectorBodies.Paused) InspectorBodies.Resume(); InspectorAnimators.ResumeAll(); } };
+                // Scene or Objects, the tree and list shown or not, and the
+                // Objects folders left open come back at the next start.
+                _layout = Config.Bind("Tab", "Layout", "",
+                    new ConfigDescription("How the Inspector tab was left (view, panes, open folders). Saved when the window closes.", null, new HiddenSetting()));
+                InspectorTab.Layout = _layout.Value;
+                TW.OpenChanged += open => { if (!open) { InspectorPick.End(); if (InspectorBodies.Paused) InspectorBodies.Resume(); InspectorAnimators.ResumeAll(); SaveLayout(); } };
                 // The free camera is a developer tool too: off with the switch.
                 DeveloperTools.Changed += () => { if (!DeveloperTools.Enabled) { InspectorFreeCamera.Stop(); if (InspectorBodies.Paused) InspectorBodies.Resume(); InspectorAnimators.ResumeAll(); } };
             }
@@ -101,6 +108,25 @@ namespace DragNWash.ModFramework.Inspector
             // The game's input is held while a pick or a gizmo drag is under way,
             // so the click that selects or moves an object never reaches the player.
             TW.BlockGameInput(Inspector.Guid, InspectorPick.Picking || InspectorGizmo.Dragging || InspectorMesh.Dragging);
+        }
+
+        private void SaveLayout()
+        {
+            if (_layout != null && _layout.Value != InspectorTab.Layout)
+            {
+                _layout.Value = InspectorTab.Layout;
+            }
+        }
+
+        // Kept, not chosen: hidden from the Mods screen as BepInEx.ConfigurationManager tags do.
+        private sealed class HiddenSetting
+        {
+            public bool Browsable = false;
+        }
+
+        private void OnApplicationQuit()
+        {
+            SaveLayout();
         }
 
         private void OnDestroy()

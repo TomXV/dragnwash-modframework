@@ -281,6 +281,12 @@ namespace DragNWash.ModFramework.ToolWindow
                 SetHint("Click the notice to dismiss it.", HintPointer);
             }
             ToolWindow.Fill(box, ToolWindow.PanelColor);
+            if (box.height > strip.height)
+            {
+                // Grown over the body: an edge on top, as the menus have, so it
+                // does not run into the tab's rows.
+                ToolWindow.Fill(new Rect(box.x, box.y - 1, box.width, 1), new Color(0.165f, 0.2f, 0.26f));
+            }
             ToolWindow.Fill(new Rect(box.x, box.y, 3, box.height), ColorOf(n.Kind));
             if (box.height > strip.height)
             {

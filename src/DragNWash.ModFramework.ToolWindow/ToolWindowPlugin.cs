@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using BepInEx;
 using BepInEx.Configuration;
@@ -36,7 +37,16 @@ namespace DragNWash.ModFramework.ToolWindow
         private float _toastUntil;
 
         private bool _wasOpen;
-        private Rect _windowRect = new Rect(24, 24, 780, 580);
+        private static readonly Rect DefaultRect = new Rect(24, 24, 780, 580);
+        private Rect _windowRect = DefaultRect;
+        // Where the window was left, and on which tab; it opens there again.
+        private ConfigEntry<string> _rectSetting;
+        private ConfigEntry<string> _lastTab;
+        // The remembered tab, until it is shown or the player picks another:
+        // a mod may add it a little after the window first opens.
+        private string _wantedTab;
+        private Rect? _requestedRect;
+        private GUIStyle _linkStyle;
         private ToolTab _current;
         private Texture2D _background;
         private GUIStyle _windowStyle;
@@ -75,6 +85,13 @@ namespace DragNWash.ModFramework.ToolWindow
                     ShowWindow = false;
                 }
             };
+            _rectSetting = Config.Bind("Window", "Rect", "24,24,780,580",
+                new ConfigDescription("Where the window was left and its size, in pixels: x, y, width, height. Saved when it closes; Reset window in its footer puts it back.",
+                    null, new HiddenSetting()));
+            _lastTab = Config.Bind("Window", "LastTab", "",
+                new ConfigDescription("The tab the window was left on; it opens on it again.", null, new HiddenSetting()));
+            _windowRect = ParseRect(_rectSetting.Value) ?? DefaultRect;
+            _wantedTab = string.IsNullOrEmpty(_lastTab.Value) ? null : _lastTab.Value;
             _fontMode = Config.Bind("General", "FontMode", "auto",
                 new ConfigDescription("Font for the tool window: auto (an OS font with Japanese and Chinese, else the bundled one), builtin (Unity's built-in font, ASCII only), skin (the IMGUI skin's font).",
                     new AcceptableValueList<string>("auto", "builtin", "skin"), new SettingMeta { DisplayName = "Font", Advanced = true, RequiresRestart = true }));
@@ -219,6 +236,7 @@ namespace DragNWash.ModFramework.ToolWindow
                     if (tab != null)
                     {
                         Select(tab);
+                        _wantedTab = null;
                     }
                 }
             }
@@ -284,6 +302,7 @@ namespace DragNWash.ModFramework.ToolWindow
                     CursorUnlock.Release();
                     VirtualClick.Cancel();
                     InlineConfirm.Cancel();
+                    Remember();
                 }
                 ToolWindow.RaiseOpenChanged(ShowWindow);
             }
@@ -343,6 +362,57 @@ namespace DragNWash.ModFramework.ToolWindow
             }
             // In pick mode the click on the game selects an object and must not move the player.
             InputBlocker.SetBlocking(over || _pointerGrabbed || ToolWindow.InputBlockRequested);
+        }
+
+        // Kept in the config, so the next start opens the window as it was left.
+        private void Remember()
+        {
+            if (_rectSetting == null)
+            {
+                return;
+            }
+            string rect = string.Format(CultureInfo.InvariantCulture, "{0:0},{1:0},{2:0},{3:0}", _windowRect.x, _windowRect.y, _windowRect.width, _windowRect.height);
+            if (_rectSetting.Value != rect)
+            {
+                _rectSetting.Value = rect;
+            }
+            if (_current != null && _lastTab.Value != _current.Title)
+            {
+                _lastTab.Value = _current.Title;
+            }
+        }
+
+        private static Rect? ParseRect(string text)
+        {
+            string[] parts = (text ?? "").Split(',');
+            if (parts.Length != 4)
+            {
+                return null;
+            }
+            var v = new float[4];
+            for (int i = 0; i < 4; i++)
+            {
+                if (!float.TryParse(parts[i].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out v[i]) || float.IsNaN(v[i]) || float.IsInfinity(v[i]))
+                {
+                    return null;
+                }
+            }
+            return v[2] > 0 && v[3] > 0 ? new Rect(v[0], v[1], v[2], v[3]) : (Rect?)null;
+        }
+
+        // Hides a setting from the Mods screen, as BepInEx.ConfigurationManager
+        // tags do: the window's place is kept, not chosen there.
+        private sealed class HiddenSetting
+        {
+            public bool Browsable = false;
+        }
+
+        private void OnApplicationQuit()
+        {
+            if (ShowWindow)
+            {
+                Remember();
+            }
         }
 
         private void OnDestroy()
@@ -421,6 +491,11 @@ namespace DragNWash.ModFramework.ToolWindow
             styles.WrappedText.wordWrap = true;
             styles.WrappedText.alignment = TextAnchor.UpperLeft;
             styles.AccentLabel = Style(styles.Label, ToolWindow.AccentColor);
+            // The busy spinner's glyphs differ in width; centred, they turn in place.
+            styles.AccentLabel.alignment = TextAnchor.MiddleCenter;
+            _linkStyle = Style(styles.MutedLabel, ToolWindow.MutedColor);
+            _linkStyle.wordWrap = false;
+            _linkStyle.hover.textColor = new Color(0.91f, 0.94f, 0.97f);
             // Not GUI.skin.textField: its built-in textures would be uploaded on
             // first draw, while the window is open. Our own 1x1 texture instead.
             styles.TextField = Style(styles.Label, new Color(0.91f, 0.94f, 0.97f));
@@ -467,6 +542,12 @@ namespace DragNWash.ModFramework.ToolWindow
                 MenuText.End();
                 // GUI.Window returns its own rectangle after the callback; apply a
                 // resize afterwards so that cannot undo it.
+                if (_requestedRect.HasValue)
+                {
+                    _windowRect = Clamp(_requestedRect.Value, Screen.width, Screen.height);
+                    _requestedRect = null;
+                    _requestedSize = null;
+                }
                 if (_requestedSize.HasValue)
                 {
                     _windowRect.size = _requestedSize.Value;
@@ -497,10 +578,11 @@ namespace DragNWash.ModFramework.ToolWindow
                 Rect at = Clamp(_windowRect, Screen.width, Screen.height);
                 float w = Mathf.Min(470f, Screen.width - at.x);
                 var box = new Rect(at.x, at.y, w, 56);
+                // A soft shadow straight under it, deepest at its edge.
                 var shadow = new Color(0f, 0f, 0f, 0.2f);
                 for (int i = 1; i <= 3; i++)
                 {
-                    ToolWindow.Fill(new Rect(box.x + i, box.yMax, box.width, i * 2), shadow);
+                    ToolWindow.Fill(new Rect(box.x, box.yMax, box.width, i * 2), shadow);
                 }
                 ToolWindow.Fill(box, new Color(0.06f, 0.06f, 0.08f, 0.95f));
                 ToolWindow.Fill(new Rect(box.x, box.y, 3, box.height), ToolWindow.WarningColor);
@@ -543,6 +625,15 @@ namespace DragNWash.ModFramework.ToolWindow
             {
                 tabs = ToolWindow.Tabs.ToArray();
             }
+            if (_wantedTab != null)
+            {
+                ToolTab wanted = Array.Find(tabs, t => t.Title == _wantedTab);
+                if (wanted != null)
+                {
+                    Select(wanted);
+                    _wantedTab = null;
+                }
+            }
             if (_current == null || Array.IndexOf(tabs, _current) < 0)
             {
                 Select(tabs.Length > 0 ? tabs[0] : null);
@@ -561,6 +652,7 @@ namespace DragNWash.ModFramework.ToolWindow
                 if (GUI.Button(new Rect(x, y, w, ToolWindow.RowHeight), tab.Title, ReferenceEquals(tab, _current) ? styles.SelectedButton : styles.Button))
                 {
                     Select(tab);
+                    _wantedTab = null;
                 }
                 x += w + 8;
             }
@@ -647,6 +739,24 @@ namespace DragNWash.ModFramework.ToolWindow
                 WindowFooter.DrawBusy(body, styles);
             }
             WindowFooter.DrawNotice(noticeRect, styles);
+            // Reset window, at the end of the hint line: the way back when a
+            // remembered place is off screen after a resolution change.
+            var resetContent = new GUIContent("Reset window");
+            float resetWidth = _linkStyle.CalcSize(resetContent).x;
+            var resetRect = new Rect(hintRect.xMax - resetWidth, hintRect.y, resetWidth, hintRect.height);
+            hintRect.width -= resetWidth + 16;
+            if (resetRect.Contains(ev.mousePosition))
+            {
+                WindowFooter.SetHint($"Reset window: back to ({DefaultRect.x:0}, {DefaultRect.y:0}), {DefaultRect.width:0} x {DefaultRect.height:0}.", WindowFooter.HintPointer);
+            }
+            if (GUI.Button(resetRect, resetContent, _linkStyle))
+            {
+                _requestedRect = DefaultRect;
+            }
+            if (ev.type == EventType.Repaint)
+            {
+                ToolWindow.Fill(new Rect(resetRect.x, resetRect.center.y + _linkStyle.lineHeight / 2f, resetRect.width, 1), resetRect.Contains(ev.mousePosition) ? new Color(0.91f, 0.94f, 0.97f) : ToolWindow.MutedColor);
+            }
             WindowFooter.DrawHint(hintRect, $"{_toggleKey.Value}: toggle    |    Drag title to move    |    Drag corner to resize", styles);
             if (ev.type == EventType.Repaint)
             {
