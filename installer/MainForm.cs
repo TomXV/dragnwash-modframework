@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -17,14 +19,14 @@ namespace DragNWash.Installer
         private readonly Label _heading = new Label { AutoSize = true, Font = new Font(SystemFonts.MessageBoxFont.FontFamily, 13f, FontStyle.Bold), Margin = new Padding(0, 0, 0, 6) };
         private readonly Label _languageLabel = new Label { AutoSize = true, Anchor = AnchorStyles.Right, TextAlign = ContentAlignment.MiddleRight };
         private readonly ComboBox _language = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 110, Anchor = AnchorStyles.Right };
-        private readonly Label _gameLabel = new Label { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 0) };
+        private readonly Label _gameLabel = new Label { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 3, 8, 3) };
         private readonly TextBox _game = new TextBox { Anchor = AnchorStyles.Left | AnchorStyles.Right };
         private readonly Button _browse = new Button { AutoSize = true };
         private readonly Label _status = new Label { AutoSize = true, Margin = new Padding(0, 4, 0, 4) };
-        private readonly Label _actionLabel = new Label { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 4, 8, 0) };
+        private readonly Label _actionLabel = new Label { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 3, 8, 3) };
         private readonly RadioButton _modeInstall = new RadioButton { AutoSize = true, Checked = true, Margin = new Padding(0, 3, 16, 3) };
         private readonly RadioButton _modeUninstall = new RadioButton { AutoSize = true, Margin = new Padding(0, 3, 16, 3) };
-        private readonly Label _nothingToUninstall = new Label { AutoSize = true, ForeColor = SystemColors.GrayText, Margin = new Padding(0, 6, 0, 0) };
+        private readonly Label _nothingToUninstall = new Label { AutoSize = true, Anchor = AnchorStyles.Left, ForeColor = SystemColors.GrayText, Margin = new Padding(0, 3, 0, 3) };
 
         // Only the controls of the chosen action are shown, with what it will do.
         private readonly GroupBox _installGroup = new WrappingGroupBox();
@@ -99,7 +101,7 @@ namespace DragNWash.Installer
             TableLayoutPanel install = GroupLayout(_installGroup);
             foreach (ModChoice choice in manifest.Choices)
             {
-                var label = new Label { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 6, 8, 0) };
+                var label = new Label { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 3, 8, 3) };
                 var box = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Anchor = AnchorStyles.Left, Width = 260 };
                 foreach (ModChoiceOption option in choice.Options)
                 {
@@ -112,6 +114,8 @@ namespace DragNWash.Installer
             AddRow(install, _installWill, 2);
             AddRow(install, _installSteps, 2);
             AddRow(layout, _installGroup, 3);
+            // The choices' boxes start where the game folder box does, one column down the window.
+            _game.LocationChanged += (_, __) => AlignChoices();
 
             TableLayoutPanel uninstall = GroupLayout(_uninstallGroup);
             AddRow(uninstall, _keepData, 2);
@@ -241,6 +245,22 @@ namespace DragNWash.Installer
             }
         }
 
+        private void AlignChoices()
+        {
+            if (_choices.Count == 0)
+            {
+                return;
+            }
+            // Where the group's rows start, also before the group has been placed.
+            int rows = _installGroup.Parent.Padding.Left + _installGroup.Margin.Left + _installGroup.DisplayRectangle.Left;
+            int labels = _game.Left - rows - _choices[0].Label.Margin.Horizontal - _choices[0].Box.Margin.Left;
+            foreach (var (_, label, _) in _choices)
+            {
+                // A label longer than that just makes the column wider.
+                label.MinimumSize = new Size(Math.Max(0, labels), 0);
+            }
+        }
+
         // A bulleted list whose lines wrap to the window's width.
         private static TableLayoutPanel StepList()
         {
@@ -271,6 +291,11 @@ namespace DragNWash.Installer
         private void UpdateTexts()
         {
             Text = Strings.Get(Strings.Key.Title, _manifest.Name);
+            Font = Strings.UiFont();
+            if (_heading.Font.FontFamily.Name != Font.FontFamily.Name)
+            {
+                _heading.Font = new Font(Font.FontFamily, 13f, FontStyle.Bold);
+            }
             _heading.Text = $"{_manifest.Name} {_manifest.Version}";
             _languageLabel.Text = Strings.Get(Strings.Key.Language);
             _gameLabel.Text = Strings.Get(Strings.Key.GameFolder);
@@ -392,6 +417,8 @@ namespace DragNWash.Installer
             _log.Clear();
             Task.Run(() =>
             {
+                // .NET's own messages in the log and the error details stay English too.
+                Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
                 try
                 {
                     if (install)
@@ -402,22 +429,22 @@ namespace DragNWash.Installer
                     {
                         _core.Uninstall(game, keepData, alsoBepInEx);
                     }
-                    return (Ok: true, Message: Strings.Get(install ? Strings.Key.Installed : Strings.Key.Uninstalled));
+                    return (Cancelled: false, Error: (Exception)null, Details: (string)null);
                 }
                 catch (OperationCanceledException) when (cancel.IsCancellationRequested)
                 {
                     AppendLog("Cancelled; the game folder was not changed");
-                    return (Ok: false, Message: (string)null);
+                    return (Cancelled: true, Error: null, Details: null);
                 }
                 catch (InstallerException ex)
                 {
                     AppendLog("ERROR: " + ex.Message);
-                    return (Ok: false, Message: Strings.Get(ex.Key) + (ex.Detail == null ? "" : Environment.NewLine + ex.Detail));
+                    return (Cancelled: false, Error: ex, Details: ErrorDialog.Details(ex));
                 }
                 catch (Exception ex)
                 {
                     AppendLog("ERROR: " + ex);
-                    return (Ok: false, Message: Strings.Get(Strings.Key.Failed, ex.Message));
+                    return (Cancelled: false, Error: ex, Details: ErrorDialog.Details(ex));
                 }
             }).ContinueWith(t =>
             {
@@ -430,9 +457,9 @@ namespace DragNWash.Installer
                     return;
                 }
                 RefreshStatus();
-                if (t.Result.Ok)
+                if (!t.Result.Cancelled && t.Result.Error == null)
                 {
-                    MessageBox.Show(this, t.Result.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(this, Strings.Get(install ? Strings.Key.Installed : Strings.Key.Uninstalled), Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
                 // The progress row says how it ended until the next change in the window.
@@ -440,14 +467,27 @@ namespace DragNWash.Installer
                 _progress.Style = ProgressBarStyle.Continuous;
                 _progress.Value = 0;
                 _percent.Text = "";
-                if (t.Result.Message == null)
+                if (t.Result.Cancelled)
                 {
                     _progressText.Text = Strings.Get(Strings.Key.Cancelled);
                     return;
                 }
                 _progressText.Text = Strings.Get(Strings.Key.Stopped);
-                MessageBox.Show(this, t.Result.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                using (var dialog = new ErrorDialog(Text, t.Result.Error, t.Result.Details + Environment.NewLine + AboutThisRun()))
+                {
+                    if (dialog.ShowDialog(this) == DialogResult.Retry)
+                    {
+                        Run(install);
+                    }
+                }
             }, TaskScheduler.FromCurrentSynchronizationContext());
+        }
+
+        // The last lines of "Copy details": enough to reproduce a report.
+        private string AboutThisRun()
+        {
+            return $"{_manifest.Name} {_manifest.Version}, Install.exe {typeof(MainForm).Assembly.GetName().Version.ToString(3)}" + Environment.NewLine +
+                   $"Installer language: {Strings.Current}   Windows {Environment.OSVersion.Version}   {RuntimeInformation.FrameworkDescription}";
         }
 
         private void ShowProgress(InstallProgress progress)
