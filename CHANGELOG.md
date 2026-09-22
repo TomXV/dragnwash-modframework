@@ -13,6 +13,11 @@ Versions of the core and of each library are separate, and follow semantic versi
 - `ToolWindow.Underline(Rect)` (ToolWindow library), new: the accent underline the built-in tabs draw under a text field.
 - `ToolWindow.FilterField(Rect, string, string, ToolWindowStyles)`, new: a text field with that underline and a muted placeholder while it is empty; returns the new text. The Inspector, Assets and Console tabs now use both instead of their own copies, so a mod's tab can look the same with one call.
 
+### Public CSV reading, and a safe write for any library
+
+- `CsvReader` (`DragNWash.ModFramework.Saves`) is public, no longer internal to the flags catalog: `ReadRows` reads a CSV file the shared way the catalog does, and `Escape` writes one field back, now also quoting a value starting with `#` so it is not read back as a comment line. From the localization mod.
+- `SafeFile` (`DragNWash.ModFramework`), new: `Write(path, encoding, Action<StreamWriter>)` fills a temporary file beside the target and moves it into place, so a crash or a sharing violation partway through never leaves the target truncated. From the localization mod, where it protects a translator's saved work; no framework call site uses it yet.
+
 ## 2026-09-20: a way into the editor
 
 The core and the preloader patcher go to 1.4.3, the Bridge to 0.1.2.
