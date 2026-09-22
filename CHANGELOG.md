@@ -4,6 +4,10 @@ Versions of the core and of each library are separate, and follow semantic versi
 
 ## Unreleased
 
+### Console: level toggles that show on and off
+
+- The Error, Warning, Message, Info and Debug toggles are drawn on the dark panel of the tab strip instead of Unity's grey button. One that is on has a 3 px bar in its level's colour (the colour its log lines have) along the top, a filled square in that colour and bright words; one that is off has an empty square and dimmer words, which brighten under the pointer. On and off differed only in the colour of the word before. Bar and square are painted, not drawn from the font.
+
 ### Fonts: rasterized characters kept between starts
 
 - Assets: what the fallback fonts rasterized (atlas pixels, glyph and character tables, free space on the last atlas) is kept in `BepInEx/cache/FontAtlases`, one file per face, and a face created again from the same font file takes it back at once and rasterizes only characters that are new. With the localization mod's 17 languages on Direct3D 12 its load goes from about 1230 ms to about 365 ms after the first start (Direct3D 11: 315 to 205 ms). A restored glyph is the same, pixel for pixel, as a freshly rasterized one.
