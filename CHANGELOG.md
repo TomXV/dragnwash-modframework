@@ -36,6 +36,14 @@ Versions of the core and of each library are separate, and follow semantic versi
 - A start whose hand-over the open window does not answer opens a window of its own and says so once, instead of exiting without a word.
 - Its own words in English, Japanese and Chinese, following Windows' language, window title included.
 
+### Graphs editor and Bridge page
+
+- Graphs editor: ✕ removes a block at once and a toast says what went with it ("and the 2 blocks inside it"); Undo or Ctrl+Z puts it back, also for a variable or an on error part.
+- Graphs editor: Rename, Delete and "changes not saved" are the page's own dialogs instead of the browser's prompt and confirm; New graph now asks before dropping unsaved changes.
+- Graphs editor: Move to… moves a block into another list without dragging, and a block's head takes Alt+↑/↓, M, Delete and Enter.
+- Bridge page: ? lists the keyboard shortcuts; the graphs editor's divider moves with the arrow keys; icon-only buttons and every block field have screen-reader labels.
+- Graphs editor: a refused drop says why, a failed check shows its reason with Check again and the last result, and a LIVE in game pill shows while the colour picker writes to the game.
+
 ### Code graph without the game (standalone app)
 
 - Experimental, not in a release. `codegraph-standalone/` (CodeGraphStandalone.exe, Windows): the code graph of any .NET assembly without the game (docs/CODE_GRAPH_STANDALONE.md). Opens DLLs, a folder (leaving out .NET's and Unity's own unless `--all`) or a Mono Unity game's folder, by Open…, the command line or a drop; refuses IL2CPP games with the reason. Shows the Bridge's page in WebView2 and answers its calls inside the process (`WebResourceRequested`), with no port and no network.
