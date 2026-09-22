@@ -138,7 +138,7 @@ namespace DragNWash.ModFramework.Inspector
             GUI.SetNextControlName(HexControl);
             var hexRect = new Rect(x + 68, y, 110, line - 2);
             string typed = GUI.TextField(hexRect, _hex, s.TextField);
-            Underline(hexRect);
+            TW.Underline(hexRect);
             bool hexFocused = GUI.GetNameOfFocusedControl() == HexControl;
             if (ev.type == EventType.Repaint)
             {
@@ -321,14 +321,6 @@ namespace DragNWash.ModFramework.Inspector
                 color = new Color32((byte)(n >> 24), (byte)(n >> 16), (byte)(n >> 8), (byte)n);
             }
             return true;
-        }
-
-        private static void Underline(Rect field)
-        {
-            Color was = GUI.color;
-            GUI.color = TW.AccentColor;
-            GUI.DrawTexture(new Rect(field.x, field.yMax - 2, field.width, 2), Texture2D.whiteTexture);
-            GUI.color = was;
         }
     }
 }

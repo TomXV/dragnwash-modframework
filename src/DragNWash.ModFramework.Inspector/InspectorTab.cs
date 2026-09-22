@@ -451,13 +451,9 @@ namespace DragNWash.ModFramework.Inspector
             }
             var searchRect = new Rect(bx, y, x + w - bx, row);
             // Each view keeps its own search; Objects' takes t:Type too.
-            if (_objectsMode) _objectsSearch = GUI.TextField(searchRect, _objectsSearch ?? "", s.TextField);
-            else _search = GUI.TextField(searchRect, _search ?? "", s.TextField);
-            Underline(searchRect);
-            if (string.IsNullOrEmpty(_objectsMode ? _objectsSearch : _search))
-            {
-                GUI.Label(new Rect(searchRect.x + 6, searchRect.y, searchRect.width - 6, row), _objectsMode ? "Search (t:Material for one type)" : "Search", s.MutedLabel);
-            }
+            string searchNext = TW.FilterField(searchRect, _objectsMode ? _objectsSearch : _search, _objectsMode ? "Search (t:Material for one type)" : "Search", s);
+            if (_objectsMode) _objectsSearch = searchNext;
+            else _search = searchNext;
             y += row + 6;
             _toolbarRect = new Rect(x, toolbarTop, w, y - toolbarTop);
 
@@ -1087,12 +1083,7 @@ namespace DragNWash.ModFramework.Inspector
             }
             y += row + 4;
             var filterRect = new Rect(x, y, w, row);
-            _clipsFilter = GUI.TextField(filterRect, _clipsFilter ?? "", s.TextField);
-            Underline(filterRect);
-            if (string.IsNullOrEmpty(_clipsFilter))
-            {
-                GUI.Label(new Rect(filterRect.x + 6, filterRect.y, filterRect.width - 6, row), "Filter by name", s.MutedLabel);
-            }
+            _clipsFilter = TW.FilterField(filterRect, _clipsFilter, "Filter by name", s);
             y += row + 4;
             if (!string.IsNullOrEmpty(_animatorNote))
             {
@@ -1262,12 +1253,7 @@ namespace DragNWash.ModFramework.Inspector
             if (FlowButton(ref bx, ref y, x, w, ButtonWidth(s, "< Members"), "< Members", false, s, row)) _showBodies = false;
             y += row + 4;
             var filterRect = new Rect(x, y, w, row);
-            _bodiesFilter = GUI.TextField(filterRect, _bodiesFilter ?? "", s.TextField);
-            Underline(filterRect);
-            if (string.IsNullOrEmpty(_bodiesFilter))
-            {
-                GUI.Label(new Rect(filterRect.x + 6, filterRect.y, filterRect.width - 6, row), "Filter by name or type", s.MutedLabel);
-            }
+            _bodiesFilter = TW.FilterField(filterRect, _bodiesFilter, "Filter by name or type", s);
             y += row + 4;
             var view = new Rect(x, y, w, pane.yMax - y - 2);
             float inner = view.width - 20;
@@ -1429,7 +1415,7 @@ namespace DragNWash.ModFramework.Inspector
             GUI.Label(new Rect(x, y, labelW, row), label, _mutedCell);
             var field = new Rect(x + labelW, y, w - labelW, row);
             string next = GUI.TextField(field, value ?? "", s.TextField);
-            Underline(field);
+            TW.Underline(field);
             y += row + 2;
             return next;
         }
@@ -2077,7 +2063,7 @@ namespace DragNWash.ModFramework.Inspector
                 {
                     Drafts[key] = after;
                 }
-                Underline(fieldRect);
+                TW.Underline(fieldRect);
             }
             else if (value is UnityEngine.Object uo && uo)
             {
@@ -2170,7 +2156,7 @@ namespace DragNWash.ModFramework.Inspector
                 {
                     Drafts[key] = after;
                 }
-                Underline(fieldRect);
+                TW.Underline(fieldRect);
                 bx += fieldWidth + 4;
             }
             if (isColor)
@@ -2506,14 +2492,6 @@ namespace DragNWash.ModFramework.Inspector
         private static string Drawable(string text)
         {
             return TW.Drawable(text ?? "");
-        }
-
-        private static void Underline(Rect field)
-        {
-            Color was = GUI.color;
-            GUI.color = TW.AccentColor;
-            GUI.DrawTexture(new Rect(field.x, field.yMax - 2, field.width, 2), Texture2D.whiteTexture);
-            GUI.color = was;
         }
     }
 }

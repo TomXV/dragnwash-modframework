@@ -298,6 +298,28 @@ namespace DragNWash.ModFramework.ToolWindow
             GUI.color = previous;
         }
 
+        /// <summary>Draws the accent-coloured underline under a text field.</summary>
+        public static void Underline(Rect field)
+        {
+            Fill(new Rect(field.x, field.yMax - 2, field.width, 2), AccentColor);
+        }
+
+        /// <summary>
+        /// Draws a text field with the accent underline, showing
+        /// <paramref name="placeholder"/> in a muted label while it is empty.
+        /// Returns the field's new value.
+        /// </summary>
+        public static string FilterField(Rect rect, string value, string placeholder, ToolWindowStyles s)
+        {
+            string next = GUI.TextField(rect, value ?? "", s.TextField);
+            Underline(rect);
+            if (string.IsNullOrEmpty(next))
+            {
+                GUI.Label(new Rect(rect.x + 6, rect.y, rect.width - 6, rect.height), placeholder, s.MutedLabel);
+            }
+            return next;
+        }
+
         /// <summary>
         /// Call just before <c>GUI.BeginScrollView</c> for a scrolling area: moves
         /// it by the gamepad stick or d-pad while the pointer is over it. Returns

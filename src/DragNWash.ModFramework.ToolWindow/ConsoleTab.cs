@@ -145,12 +145,7 @@ namespace DragNWash.ModFramework.ToolWindow
                 ConsoleLog.Clear();
             }
             var filterRect = new Rect(bx + (bx > x ? 6 : 0), y, Mathf.Max(60, area.xMax - pad - 80 - bx), row);
-            SourceFilter = GUI.TextField(filterRect, SourceFilter ?? "", s.TextField);
-            Underline(filterRect);
-            if (string.IsNullOrEmpty(SourceFilter))
-            {
-                GUI.Label(new Rect(filterRect.x + 6, filterRect.y, filterRect.width - 6, row), "Filter by source", s.MutedLabel);
-            }
+            SourceFilter = ToolWindow.FilterField(filterRect, SourceFilter, "Filter by source", s);
             y += row + 6;
 
             string note = (ConsoleLog.Shown & LogLevel.Error) == 0 ? "Errors are hidden.    " : "";
@@ -357,7 +352,7 @@ namespace DragNWash.ModFramework.ToolWindow
             {
                 T($"field: input=\"{_input}\" focused={_inputFocused} (event {ev.type})");
             }
-            Underline(inputRect);
+            ToolWindow.Underline(inputRect);
             if (suggesting)
             {
                 ToolWindow.Fill(box, ToolWindow.PanelColor);
@@ -519,14 +514,6 @@ namespace DragNWash.ModFramework.ToolWindow
         private static LogLevel Normalize(LogLevel level)
         {
             return _levelStyles.ContainsKey(level) ? level : LogLevel.Info;
-        }
-
-        private static void Underline(Rect field)
-        {
-            Color was = GUI.color;
-            GUI.color = ToolWindow.AccentColor;
-            GUI.DrawTexture(new Rect(field.x, field.yMax - 2, field.width, 2), Texture2D.whiteTexture);
-            GUI.color = was;
         }
     }
 }

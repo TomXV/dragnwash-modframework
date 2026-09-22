@@ -159,15 +159,7 @@ namespace DragNWash.ModFramework.Assets
             GUI.enabled = wasEnabled;
             // The text field blends into the panel; an underline and a placeholder show where it is.
             var filterRect = new Rect(x + 560, y, Mathf.Max(80, w - 560), row);
-            _filter = GUI.TextField(filterRect, _filter ?? "", s.TextField);
-            Color was = GUI.color;
-            GUI.color = TW.AccentColor;
-            GUI.DrawTexture(new Rect(filterRect.x, filterRect.yMax - 2, filterRect.width, 2), Texture2D.whiteTexture);
-            GUI.color = was;
-            if (string.IsNullOrEmpty(_filter))
-            {
-                GUI.Label(new Rect(filterRect.x + 6, filterRect.y, filterRect.width - 6, row), "Filter by name", s.MutedLabel);
-            }
+            _filter = TW.FilterField(filterRect, _filter, "Filter by name", s);
             y += row + 8;
 
             string summary = $"{AssetReplacements.All.Count} replacement(s) from mods";
