@@ -16,6 +16,7 @@ namespace DragNWash.ModFramework.Assets
         internal static ManualLogSource Log;
         internal static AssetsLibraryPlugin Instance;
         internal static ConfigEntry<int> AtlasPointSize;
+        internal static ConfigEntry<bool> CacheAtlases;
         internal static ConfigEntry<bool> AllowReload;
         internal static ConfigEntry<bool> WatchFiles;
 
@@ -50,6 +51,9 @@ namespace DragNWash.ModFramework.Assets
             AtlasPointSize = Config.Bind("Fonts", "AtlasPointSize", 80,
                 new ConfigDescription("Point size glyphs are rasterized at for the fallback fonts. Higher is sharper. Glyphs are rasterized when a mod prepares its text, usually at startup, so raising this costs loading time rather than performance during play.",
                     new AcceptableValueRange<int>(24, 160), new SettingMeta { DisplayName = "Font atlas point size", Advanced = true, RequiresRestart = true }));
+            CacheAtlases = Config.Bind("Fonts", "CacheAtlases", true,
+                new ConfigDescription("Keeps the fallback fonts' rasterized characters in BepInEx/cache/FontAtlases, so the next start takes them from there instead of rasterizing them again (most of a second on Direct3D 12 with the Chinese, Japanese and Korean languages installed). The cache rebuilds itself when a font, a setting or a version changes; deleting the folder does the same.",
+                    null, new SettingMeta { DisplayName = "Keep rasterized characters between starts", Advanced = true, RequiresRestart = true }));
 
             GameFonts.AddFontFolder(Path.Combine(Path.GetDirectoryName(Info.Location) ?? "", "fonts"));
 

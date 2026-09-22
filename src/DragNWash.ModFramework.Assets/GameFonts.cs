@@ -34,7 +34,8 @@ namespace DragNWash.ModFramework.Assets
     //
     // So: keep the fallback chain down to one font per script, and rasterize
     // every character the loaded translations can need during load rather than
-    // during gameplay.
+    // during gameplay. What was rasterized is kept for the next start
+    // (FontAtlasCache), so that load is quick after the first.
     public static class GameFonts
     {
         private const int DefaultAtlasPointSize = 64;
@@ -398,10 +399,28 @@ namespace DragNWash.ModFramework.Assets
                 HashSet<char> has = SetOf(HasOfAsset, face);
                 HashSet<char> lacks = SetOf(LacksOfAsset, face);
 
+                // A face restored from the font cache already holds most of
+                // them; only the rest are rasterized. (TextMeshPro would call
+                // them all missing if none of them needed rasterizing.)
+                Dictionary<uint, TMP_Character> held = face.characterLookupTable;
                 var ask = new List<char>();
+                int cached = 0;
                 foreach (char c in remaining)
                 {
-                    if (!has.Contains(c) && !lacks.Contains(c)) ask.Add(c);
+                    if (has.Contains(c) || lacks.Contains(c)) continue;
+                    if (held != null && held.ContainsKey(c))
+                    {
+                        has.Add(c);
+                        cached++;
+                    }
+                    else
+                    {
+                        ask.Add(c);
+                    }
+                }
+                if (cached > 0)
+                {
+                    AssetsLibraryPlugin.Log.LogInfo($"[font] {locale}: {cached} characters already in {face.name}.");
                 }
                 if (ask.Count > 0)
                 {
@@ -418,6 +437,10 @@ namespace DragNWash.ModFramework.Assets
                             if (absent.Contains(c)) lacks.Add(c); else has.Add(c);
                         }
                         AssetsLibraryPlugin.Log.LogInfo($"[font] {locale}: rasterized {ask.Count - absent.Count}/{ask.Count} characters into {face.name}.");
+                        if (absent.Count < ask.Count)
+                        {
+                            FontAtlasCache.Changed(face);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -661,6 +684,7 @@ namespace DragNWash.ModFramework.Assets
                     Registered.Add(asset);
                     FaceBySource[source] = asset;
                     AssetsLibraryPlugin.Log.LogInfo($"[font] {label}: loaded {path} (face {face}, atlas point size {pointSize}).");
+                    FontAtlasCache.Restore(asset);
                     return asset;
                 }
             }
@@ -760,6 +784,7 @@ namespace DragNWash.ModFramework.Assets
                 Registered.Add(asset);
                 FaceBySource[source] = asset;
                 AssetsLibraryPlugin.Log.LogInfo($"[font] {label}: loaded {family} (atlas point size {pointSize}).");
+                FontAtlasCache.Restore(asset);
                 return asset;
             }
             return null;
