@@ -6,6 +6,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using UnityEngine;
+using DragNWash.ModFramework.ToolWindow;
 using TW = DragNWash.ModFramework.ToolWindow.ToolWindow;
 
 namespace DragNWash.ModFramework.Bridge
@@ -153,7 +154,8 @@ namespace DragNWash.ModFramework.Bridge
         {
             var args = focus == null ? null : new Dictionary<string, object> { ["focus"] = focus };
             OperationResult opened = Operations.CallNow("bridge.page.open", args, "bridge tab");
-            TW.ShowNotice(opened.Ok ? Convert.ToString(opened.Value) : opened.Error);
+            if (opened.Ok) TW.ShowNotice(Convert.ToString(opened.Value), NoticeKind.Info, 8f);
+            else TW.ShowNotice(opened.Error, NoticeKind.Error);
         }
 
         // CodeGraph.exe, next to this DLL, on Windows: it signs in with the token by itself,
@@ -269,7 +271,7 @@ namespace DragNWash.ModFramework.Bridge
             if (Button("Copy setup", 130))
             {
                 GUIUtility.systemCopyBuffer = Setup;
-                TW.ShowNotice("The Claude Code setup command, with the token, is on the clipboard.");
+                TW.ShowNotice("The Claude Code setup command, with the token, is on the clipboard.", NoticeKind.Info, 8f);
             }
             if (Button("New token", 120))
             {

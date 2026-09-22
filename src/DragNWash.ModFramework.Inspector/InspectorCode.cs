@@ -383,7 +383,7 @@ namespace DragNWash.ModFramework.Inspector
             if (GUI.Button(new Rect(bx, y, 150, row), "Copy for dnSpy", s.Button))
             {
                 GUIUtility.systemCopyBuffer = _type.FullName;
-                TW.ShowNotice($"Copied \"{_type.FullName}\"; search it in dnSpy or ILSpy on {_type.Assembly.GetName().Name}.dll.");
+                TW.ShowNotice($"Copied \"{_type.FullName}\"; search it in dnSpy or ILSpy on {_type.Assembly.GetName().Name}.dll.", NoticeKind.Info, 8f);
             }
             bx += 158;
             if (GUI.Button(new Rect(bx, y, 100, row), "Inherited", _showInherited ? s.SelectedButton : s.Button))
@@ -441,12 +441,12 @@ namespace DragNWash.ModFramework.Inspector
                     if (GUI.Button(new Rect(r.x, r.y + 2, 60, row - 4), "Copy", s.Button))
                     {
                         GUIUtility.systemCopyBuffer = mr.HarmonyName;
-                        TW.ShowNotice($"Copied \"{mr.HarmonyName}\".");
+                        TW.ShowNotice($"Copied \"{mr.HarmonyName}\".", NoticeKind.Info, 6f);
                     }
                     if (GUI.Button(new Rect(r.x + 64, r.y + 2, 56, row - 4), "Patch", s.Button))
                     {
                         GUIUtility.systemCopyBuffer = PatchStub(mr);
-                        TW.ShowNotice($"Copied a Harmony patch for {mr.Method.Name}: paste it into your mod.");
+                        TW.ShowNotice($"Copied a Harmony patch for {mr.Method.Name}: paste it into your mod.", NoticeKind.Info, 8f);
                     }
                     if (GUI.Button(new Rect(r.x + 124, r.y + 2, 40, row - 4), "IL", open ? s.SelectedButton : s.Button))
                     {
@@ -500,11 +500,12 @@ namespace DragNWash.ModFramework.Inspector
         {
             if (Operations.Find("bridge.page.open") == null)
             {
-                TW.ShowNotice("The graph needs the Bridge library, on (its tab in this window).");
+                TW.ShowNotice("The graph needs the Bridge library, on (its tab in this window).", NoticeKind.Warning);
                 return;
             }
             OperationResult r = Operations.CallNow("bridge.page.open", new Dictionary<string, object> { ["focus"] = focus }, "inspector");
-            TW.ShowNotice(r.Ok ? "The graph opens in your browser." : r.Error);
+            if (r.Ok) TW.ShowNotice("The graph opens in your browser.", NoticeKind.Info, 6f);
+            else TW.ShowNotice(r.Error, NoticeKind.Error);
         }
 
         private static IEnumerable<string> Describe(Patches p)

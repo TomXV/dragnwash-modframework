@@ -261,13 +261,78 @@ namespace DragNWash.ModFramework.ToolWindow
             ToolWindowPlugin.Instance?.SetOpen(false, null);
         }
 
-        /// <summary>Shows a one-line message in the window's footer until the tab changes.</summary>
+        /// <summary>
+        /// Shows a one-line message in the window's footer until the tab changes:
+        /// <see cref="ShowNotice(string, NoticeKind, float)"/> with
+        /// <see cref="NoticeKind.Info"/> and no time limit. An empty message clears
+        /// the notice showing.
+        /// </summary>
         public static void ShowNotice(string message)
         {
-            if (ToolWindowPlugin.Instance != null)
+            ShowNotice(message, NoticeKind.Info, 0f);
+        }
+
+        /// <summary>
+        /// Shows a message in the notice strip of the window's footer, above the
+        /// hint line: one line with a colour bar for its kind, cut with "..." when
+        /// it is too long (the whole text shows while the pointer is on it; a
+        /// click dismisses it).
+        /// <para>
+        /// With <paramref name="seconds"/> above zero the notice clears itself
+        /// that long after it first shows, and a notice that arrives meanwhile
+        /// waits its turn ("1 more"); an <see cref="NoticeKind.Error"/> goes
+        /// first. Without, it stays until the tab changes or the next notice
+        /// replaces it - except an Error, which the next notices wait behind.
+        /// The same message again starts its time over instead of queueing a
+        /// copy. An empty message clears the notice showing.
+        /// </para>
+        /// </summary>
+        /// <param name="message">One line, ASCII (see <see cref="PrepareCharacters"/>).</param>
+        /// <param name="kind">Info (accent bar), Warning (yellow) or Error (red).</param>
+        /// <param name="seconds">How long it shows; 0 for until the tab changes.</param>
+        public static void ShowNotice(string message, NoticeKind kind, float seconds = 0f)
+        {
+            WindowFooter.Show(message, kind, seconds);
+        }
+
+        /// <summary>
+        /// Marks the tab as busy for this draw. Call it from the tab's draw
+        /// callback on every draw while it works through something spread over
+        /// several frames (a coroutine that does one file a frame, say): the
+        /// body is dimmed, a small panel in its middle shows
+        /// <paramref name="what"/>, <paramref name="detail"/> and a spinner, the
+        /// hint line repeats them, and the tab's controls see no input. The
+        /// header, the tab buttons and the close button keep working, and the
+        /// tab is back the frame after the calls stop.
+        /// </summary>
+        /// <param name="what">What runs, e.g. "Reloading files...".</param>
+        /// <param name="detail">How far it is, e.g. "MenuButtons0002  (2 of 5)"; may be null.</param>
+        public static void Busy(string what, string detail = null)
+        {
+            ToolWindowPlugin.Instance?.MarkBusy(what, detail);
+        }
+
+        // "..." where the window font has no ellipsis; set at startup.
+        internal static string Ellipsis = "...";
+
+        // The text as it fits in width with the style: whole, or cut at a
+        // character boundary with an ellipsis. Returns the same string when it fits.
+        internal static string ElideText(string text, GUIStyle style, float width)
+        {
+            if (string.IsNullOrEmpty(text) || style == null || style.CalcSize(new GUIContent(text)).x <= width)
             {
-                ToolWindowPlugin.Instance.Notice = message ?? string.Empty;
+                return text ?? "";
             }
+            int lo = 0, hi = text.Length;
+            while (lo < hi)
+            {
+                int mid = (lo + hi + 1) / 2;
+                if (style.CalcSize(new GUIContent(text.Substring(0, mid).TrimEnd() + Ellipsis)).x <= width) lo = mid;
+                else hi = mid - 1;
+            }
+            // A surrogate pair is never split.
+            if (lo > 0 && char.IsHighSurrogate(text[lo - 1])) lo--;
+            return text.Substring(0, lo).TrimEnd() + Ellipsis;
         }
 
         /// <summary>
@@ -390,6 +455,19 @@ namespace DragNWash.ModFramework.ToolWindow
         }
     }
 
+    /// <summary>What a notice in the window's footer is, which sets its colour bar.</summary>
+    public enum NoticeKind
+    {
+        /// <summary>Something done, or worth knowing (accent colour).</summary>
+        Info,
+
+        /// <summary>Done, but with a problem worth a look (yellow).</summary>
+        Warning,
+
+        /// <summary>Something failed (red).</summary>
+        Error,
+    }
+
     internal sealed class ToolTab
     {
         public string Owner;
@@ -431,5 +509,11 @@ namespace DragNWash.ModFramework.ToolWindow
         /// textures are uploaded on first draw (see <see cref="ToolWindow.PrepareCharacters"/>).
         /// </summary>
         public GUIStyle TextField { get; internal set; }
+
+        // The footer's own: small secondary text, wrapping text in the label
+        // colour, and one line in the accent colour.
+        internal GUIStyle SmallMuted { get; set; }
+        internal GUIStyle WrappedText { get; set; }
+        internal GUIStyle AccentLabel { get; set; }
     }
 }

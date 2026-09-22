@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using DragNWash.ModFramework.ToolWindow;
 using TW = global::DragNWash.ModFramework.ToolWindow.ToolWindow;
 
 namespace DragNWash.ModFramework.Inspector
@@ -43,7 +44,7 @@ namespace DragNWash.ModFramework.Inspector
             }
             if (main == null)
             {
-                TW.ShowNotice("Free camera: no camera to copy.");
+                TW.ShowNotice("Free camera: no camera to copy.", NoticeKind.Warning);
                 InspectorPlugin.Log.LogWarning("[camera] no enabled camera found");
                 return;
             }

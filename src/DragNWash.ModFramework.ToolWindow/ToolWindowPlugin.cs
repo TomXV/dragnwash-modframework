@@ -30,9 +30,10 @@ namespace DragNWash.ModFramework.ToolWindow
         private bool _savingConsole;
 
         internal bool ShowWindow;
-        internal string Notice = string.Empty;
-        private GUIStyle _footerStyle;
-        private GUIStyle _footerBase;
+        // The tab being drawn, for ToolWindow.Busy.
+        private ToolTab _drawingTab;
+        // Until when the "developer tools are off" word shows after the key.
+        private float _toastUntil;
 
         private bool _wasOpen;
         private Rect _windowRect = new Rect(24, 24, 780, 580);
@@ -85,6 +86,9 @@ namespace DragNWash.ModFramework.ToolWindow
             _background.SetPixel(0, 0, new Color(0.06f, 0.06f, 0.08f, 0.95f));
             _background.Apply();
             MenuFont.Create(_fontMode.Value);
+            // Cut text ends in an ellipsis where the font has one.
+            MenuFont.Prepare("\u2026");
+            ToolWindow.Ellipsis = MenuText.CanDraw(MenuFont.Font, MenuFont.Size, "\u2026") ? "\u2026" : "...";
 
             var harmony = new Harmony(ToolWindow.Guid);
             Install("Pad and trackpad clicks", () => VirtualClick.Install(harmony));
@@ -243,7 +247,7 @@ namespace DragNWash.ModFramework.ToolWindow
             if (!ReferenceEquals(tab, _current))
             {
                 _current = tab;
-                Notice = string.Empty;
+                WindowFooter.Clear();
             }
         }
 
@@ -252,9 +256,18 @@ namespace DragNWash.ModFramework.ToolWindow
             MenuFont.FlushQueued();
             ConsoleTab.Tick();
 
-            if (_toggleKey.Value.IsDown() && (ShowWindow || ToolsOn()))
+            if (_toggleKey.Value.IsDown())
             {
-                ShowWindow = !ShowWindow;
+                if (ShowWindow || ToolsOn())
+                {
+                    ShowWindow = !ShowWindow;
+                }
+                else
+                {
+                    // Not nothing: the key was pressed, and the player sees why
+                    // no window came.
+                    _toastUntil = Time.realtimeSinceStartup + 6f;
+                }
             }
             // The window also closes from its own X button, so follow the state
             // here rather than only on the key.
@@ -399,6 +412,13 @@ namespace DragNWash.ModFramework.ToolWindow
             styles.Button = Style(GUI.skin.button, new Color(0.88f, 0.92f, 0.95f));
             styles.Button.padding = new RectOffset(10, 10, 4, 4);
             styles.SelectedButton = Style(styles.Button, ToolWindow.AccentColor);
+            styles.SmallMuted = Style(styles.MutedLabel, ToolWindow.MutedColor);
+            styles.SmallMuted.fontSize = Mathf.Max(10, MenuFont.Size - 2);
+            styles.SmallMuted.wordWrap = false;
+            styles.WrappedText = Style(styles.Label, new Color(0.91f, 0.94f, 0.97f));
+            styles.WrappedText.wordWrap = true;
+            styles.WrappedText.alignment = TextAnchor.UpperLeft;
+            styles.AccentLabel = Style(styles.Label, ToolWindow.AccentColor);
             // Not GUI.skin.textField: its built-in textures would be uploaded on
             // first draw, while the window is open. Our own 1x1 texture instead.
             styles.TextField = Style(styles.Label, new Color(0.91f, 0.94f, 0.97f));
@@ -419,6 +439,10 @@ namespace DragNWash.ModFramework.ToolWindow
                     GUIUtility.hotControl = 0;
                 }
                 _resizing = false;
+                if (_toastUntil > Time.realtimeSinceStartup && !DeveloperTools.Enabled && Event.current.type == EventType.Repaint)
+                {
+                    DrawToolsOffToast();
+                }
                 return;
             }
 
@@ -454,6 +478,46 @@ namespace DragNWash.ModFramework.ToolWindow
                 GUI.color = color;
                 GUI.backgroundColor = background;
                 GUI.contentColor = content;
+            }
+        }
+
+        // F1 while the developer tools are off: a few seconds' word where the
+        // window would have opened, rather than nothing on screen.
+        private void DrawToolsOffToast()
+        {
+            EnsureStyles();
+            ToolWindowStyles s = ToolWindow.Styles;
+            Color color = GUI.color;
+            try
+            {
+                GUI.color = Color.white;
+                MenuText.Begin(MenuFont.Font, MenuFont.Size);
+                Rect at = Clamp(_windowRect, Screen.width, Screen.height);
+                float w = Mathf.Min(470f, Screen.width - at.x);
+                var box = new Rect(at.x, at.y, w, 56);
+                var shadow = new Color(0f, 0f, 0f, 0.2f);
+                for (int i = 1; i <= 3; i++)
+                {
+                    ToolWindow.Fill(new Rect(box.x + i, box.yMax, box.width, i * 2), shadow);
+                }
+                ToolWindow.Fill(box, new Color(0.06f, 0.06f, 0.08f, 0.95f));
+                ToolWindow.Fill(new Rect(box.x, box.y, 3, box.height), ToolWindow.WarningColor);
+                float tw = w - 27;
+                GUI.Label(new Rect(box.x + 15, box.y + 6, tw, 24), ToolWindow.ElideText("Tool window stays closed: developer tools are off.", s.Label, tw), s.Label);
+                GUI.Label(new Rect(box.x + 15, box.y + 30, tw, 20), ToolWindow.ElideText("Options > Mods > Drag'n Wash ModFramework > Developer tools", s.SmallMuted, tw), s.SmallMuted);
+            }
+            finally
+            {
+                MenuText.End();
+                GUI.color = color;
+            }
+        }
+
+        internal void MarkBusy(string what, string detail)
+        {
+            if (_drawingTab != null)
+            {
+                WindowFooter.Busy(what, detail, _drawingTab);
             }
         }
 
@@ -499,17 +563,29 @@ namespace DragNWash.ModFramework.ToolWindow
                 x += w + 8;
             }
             float bodyTop = y + ToolWindow.RowHeight + 12;
-            // The footer grows with a notice that wraps in a narrow window, up
-            // to three lines, and the body gives it the room.
-            string footer = string.IsNullOrEmpty(Notice) ? $"{_toggleKey.Value}: toggle    |    Drag title to move    |    Drag corner to resize" : Notice;
-            if (_footerStyle == null || _footerBase != styles.MutedLabel)
+            // Under the body: the notice strip, when there is a notice, and the
+            // hint line, which stays.
+            WindowFooter.BeginDraw();
+            float bodyBottom = WindowFooter.BodyBottom(width, height, out Rect noticeRect, out Rect hintRect);
+            var body = new Rect(ToolWindow.Padding, bodyTop, bodyWidth, Mathf.Max(80, bodyBottom - bodyTop));
+
+            // What lies over the body - the notice's whole text, the busy
+            // overlay - takes its input before the tab does: IMGUI hands an
+            // event to controls in drawing order, and the tab is drawn first.
+            Event ev = Event.current;
+            bool busy = WindowFooter.IsBusy(_current);
+            WindowFooter.HandleInput(ev, noticeRect);
+            if (busy && (ev.isKey || ((ev.isMouse || ev.type == EventType.ScrollWheel || ev.type == EventType.ContextClick) && body.Contains(ev.mousePosition))))
             {
-                _footerBase = styles.MutedLabel;
-                _footerStyle = new GUIStyle(styles.MutedLabel) { wordWrap = true, clipping = TextClipping.Clip };
+                ev.Use();
             }
-            float footerWidth = width - 54;
-            float footerHeight = Mathf.Clamp(_footerStyle.CalcHeight(new GUIContent(footer), footerWidth), 24, 72);
-            var body = new Rect(ToolWindow.Padding, bodyTop, bodyWidth, Mathf.Max(80, height - bodyTop - footerHeight - 14));
+            // Nor does the tab paint a hover look under them.
+            Vector2 pointer = ev.mousePosition;
+            bool pointerHidden = ev.type == EventType.Repaint && ((busy && body.Contains(pointer)) || WindowFooter.Covers(pointer));
+            if (pointerHidden)
+            {
+                ev.mousePosition = new Vector2(-100000f, -100000f);
+            }
 
             if (_current == null)
             {
@@ -528,7 +604,7 @@ namespace DragNWash.ModFramework.ToolWindow
                 {
                     Log.LogInfo($"The tool window tab \"{_current.Title}\" of {_current.Owner} was turned on again by hand.");
                     _current.Failure = null;
-                    Notice = null;
+                    WindowFooter.Clear();
                 }
             }
             else
@@ -536,6 +612,7 @@ namespace DragNWash.ModFramework.ToolWindow
                 // Inside a group, so a tab drawn for a taller window is clipped
                 // at the body's edge instead of running over the footer line.
                 GUI.BeginGroup(body);
+                _drawingTab = _current;
                 try
                 {
                     _current.Draw(new Rect(0, 0, body.width, body.height));
@@ -544,15 +621,29 @@ namespace DragNWash.ModFramework.ToolWindow
                 {
                     _current.Failure = ex.GetType().Name + ": " + ex.Message;
                     Log.LogError($"The tool window tab \"{_current.Title}\" of {_current.Owner} threw and was turned off: {ex}");
-                    Notice = $"\"{_current.Title}\" stopped working; see the log.";
+                    WindowFooter.Show($"\"{_current.Title}\" stopped working; see the log.", NoticeKind.Error, 0f);
                 }
                 finally
                 {
+                    _drawingTab = null;
                     GUI.EndGroup();
                 }
             }
+            if (pointerHidden)
+            {
+                ev.mousePosition = pointer;
+            }
 
-            GUI.Label(new Rect(ToolWindow.Padding, height - footerHeight - 6, footerWidth, footerHeight), footer, _footerStyle);
+            if (busy)
+            {
+                WindowFooter.DrawBusy(body, styles);
+            }
+            WindowFooter.DrawNotice(noticeRect, styles);
+            WindowFooter.DrawHint(hintRect, $"{_toggleKey.Value}: toggle    |    Drag title to move    |    Drag corner to resize", styles);
+            if (ev.type == EventType.Repaint)
+            {
+                WindowFooter.Tick();
+            }
 
             HandleResize(new Rect(width - GripSize, height - GripSize, GripSize, GripSize));
             // Dragging only by the title, so selecting text or scrolling never

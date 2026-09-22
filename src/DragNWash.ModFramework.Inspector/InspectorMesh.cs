@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
+using DragNWash.ModFramework.ToolWindow;
 using TW = global::DragNWash.ModFramework.ToolWindow.ToolWindow;
 
 namespace DragNWash.ModFramework.Inspector
@@ -284,7 +285,7 @@ namespace DragNWash.ModFramework.Inspector
                 Mesh copy = ReadableCopy(filter.sharedMesh, out string why);
                 if (copy == null)
                 {
-                    TW.ShowNotice("Edit mesh: " + why);
+                    TW.ShowNotice("Edit mesh: " + why, NoticeKind.Warning);
                     InspectorPlugin.Log.LogWarning($"[mesh] {filter.sharedMesh.name}: {why}");
                     return false;
                 }

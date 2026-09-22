@@ -88,7 +88,7 @@ namespace DragNWash.ModFramework.Inspector
             }
             Color before = _committed;
             _committed = _value;
-            try { _commit?.Invoke(before, _value); } catch (Exception ex) { TW.ShowNotice("History: " + ex.Message); }
+            try { _commit?.Invoke(before, _value); } catch (Exception ex) { TW.ShowNotice("History: " + ex.Message, NoticeKind.Error); }
         }
 
         internal static void Close()
@@ -252,7 +252,7 @@ namespace DragNWash.ModFramework.Inspector
             }
             catch (Exception ex)
             {
-                TW.ShowNotice("Colour not applied: " + ex.Message);
+                TW.ShowNotice("Colour not applied: " + ex.Message, NoticeKind.Error);
             }
         }
 
