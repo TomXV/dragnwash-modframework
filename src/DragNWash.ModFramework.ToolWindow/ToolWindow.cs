@@ -351,12 +351,46 @@ namespace DragNWash.ModFramework.ToolWindow
             return InlineConfirm.Draw(row, id, question, yes, hint, Styles);
         }
 
-        // "..." where the window font has no ellipsis; set at startup.
-        internal static string Ellipsis = "...";
+        /// <summary>
+        /// Shows <paramref name="text"/> on the window's hint line for this draw,
+        /// brighter than the keys it stands in for: a tooltip that needs no box.
+        /// Call it from a tab's draw callback while the pointer is on what the
+        /// text is about (see <see cref="Hint(Rect, string)"/>). A control's
+        /// <c>GUIContent</c> tooltip shows there the same way.
+        /// </summary>
+        public static void Hint(string text)
+        {
+            WindowFooter.SetHint(text, WindowFooter.HintPointer);
+        }
 
-        // The text as it fits in width with the style: whole, or cut at a
-        // character boundary with an ellipsis. Returns the same string when it fits.
-        internal static string ElideText(string text, GUIStyle style, float width)
+        /// <summary>
+        /// <see cref="Hint(string)"/> while the pointer is inside
+        /// <paramref name="rect"/>, in the coordinates the caller draws in.
+        /// Returns true when it is.
+        /// </summary>
+        public static bool Hint(Rect rect, string text)
+        {
+            Event ev = Event.current;
+            if (ev == null || !rect.Contains(ev.mousePosition))
+            {
+                return false;
+            }
+            Hint(text);
+            return true;
+        }
+
+        // "..." where the window font has no ellipsis, and "v" where it has no
+        // small down-pointing triangle; set at startup.
+        internal static string Ellipsis = "...";
+        internal static string DownArrow = "v";
+
+        /// <summary>
+        /// The text as it fits in <paramref name="width"/> drawn with
+        /// <paramref name="style"/>: whole when it fits, otherwise cut with an
+        /// ellipsis. For names that can be longer than their column; pair it
+        /// with <see cref="Hint(Rect, string)"/> to show the whole text.
+        /// </summary>
+        public static string Elide(string text, GUIStyle style, float width)
         {
             if (string.IsNullOrEmpty(text) || style == null || style.CalcSize(new GUIContent(text)).x <= width)
             {
@@ -549,9 +583,24 @@ namespace DragNWash.ModFramework.ToolWindow
         /// </summary>
         public GUIStyle TextField { get; internal set; }
 
-        // The footer's own: small secondary text, wrapping text in the label
-        // colour, and one line in the accent colour.
-        internal GUIStyle SmallMuted { get; set; }
+        /// <summary>
+        /// Small secondary text on one line: a count or the seconds left beside
+        /// something, a note under a control, a legend's names.
+        /// </summary>
+        public GUIStyle Hint { get; internal set; }
+
+        /// <summary>
+        /// Small bold text on one line for a letter tag or a legend's letter,
+        /// in the label colour: tint it with <c>GUI.contentColor</c> to the
+        /// colour it stands for.
+        /// </summary>
+        public GUIStyle Tag { get; internal set; }
+
+        /// <summary>One line in the error colour, for what failed or is lost: a row that did not load, a count of problems.</summary>
+        public GUIStyle Danger { get; internal set; }
+
+        // The window's own: wrapping text in the label colour, and one line in
+        // the accent colour.
         internal GUIStyle WrappedText { get; set; }
         internal GUIStyle AccentLabel { get; set; }
     }

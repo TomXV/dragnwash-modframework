@@ -259,9 +259,9 @@ namespace DragNWash.ModFramework.ToolWindow
                 int left = Mathf.Max(1, Mathf.CeilToInt(n.Until - Time.realtimeSinceStartup));
                 info += (info.Length > 0 ? "    " : "") + left + " s";
             }
-            float infoWidth = info.Length > 0 ? s.SmallMuted.CalcSize(new GUIContent(info)).x + 10 : 0f;
+            float infoWidth = info.Length > 0 ? s.Hint.CalcSize(new GUIContent(info)).x + 10 : 0f;
             float textX = strip.x + 3 + 10, textWidth = strip.width - 3 - 20 - infoWidth;
-            string shown = ToolWindow.ElideText(n.Text, s.Label, textWidth);
+            string shown = ToolWindow.Elide(n.Text, s.Label, textWidth);
             bool cut = shown != n.Text;
 
             bool hovered = strip.Contains(ev.mousePosition) || (_expanded.width > 0 && _expanded.Contains(ev.mousePosition));
@@ -298,7 +298,7 @@ namespace DragNWash.ModFramework.ToolWindow
             }
             if (info.Length > 0)
             {
-                GUI.Label(new Rect(strip.xMax - infoWidth, strip.y, infoWidth, strip.height), info, s.SmallMuted);
+                GUI.Label(new Rect(strip.xMax - infoWidth, strip.y, infoWidth, strip.height), info, s.Hint);
             }
         }
 
@@ -306,7 +306,7 @@ namespace DragNWash.ModFramework.ToolWindow
         {
             string text = _hint ?? keys;
             GUIStyle style = _hint != null && _hintBright ? s.Label : s.MutedLabel;
-            GUI.Label(line, ToolWindow.ElideText(text, style, line.width), style);
+            GUI.Label(line, ToolWindow.Elide(text, style, line.width), style);
         }
 
         private static readonly string Spinner = "|/-\\";
@@ -322,11 +322,11 @@ namespace DragNWash.ModFramework.ToolWindow
             char spin = Spinner[(int)(Time.realtimeSinceStartup * 8f) % Spinner.Length];
             float x = panel.x + 16, y = panel.y + 12, w = panel.width - 32;
             GUI.Label(new Rect(x, y, 14, ToolWindow.RowHeight), spin.ToString(), s.AccentLabel);
-            GUI.Label(new Rect(x + 26, y, w - 26, ToolWindow.RowHeight), ToolWindow.ElideText(_busyWhat, s.Label, w - 26), s.Label);
+            GUI.Label(new Rect(x + 26, y, w - 26, ToolWindow.RowHeight), ToolWindow.Elide(_busyWhat, s.Label, w - 26), s.Label);
             y += ToolWindow.RowHeight;
             if (!string.IsNullOrEmpty(_busyDetail))
             {
-                GUI.Label(new Rect(x, y, w, 26), ToolWindow.ElideText(_busyDetail, s.MutedLabel, w), s.MutedLabel);
+                GUI.Label(new Rect(x, y, w, 26), ToolWindow.Elide(_busyDetail, s.MutedLabel, w), s.MutedLabel);
             }
             y += 26;
             GUI.Label(new Rect(x, y, w, 26), "The window waits until it is done.", s.MutedLabel);

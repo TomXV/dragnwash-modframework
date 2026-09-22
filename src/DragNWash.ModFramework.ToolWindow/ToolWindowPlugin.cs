@@ -20,6 +20,7 @@ namespace DragNWash.ModFramework.ToolWindow
         internal static ToolWindowPlugin Instance;
 
         private const float HeaderHeight = 48f;
+        private const float StripHeight = 34f;
         private const float GripSize = 22f;
         private const float CloseMargin = 58f;
 
@@ -46,7 +47,14 @@ namespace DragNWash.ModFramework.ToolWindow
         // a mod may add it a little after the window first opens.
         private string _wantedTab;
         private Rect? _requestedRect;
-        private GUIStyle _linkStyle;
+        // IMGUI shows a style's hover colour only with a hover background, so
+        // the pointer is tested by hand and the brighter style picked.
+        private GUIStyle _linkStyle, _linkHoverStyle;
+        private GUIStyle _tabStyle, _tabSelectedStyle, _menuItemStyle, _menuItemHoverStyle;
+        // The tabs that did not fit on the strip, under More, and its menu.
+        private readonly List<ToolTab> _hiddenTabs = new List<ToolTab>();
+        private bool _moreOpen;
+        private Rect _moreButton, _moreMenu;
         private ToolTab _current;
         private Texture2D _background;
         private GUIStyle _windowStyle;
@@ -103,9 +111,10 @@ namespace DragNWash.ModFramework.ToolWindow
             _background.SetPixel(0, 0, new Color(0.06f, 0.06f, 0.08f, 0.95f));
             _background.Apply();
             MenuFont.Create(_fontMode.Value);
-            // Cut text ends in an ellipsis where the font has one.
-            MenuFont.Prepare("\u2026");
+            // Cut text ends in an ellipsis, and More has its triangle, where the font has them.
+            MenuFont.Prepare("\u2026\u25BE");
             ToolWindow.Ellipsis = MenuText.CanDraw(MenuFont.Font, MenuFont.Size, "\u2026") ? "\u2026" : "...";
+            ToolWindow.DownArrow = MenuText.CanDraw(MenuFont.Font, MenuFont.Size, "\u25BE") ? "\u25BE" : "v";
 
             var harmony = new Harmony(ToolWindow.Guid);
             Install("Pad and trackpad clicks", () => VirtualClick.Install(harmony));
@@ -427,8 +436,8 @@ namespace DragNWash.ModFramework.ToolWindow
             float width = Mathf.Max(1, screenWidth);
             float height = Mathf.Max(1, screenHeight);
             rect.width = Mathf.Clamp(rect.width, Mathf.Min(420, width), width);
-            // Tall enough for two rows of tab buttons, a body of 80 and the
-            // footer line; shorter and the body would run into the footer.
+            // Tall enough for the tab strip, a body of 80, a notice and the
+            // hint line; shorter and the body would run into the footer.
             rect.height = Mathf.Clamp(rect.height, Mathf.Min(400, height), height);
             rect.x = Mathf.Clamp(rect.x, 0, width - rect.width);
             rect.y = Mathf.Clamp(rect.y, 0, height - rect.height);
@@ -484,9 +493,16 @@ namespace DragNWash.ModFramework.ToolWindow
             styles.Button = Style(GUI.skin.button, new Color(0.88f, 0.92f, 0.95f));
             styles.Button.padding = new RectOffset(10, 10, 4, 4);
             styles.SelectedButton = Style(styles.Button, ToolWindow.AccentColor);
-            styles.SmallMuted = Style(styles.MutedLabel, ToolWindow.MutedColor);
-            styles.SmallMuted.fontSize = Mathf.Max(10, MenuFont.Size - 2);
-            styles.SmallMuted.wordWrap = false;
+            styles.Hint = Style(styles.MutedLabel, ToolWindow.MutedColor);
+            styles.Hint.fontSize = Mathf.Max(10, MenuFont.Size - 2);
+            styles.Hint.wordWrap = false;
+            styles.Tag = Style(styles.Label, new Color(0.91f, 0.94f, 0.97f));
+            styles.Tag.fontSize = Mathf.Max(10, MenuFont.Size - 2);
+            styles.Tag.fontStyle = FontStyle.Bold;
+            styles.Tag.wordWrap = false;
+            styles.Danger = Style(styles.Label, ToolWindow.ErrorColor);
+            styles.Danger.wordWrap = false;
+            styles.Danger.clipping = TextClipping.Clip;
             styles.WrappedText = Style(styles.Label, new Color(0.91f, 0.94f, 0.97f));
             styles.WrappedText.wordWrap = true;
             styles.WrappedText.alignment = TextAnchor.UpperLeft;
@@ -495,7 +511,20 @@ namespace DragNWash.ModFramework.ToolWindow
             styles.AccentLabel.alignment = TextAnchor.MiddleCenter;
             _linkStyle = Style(styles.MutedLabel, ToolWindow.MutedColor);
             _linkStyle.wordWrap = false;
-            _linkStyle.hover.textColor = new Color(0.91f, 0.94f, 0.97f);
+            _linkHoverStyle = Style(_linkStyle, new Color(0.91f, 0.94f, 0.97f));
+            // The tab strip: words, not buttons; the selected tab's inset and
+            // accent bar are painted under its word.
+            _tabStyle = Style(GUI.skin.label, ToolWindow.MutedColor);
+            _tabStyle.alignment = TextAnchor.MiddleCenter;
+            _tabStyle.wordWrap = false;
+            _tabStyle.clipping = TextClipping.Clip;
+            // The word centred under the accent bar, not across it.
+            _tabStyle.padding = new RectOffset(0, 0, 2, 0);
+            _tabSelectedStyle = Style(_tabStyle, new Color(0.91f, 0.94f, 0.97f));
+            _menuItemStyle = Style(_tabStyle, ToolWindow.MutedColor);
+            _menuItemStyle.alignment = TextAnchor.MiddleLeft;
+            _menuItemStyle.padding = new RectOffset(0, 0, 0, 0);
+            _menuItemHoverStyle = Style(_menuItemStyle, new Color(0.91f, 0.94f, 0.97f));
             // Not GUI.skin.textField: its built-in textures would be uploaded on
             // first draw, while the window is open. Our own 1x1 texture instead.
             styles.TextField = Style(styles.Label, new Color(0.91f, 0.94f, 0.97f));
@@ -587,8 +616,8 @@ namespace DragNWash.ModFramework.ToolWindow
                 ToolWindow.Fill(box, new Color(0.06f, 0.06f, 0.08f, 0.95f));
                 ToolWindow.Fill(new Rect(box.x, box.y, 3, box.height), ToolWindow.WarningColor);
                 float tw = w - 27;
-                GUI.Label(new Rect(box.x + 15, box.y + 6, tw, 24), ToolWindow.ElideText("Tool window stays closed: developer tools are off.", s.Label, tw), s.Label);
-                GUI.Label(new Rect(box.x + 15, box.y + 30, tw, 20), ToolWindow.ElideText("Options > Mods > Drag'n Wash ModFramework > Developer tools", s.SmallMuted, tw), s.SmallMuted);
+                GUI.Label(new Rect(box.x + 15, box.y + 6, tw, 24), ToolWindow.Elide("Tool window stays closed: developer tools are off.", s.Label, tw), s.Label);
+                GUI.Label(new Rect(box.x + 15, box.y + 30, tw, 20), ToolWindow.Elide("Options > Mods > Drag'n Wash ModFramework > Developer tools", s.Hint, tw), s.Hint);
             }
             finally
             {
@@ -611,11 +640,14 @@ namespace DragNWash.ModFramework.ToolWindow
             float width = _windowRect.width;
             float height = _windowRect.height;
             float bodyWidth = width - ToolWindow.Padding * 2;
+            WindowFooter.BeginDraw();
 
             ToolWindow.Fill(new Rect(0, 0, width, HeaderHeight), ToolWindow.PanelColor);
             ToolWindow.Fill(new Rect(0, 0, 4, HeaderHeight), ToolWindow.AccentColor);
             GUI.Label(new Rect(ToolWindow.Padding, 8, width - 80, 32), "DRAG'N WASH  /  TOOLS", styles.Label);
-            if (GUI.Button(new Rect(width - 46, 10, 30, 28), "X", styles.Button))
+            var close = new Rect(width - 46, 10, 30, 28);
+            ToolWindow.Hint(close, $"Close the window ({_toggleKey.Value} opens it again).");
+            if (GUI.Button(close, "X", styles.Button))
             {
                 ShowWindow = false;
             }
@@ -639,33 +671,17 @@ namespace DragNWash.ModFramework.ToolWindow
                 Select(tabs.Length > 0 ? tabs[0] : null);
             }
 
-            // Tab buttons, as wide as their titles, wrapping onto more rows.
-            float x = ToolWindow.Padding, y = HeaderHeight + 8;
-            foreach (ToolTab tab in tabs)
-            {
-                float w = Mathf.Max(90, styles.Button.CalcSize(new GUIContent(tab.Title)).x + 12);
-                if (x + w > width - ToolWindow.Padding && x > ToolWindow.Padding)
-                {
-                    x = ToolWindow.Padding;
-                    y += ToolWindow.RowHeight + 8;
-                }
-                if (GUI.Button(new Rect(x, y, w, ToolWindow.RowHeight), tab.Title, ReferenceEquals(tab, _current) ? styles.SelectedButton : styles.Button))
-                {
-                    Select(tab);
-                    _wantedTab = null;
-                }
-                x += w + 8;
-            }
-            float bodyTop = y + ToolWindow.RowHeight + 12;
+            float bodyTop = HeaderHeight + StripHeight;
             // Under the body: the notice strip, when there is a notice, and the
             // hint line, which stays.
-            WindowFooter.BeginDraw();
             float bodyBottom = WindowFooter.BodyBottom(width, height, out Rect noticeRect, out Rect hintRect);
             var body = new Rect(ToolWindow.Padding, bodyTop, bodyWidth, Mathf.Max(80, bodyBottom - bodyTop));
+            DrawTabStrip(tabs, width, body);
 
             // What lies over the body - the notice's whole text, the busy
-            // overlay - takes its input before the tab does: IMGUI hands an
-            // event to controls in drawing order, and the tab is drawn first.
+            // overlay, the More menu - takes its input before the tab does:
+            // IMGUI hands an event to controls in drawing order, and the tab
+            // is drawn first.
             Event ev = Event.current;
             bool busy = WindowFooter.IsBusy(_current);
             WindowFooter.HandleInput(ev, noticeRect);
@@ -681,10 +697,17 @@ namespace DragNWash.ModFramework.ToolWindow
             }
             // Nor does the tab paint a hover look under them.
             Vector2 pointer = ev.mousePosition;
-            bool pointerHidden = ev.type == EventType.Repaint && ((busy && body.Contains(pointer)) || WindowFooter.Covers(pointer));
+            bool pointerHidden = ev.type == EventType.Repaint && ((busy && body.Contains(pointer)) || WindowFooter.Covers(pointer) || (_moreOpen && _moreMenu.Contains(pointer)));
             if (pointerHidden)
             {
                 ev.mousePosition = new Vector2(-100000f, -100000f);
+            }
+            // The body in the selected tab's colour, joined to it.
+            ToolWindow.Fill(body, ToolWindow.InsetColor);
+            // A control's tooltip is shown on the hint line (ToolWindow.Hint).
+            if (ev.type == EventType.Repaint)
+            {
+                GUI.tooltip = string.Empty;
             }
 
             if (_current == null)
@@ -693,7 +716,6 @@ namespace DragNWash.ModFramework.ToolWindow
             }
             else if (_current.Failure != null)
             {
-                ToolWindow.Fill(body, ToolWindow.InsetColor);
                 float row = ToolWindow.RowHeight;
                 GUI.Label(new Rect(body.x + 12, body.y + 12, body.width - 24, body.height - 24 - row - 8),
                     $"This tab stopped working and was turned off. See BepInEx/LogOutput.log.\n\n{_current.Owner}: {_current.Failure}", styles.WrappedLabel);
@@ -733,11 +755,16 @@ namespace DragNWash.ModFramework.ToolWindow
             {
                 ev.mousePosition = pointer;
             }
+            if (ev.type == EventType.Repaint && !string.IsNullOrEmpty(GUI.tooltip))
+            {
+                WindowFooter.SetHint(GUI.tooltip, WindowFooter.HintPointer);
+            }
 
             if (busy)
             {
                 WindowFooter.DrawBusy(body, styles);
             }
+            DrawMoreMenu();
             WindowFooter.DrawNotice(noticeRect, styles);
             // Reset window, at the end of the hint line: the way back when a
             // remembered place is off screen after a resolution change.
@@ -745,18 +772,16 @@ namespace DragNWash.ModFramework.ToolWindow
             float resetWidth = _linkStyle.CalcSize(resetContent).x;
             var resetRect = new Rect(hintRect.xMax - resetWidth, hintRect.y, resetWidth, hintRect.height);
             hintRect.width -= resetWidth + 16;
-            if (resetRect.Contains(ev.mousePosition))
+            bool onReset = resetRect.Contains(ev.mousePosition);
+            if (onReset)
             {
                 WindowFooter.SetHint($"Reset window: back to ({DefaultRect.x:0}, {DefaultRect.y:0}), {DefaultRect.width:0} x {DefaultRect.height:0}.", WindowFooter.HintPointer);
             }
-            if (GUI.Button(resetRect, resetContent, _linkStyle))
+            if (GUI.Button(resetRect, resetContent, onReset ? _linkHoverStyle : _linkStyle))
             {
                 _requestedRect = DefaultRect;
             }
-            if (ev.type == EventType.Repaint)
-            {
-                ToolWindow.Fill(new Rect(resetRect.x, resetRect.center.y + _linkStyle.lineHeight / 2f, resetRect.width, 1), resetRect.Contains(ev.mousePosition) ? new Color(0.91f, 0.94f, 0.97f) : ToolWindow.MutedColor);
-            }
+            ToolWindow.Fill(new Rect(resetRect.x, resetRect.center.y + _linkStyle.lineHeight / 2f, resetRect.width, 1), onReset ? new Color(0.91f, 0.94f, 0.97f) : ToolWindow.MutedColor);
             WindowFooter.DrawHint(hintRect, $"{_toggleKey.Value}: toggle    |    Drag title to move    |    Drag corner to resize", styles);
             if (ev.type == EventType.Repaint)
             {
@@ -770,9 +795,190 @@ namespace DragNWash.ModFramework.ToolWindow
             GUI.DragWindow(new Rect(4, 0, width - CloseMargin, HeaderHeight));
         }
 
+        // The resize corner: three short diagonal strokes, brighter under the
+        // pointer and while dragging. Painted with small squares, as IMGUI has no lines.
+        private void DrawGrip(Rect grip)
+        {
+            if (Event.current.type != EventType.Repaint)
+            {
+                return;
+            }
+            bool hot = _resizing || grip.Contains(Event.current.mousePosition);
+            Color color = hot ? new Color(0.91f, 0.94f, 0.97f) : ToolWindow.MutedColor;
+            float ox = grip.xMax - 20, oy = grip.yMax - 20;
+            foreach (int from in new[] { 3, 8, 13 })
+            {
+                for (int t = 0; t <= 15 - from; t++)
+                {
+                    ToolWindow.Fill(new Rect(ox + 15 - t - 0.75f, oy + from + t - 0.75f, 1.5f, 1.5f), color);
+                }
+            }
+        }
+
+        // One row under the header: the selected tab in the body's colour
+        // with an accent bar on top, joined to the body; the others as words.
+        // What does not fit goes under More at the end of the row, which
+        // carries the selected tab's name when it is one of those.
+        private void DrawTabStrip(ToolTab[] tabs, float width, Rect body)
+        {
+            Event ev = Event.current;
+            const float gap = 2f, pad = 24f, most = 220f, itemHeight = 28f;
+            float left = ToolWindow.Padding, right = width - ToolWindow.Padding, top = HeaderHeight;
+            string arrow = " " + ToolWindow.DownArrow;
+            var widths = new float[tabs.Length];
+            float total = 0f;
+            for (int i = 0; i < tabs.Length; i++)
+            {
+                widths[i] = Mathf.Min(most, _tabStyle.CalcSize(new GUIContent(tabs[i].Title)).x + pad);
+                total += widths[i] + (i > 0 ? gap : 0f);
+            }
+            _hiddenTabs.Clear();
+            int shown = tabs.Length;
+            float moreWidth = 0f;
+            if (total > right - left)
+            {
+                moreWidth = _tabStyle.CalcSize(new GUIContent("More" + arrow)).x + pad;
+                if (_current != null)
+                {
+                    moreWidth = Mathf.Max(moreWidth, Mathf.Min(most, _tabStyle.CalcSize(new GUIContent(_current.Title + arrow)).x + pad));
+                }
+                float fit = left;
+                shown = 0;
+                while (shown < tabs.Length && fit + widths[shown] <= right - moreWidth - gap)
+                {
+                    fit += widths[shown] + gap;
+                    shown++;
+                }
+                for (int i = shown; i < tabs.Length; i++)
+                {
+                    _hiddenTabs.Add(tabs[i]);
+                }
+            }
+            if (_hiddenTabs.Count == 0)
+            {
+                _moreOpen = false;
+            }
+            bool currentHidden = _current != null && _hiddenTabs.Contains(_current);
+            _moreButton = _hiddenTabs.Count > 0 ? new Rect(right - moreWidth, top, moreWidth, StripHeight) : Rect.zero;
+            float menuWidth = 170f;
+            foreach (ToolTab t in _hiddenTabs)
+            {
+                menuWidth = Mathf.Max(menuWidth, _menuItemStyle.CalcSize(new GUIContent(t.Title)).x + 28);
+            }
+            menuWidth = Mathf.Min(menuWidth, right - left);
+            float menuHeight = Mathf.Min(_hiddenTabs.Count * itemHeight + 8, Mathf.Max(itemHeight + 8, body.yMax - body.y));
+            _moreMenu = _moreOpen ? new Rect(right - menuWidth, top + StripHeight, menuWidth, menuHeight) : Rect.zero;
+
+            // The open menu lies over the body, so its input comes first.
+            if (_moreOpen)
+            {
+                if (ev.type == EventType.KeyDown && ev.keyCode == KeyCode.Escape)
+                {
+                    _moreOpen = false;
+                    ev.Use();
+                }
+                else if (ev.type == EventType.MouseDown && _moreMenu.Contains(ev.mousePosition))
+                {
+                    int i = Mathf.FloorToInt((ev.mousePosition.y - _moreMenu.y - 4) / itemHeight);
+                    if (i >= 0 && i < _hiddenTabs.Count)
+                    {
+                        Select(_hiddenTabs[i]);
+                        _wantedTab = null;
+                    }
+                    _moreOpen = false;
+                    ev.Use();
+                }
+                else if (ev.type == EventType.MouseDown && !_moreButton.Contains(ev.mousePosition))
+                {
+                    // A click beside it closes it; on the body, that is all it does.
+                    _moreOpen = false;
+                    if (body.Contains(ev.mousePosition))
+                    {
+                        ev.Use();
+                    }
+                }
+                else if ((ev.isMouse || ev.type == EventType.ScrollWheel || ev.type == EventType.ContextClick) && _moreMenu.Contains(ev.mousePosition))
+                {
+                    ev.Use();
+                }
+            }
+
+            float x = left;
+            for (int i = 0; i < shown; i++)
+            {
+                var r = new Rect(x, top, widths[i], StripHeight);
+                bool selected = ReferenceEquals(tabs[i], _current);
+                if (selected)
+                {
+                    ToolWindow.Fill(r, ToolWindow.InsetColor);
+                    ToolWindow.Fill(new Rect(r.x, r.y, r.width, 2), ToolWindow.AccentColor);
+                }
+                string title = ToolWindow.Elide(tabs[i].Title, _tabStyle, r.width - pad + 8);
+                if (title != tabs[i].Title)
+                {
+                    ToolWindow.Hint(r, tabs[i].Title);
+                }
+                if (GUI.Button(r, title, selected || r.Contains(ev.mousePosition) ? _tabSelectedStyle : _tabStyle))
+                {
+                    Select(tabs[i]);
+                    _wantedTab = null;
+                    _moreOpen = false;
+                }
+                x += widths[i] + gap;
+            }
+            if (_hiddenTabs.Count > 0)
+            {
+                if (currentHidden)
+                {
+                    ToolWindow.Fill(_moreButton, ToolWindow.InsetColor);
+                    ToolWindow.Fill(new Rect(_moreButton.x, _moreButton.y, _moreButton.width, 2), ToolWindow.AccentColor);
+                }
+                string label = (currentHidden ? ToolWindow.Elide(_current.Title, _tabStyle, _moreButton.width - pad - _tabStyle.CalcSize(new GUIContent(arrow)).x + 8) : "More") + arrow;
+                ToolWindow.Hint(_moreButton, $"{_hiddenTabs.Count} more tab(s) that do not fit; a wider window shows them in the row.");
+                if (GUI.Button(_moreButton, label, currentHidden || _moreOpen || _moreButton.Contains(ev.mousePosition) ? _tabSelectedStyle : _tabStyle))
+                {
+                    _moreOpen = !_moreOpen;
+                }
+            }
+        }
+
+        // Painted after the body, which it lies over; its input was taken in DrawTabStrip.
+        private void DrawMoreMenu()
+        {
+            if (!_moreOpen || _hiddenTabs.Count == 0 || Event.current.type != EventType.Repaint)
+            {
+                return;
+            }
+            Rect box = _moreMenu;
+            ToolWindow.Fill(new Rect(box.x - 1, box.y - 1, box.width + 2, box.height + 2), new Color(0.165f, 0.2f, 0.26f));
+            ToolWindow.Fill(box, ToolWindow.PanelColor);
+            GUI.BeginGroup(box);
+            float y = 4f;
+            Vector2 pointer = Event.current.mousePosition;
+            foreach (ToolTab t in _hiddenTabs)
+            {
+                var line = new Rect(0, y, box.width, 28f);
+                y += 28f;
+                if (line.y >= box.height)
+                {
+                    break;
+                }
+                bool selected = ReferenceEquals(t, _current);
+                if (selected)
+                {
+                    ToolWindow.Fill(line, ToolWindow.InsetColor);
+                    ToolWindow.Fill(new Rect(0, line.y, 2, line.height), ToolWindow.AccentColor);
+                }
+                GUIStyle style = selected || line.Contains(pointer) ? _menuItemHoverStyle : _menuItemStyle;
+                // Past the 2-pixel bar, 12 in, as the tabs are padded.
+                GUI.Label(new Rect(14, line.y, line.width - 26, line.height), ToolWindow.Elide(t.Title, style, line.width - 26), style);
+            }
+            GUI.EndGroup();
+        }
+
         private void HandleResize(Rect grip)
         {
-            GUI.Label(grip, "/", ToolWindow.Styles.MutedLabel);
+            DrawGrip(grip);
             int control = GUIUtility.GetControlID("DragNWashToolWindowResize".GetHashCode(), FocusType.Passive);
             Event current = Event.current;
             Vector2 screenMouse = current.mousePosition + _windowRect.position;

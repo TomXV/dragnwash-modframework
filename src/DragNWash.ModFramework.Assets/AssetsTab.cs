@@ -291,7 +291,11 @@ namespace DragNWash.ModFramework.Assets
                         TW.Fill(new Rect(0, ry, inner, row), TW.PanelColor);
                     }
                     // The name is a button: it selects the texture for the preview.
-                    if (GUI.Button(new Rect(0, ry, inner * 0.45f - 6, row), t.Name, selected ? _accentCell ?? _cell : _cell))
+                    // A long one is cut, and shown whole on the hint line.
+                    var nameRect = new Rect(0, ry, inner * 0.45f - 6, row);
+                    string name = TW.Elide(t.Name, _cell, nameRect.width);
+                    if (name != t.Name) TW.Hint(nameRect, t.Name);
+                    if (GUI.Button(nameRect, name, selected ? _accentCell ?? _cell : _cell))
                     {
                         _selected = selected ? null : t;
                     }
@@ -326,8 +330,12 @@ namespace DragNWash.ModFramework.Assets
             float ry = 0;
             foreach (TextureReplacement r in all)
             {
-                GUI.Label(new Rect(0, ry, inner * 0.4f - 6, row), r.Name, _cell);
-                GUI.Label(new Rect(inner * 0.4f, ry, inner * 0.3f - 6, row), r.Language != null ? $"{r.Mod} ({r.Language})" : r.Mod, _mutedCell);
+                var nameRect = new Rect(0, ry, inner * 0.4f - 6, row);
+                string name = TW.Elide(r.Name, _cell, nameRect.width);
+                if (name != r.Name) TW.Hint(nameRect, r.Name);
+                GUI.Label(nameRect, name, _cell);
+                string mod = r.Language != null ? $"{r.Mod} ({r.Language})" : r.Mod;
+                GUI.Label(new Rect(inner * 0.4f, ry, inner * 0.3f - 6, row), TW.Elide(mod, _mutedCell, inner * 0.3f - 6), _mutedCell);
                 string note = $"{r.Texture.width}x{r.Texture.height}, in {r.Applied} place(s)";
                 if (r.Overrides.Count > 0)
                 {
@@ -337,7 +345,12 @@ namespace DragNWash.ModFramework.Assets
                 {
                     note = "NOT reloaded: " + r.Problem;
                 }
-                GUI.Label(new Rect(inner * 0.7f, ry, inner * 0.3f, row), note, _mutedCell);
+                // What did not load is red, and whole on the hint line.
+                var noteRect = new Rect(inner * 0.7f, ry, inner * 0.3f, row);
+                GUIStyle noteStyle = r.Problem != null ? s.Danger : _mutedCell;
+                string shownNote = TW.Elide(note, noteStyle, noteRect.width);
+                if (shownNote != note) TW.Hint(noteRect, note);
+                GUI.Label(noteRect, shownNote, noteStyle);
                 ry += row;
             }
             GUI.EndScrollView();

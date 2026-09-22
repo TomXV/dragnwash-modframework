@@ -71,7 +71,7 @@ namespace DragNWash.ModFramework.ToolWindow
                 countdownWidth = 0f;
                 room = row.width - yesWidth - cancelWidth - gap * 2;
             }
-            string shown = ToolWindow.ElideText(question ?? "", s.Label, Mathf.Max(40f, room));
+            string shown = ToolWindow.Elide(question ?? "", s.Label, Mathf.Max(40f, room));
             float questionWidth = Mathf.Min(s.Label.CalcSize(new GUIContent(shown)).x + 4, Mathf.Max(40f, room));
             float x = row.x;
             GUI.Label(new Rect(x, row.y, questionWidth, row.height), shown, s.Label);

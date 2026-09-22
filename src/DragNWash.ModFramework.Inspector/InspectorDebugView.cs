@@ -60,6 +60,39 @@ namespace DragNWash.ModFramework.Inspector
 
         internal static bool Active => Mode != Scope.Off || Colliders || Lights || Bodies;
 
+        // The legend under the debug view's status line: each colour with its
+        // letter, which also starts every tag drawn on the game.
+        internal struct LegendEntry
+        {
+            public string Letter, Name;
+            public Color Color;
+            public LegendEntry(string letter, string name, Color color) { Letter = letter; Name = name; Color = new Color(color.r, color.g, color.b, 1f); }
+        }
+
+        internal static readonly LegendEntry[] Legend =
+        {
+            new LegendEntry("R", "Renderer", RendererColor),
+            new LegendEntry("U", "UI", UiColor),
+            new LegendEntry("C", "Collider", ColliderColor),
+            new LegendEntry("T", "Trigger", TriggerColor),
+            new LegendEntry("L", "Light", LightColor),
+            new LegendEntry("B", "Rigidbody", BodyColor),
+            new LegendEntry("S", "Sleeping", SleepingColor),
+        };
+
+        private static string LetterOf(Entry e)
+        {
+            if (e.Body != null) return InspectorBodies.Sleeping(e.Body) ? "S" : "B";
+            switch (e.Kind)
+            {
+                case Kind.Ui: return "U";
+                case Kind.Collider: return "C";
+                case Kind.Trigger: return "T";
+                case Kind.Light: return "L";
+                default: return "R";
+            }
+        }
+
         internal static string Status()
         {
             if (!Active) return "";
@@ -289,7 +322,7 @@ namespace DragNWash.ModFramework.Inspector
                 }
                 if (Names && (nameAll || kv.Value.Contains(ev.mousePosition) || Vector2.Distance(ev.mousePosition, kv.Value.center) < 40))
                 {
-                    string label = kv.Key.Label;
+                    string label = LetterOf(kv.Key) + "  " + kv.Key.Label;
                     if (kv.Key.Body != null) label += "  " + InspectorBodies.Describe(kv.Key.Body);
                     if (Shapes && kv.Key.Collider != null && InspectorColliderShape.IsScanned(kv.Key.Collider))
                     {

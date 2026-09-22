@@ -198,6 +198,7 @@ namespace DragNWash.ModFramework.Inspector
             _accentCell = new GUIStyle(_cell);
             _accentCell.normal.textColor = TW.AccentColor;
             _accentCell.hover.textColor = TW.AccentColor;
+            _keyCell = new GUIStyle(_cell) { fontStyle = FontStyle.Bold };
             // Wraps: the note is long, and a narrow window must not cut it off.
             _warningCell = new GUIStyle(s.WrappedLabel);
             _warningCell.normal.textColor = TW.WarningColor;
@@ -223,7 +224,8 @@ namespace DragNWash.ModFramework.Inspector
             _pointerHidden = false;
             if (ev.type == EventType.Repaint
                 && ((_menuRow != null && _menuBoxShown.Contains(ev.mousePosition))
-                    || (_toolMenu != null && _toolMenuBoxShown.Contains(ev.mousePosition))))
+                    || (_toolMenu != null && _toolMenuBoxShown.Contains(ev.mousePosition))
+                    || (_showKeys && _keysBoxShown.Contains(ev.mousePosition))))
             {
                 _pointer = ev.mousePosition;
                 ev.mousePosition = new Vector2(-100000f, -100000f);
@@ -285,7 +287,14 @@ namespace DragNWash.ModFramework.Inspector
             if (!_noteShown)
             {
                 _noteShown = true;
-                _status = "Experimental. Edits are not saved. Keys: arrows move in the list (left and right close and open), W/E/R gizmo, Q off, P pick, H highlight, T tree, C camera, B bones, N wireframe, M edit mesh, Ctrl+Z undo, Ctrl+Up parent.";
+                _status = "Experimental. Edits are not saved. ? lists the keys.";
+            }
+            // Esc closes the shortcuts list even while a field has the keyboard:
+            // the list says so, and a field has no use for the key.
+            if (ev.type == EventType.KeyDown && ev.keyCode == KeyCode.Escape && _showKeys && _menuRow == null)
+            {
+                _showKeys = false;
+                ev.Use();
             }
             // Shortcuts, only while no field has the keyboard (typing must not
             // trigger them), and only for keys the fields never use anyway.
@@ -296,6 +305,11 @@ namespace DragNWash.ModFramework.Inspector
                 if (InspectorFreeCamera.Flying)
                 {
                     handled = false;
+                }
+                else if (ev.character == '?')
+                {
+                    // The character, whichever key makes it on this keyboard.
+                    _showKeys = !_showKeys;
                 }
                 else switch (ev.keyCode)
                 {
@@ -326,6 +340,7 @@ namespace DragNWash.ModFramework.Inspector
                         break;
                     case KeyCode.Escape:
                         if (_menuRow != null) _menuRow = null;
+                        else if (_showKeys) _showKeys = false;
                         else if (InspectorPick.Picking) InspectorPick.End();
                         else if (InspectorGizmo.Mode != InspectorGizmo.GizmoMode.None) InspectorGizmo.Mode = InspectorGizmo.GizmoMode.None;
                         else handled = false;
@@ -347,6 +362,7 @@ namespace DragNWash.ModFramework.Inspector
             {
                 DrawMenu(area, s, row);
                 DrawToolMenu(area, s, row);
+                DrawKeys(area, s);
             }
 
             bool narrow = area.width < NarrowWidth;
@@ -410,6 +426,8 @@ namespace DragNWash.ModFramework.Inspector
             bx += 6;
             Tool(IconHistory, InspectorHistory.Count > 0 ? "History " + InspectorHistory.Count : "History", "History of edits", _showHistory, () => { _showHistory = !_showHistory; _showBodies = false; _showScenes = false; _showUsedBy = false; });
             Tool(IconRefresh, "Refresh", _objectsMode ? "List the loaded objects again and reread the members" : "Rebuild the tree and reread the members", false, () => { _dirty = true; _members = null; _header = null; if (_objectsMode) RefreshObjects(); });
+            bx += 6;
+            Tool("?", "?", "The keyboard shortcuts (? or Esc closes them)", _showKeys, () => _showKeys = !_showKeys);
             if (x + w - bx < 140)
             {
                 bx = x;
@@ -483,6 +501,7 @@ namespace DragNWash.ModFramework.Inspector
             {
                 GUI.Label(new Rect(x, y, w, row), InspectorDebugView.Status(), _accentCell);
                 y += row;
+                y = DrawDebugLegend(x, y, w, s);
             }
 
             if (_dirty)
@@ -525,9 +544,109 @@ namespace DragNWash.ModFramework.Inspector
                     ev.mousePosition = _pointer;
                     _pointerHidden = false;
                 }
+                // The keys panel under the menus, which open over it.
+                DrawKeys(area, s);
                 DrawMenu(area, s, row);
                 DrawToolMenu(area, s, row);
             }
+        }
+
+        // ---- the keys ("?") and the debug view's legend -------------------------------
+
+        private static bool _showKeys;
+        private static Rect _keysBoxShown;
+        private static GUIStyle _keyCell;
+        private static readonly string[][] Keys =
+        {
+            new[] { "Arrows", "move in the list" },
+            new[] { "Left / Right", "close / open a node" },
+            new[] { "W / E / R", "move / rotate / scale gizmo" },
+            new[] { "Q", "gizmo off" },
+            new[] { "P", "pick an object in the game" },
+            new[] { "H", "highlight" },
+            new[] { "T", "tree on / off" },
+            new[] { "C", "free camera" },
+            new[] { "B", "bones" },
+            new[] { "N", "wireframe" },
+            new[] { "M", "edit mesh (experimental)" },
+            new[] { "Ctrl+Z", "undo the last edit" },
+            new[] { "Ctrl+Up", "select the parent" },
+            new[] { "Esc", "leave pick mode / close a menu" },
+        };
+
+        // The keyboard shortcuts, in a panel on the right under the toolbar,
+        // until ? or Esc. Lies over the panes like a menu: its input is taken
+        // before they are drawn, and it is painted after them.
+        private static void DrawKeys(Rect area, ToolWindowStyles s)
+        {
+            if (!_showKeys)
+            {
+                return;
+            }
+            Event ev = Event.current;
+            // The heading, the keys and the closing line; the lines draw closer
+            // together where the tab is short, so the last keys are not cut off.
+            const float edges = 10 + 4 + 6 + 8;
+            int lines = 1 + Keys.Length + 1;
+            float width = Mathf.Min(420f, area.width - 8);
+            float top = _toolbarRect.yMax + 2;
+            float room = area.yMax - top - 4;
+            float lineH = Mathf.Clamp(Mathf.Floor((room - edges) / lines), 18f, 22f);
+            float height = Mathf.Min(edges + lines * lineH, room);
+            var box = new Rect(Mathf.Max(area.x + 4, area.xMax - TW.Padding - width), top, width, height);
+            _keysBoxShown = box;
+            if (ev.type != EventType.Repaint)
+            {
+                Swallow(ev, box);
+                return;
+            }
+            MenuFrame(box);
+            TW.Fill(box, TW.PanelColor);
+            GUI.BeginGroup(box);
+            float x = 12, w = box.width - 24, y = 10;
+            GUI.Label(new Rect(x, y, w, lineH), TW.Elide("KEYS   (while no field has the keyboard)", _cell, w), _cell);
+            y += lineH + 4;
+            const float keyWidth = 100f;
+            foreach (string[] k in Keys)
+            {
+                GUI.Label(new Rect(x, y, keyWidth, lineH), k[0], _keyCell);
+                GUI.Label(new Rect(x + keyWidth + 8, y, w - keyWidth - 8, lineH), TW.Elide(k[1], _mutedCell, w - keyWidth - 8), _mutedCell);
+                y += lineH;
+            }
+            y += 6;
+            GUI.Label(new Rect(x, y, w, lineH), TW.Elide("Press ? or Esc to close.    Experimental. Edits are not saved.", s.Hint, w), s.Hint);
+            GUI.EndGroup();
+        }
+
+        // The debug view's colours by name, each with the letter its tags on
+        // the game carry, so they can be told apart without the colour.
+        private static float DrawDebugLegend(float x, float y, float w, ToolWindowStyles s)
+        {
+            const float lineH = 24f;
+            float bx = x;
+            foreach (InspectorDebugView.LegendEntry e in InspectorDebugView.Legend)
+            {
+                float letterWidth = s.Tag.CalcSize(new GUIContent(e.Letter)).x;
+                float nameWidth = s.Hint.CalcSize(new GUIContent(e.Name)).x;
+                float entry = 14 + 5 + letterWidth + 4 + nameWidth;
+                if (bx > x && bx + entry > x + w)
+                {
+                    bx = x;
+                    y += lineH;
+                }
+                var swatch = new Rect(bx, y + (lineH - 14) / 2, 14, 14);
+                TW.Fill(new Rect(swatch.x, swatch.y, 14, 2), e.Color);
+                TW.Fill(new Rect(swatch.x, swatch.yMax - 2, 14, 2), e.Color);
+                TW.Fill(new Rect(swatch.x, swatch.y, 2, 14), e.Color);
+                TW.Fill(new Rect(swatch.xMax - 2, swatch.y, 2, 14), e.Color);
+                Color content = GUI.contentColor;
+                GUI.contentColor = e.Color;
+                GUI.Label(new Rect(bx + 19, y, letterWidth + 2, lineH), e.Letter, s.Tag);
+                GUI.contentColor = content;
+                GUI.Label(new Rect(bx + 19 + letterWidth + 4, y, nameWidth + 2, lineH), e.Name, s.Hint);
+                bx += entry + 14;
+            }
+            return y + lineH + 2;
         }
 
         private static void DrawLeft(Rect pane, ToolWindowStyles s, float row)
