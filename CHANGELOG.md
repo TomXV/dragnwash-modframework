@@ -4,6 +4,18 @@ Versions of the core and of each library are separate, and follow semantic versi
 
 ## Unreleased
 
+### Tool window: notices, questions in place, a remembered window, one row of tabs
+
+- `ToolWindow.ShowNotice(string, NoticeKind, float)` (ToolWindow library), new: a notice in a strip of its own above the footer's hint line, with a colour bar for its kind (`NoticeKind.Info`, `Warning`, `Error`), on one line cut with an ellipsis; the whole text shows while the pointer is on it and a click dismisses it. A timed notice clears itself and the next one waits its turn; an Error goes first and stays until the tab changes. `ShowNotice(string)` is unchanged. The hint line no longer gives way to a notice.
+- `ToolWindow.Busy(string, string)`, new: called from a tab's draw while it works over several frames, it dims the body, shows what runs and how far with a spinner, and keeps input from the tab.
+- `ToolWindow.AskConfirm`, `IsConfirming` and `Confirm`, new: a question on one row where the action was pressed, with Yes, Cancel and five seconds to answer (Esc cancels).
+- `ToolWindow.Hint(string)` and `Hint(Rect, string)`, new: a hint on the footer line while the pointer is on something; `GUIContent` tooltips show there too. `ToolWindow.Elide`, new: text cut with an ellipsis to fit. `ToolWindowStyles.Hint`, `Tag` and `Danger`, new.
+- The tabs are one row joined to the body, with More for those that do not fit; the resize corner is drawn. The window opens where it was left, at its size and on its tab; Reset window in the footer puts it back. F1 with the developer tools off says so on screen for a few seconds.
+- Inspector: History's Clear asks first; "?" lists the keyboard shortcuts (? or Esc closes them, also while a field has the keyboard); the debug view has a legend and its tags start with the kind's letter; the view, the panes and the Objects folders are kept between sessions.
+- Bridge: New token and Disconnect all ask first while a client is connected, naming it.
+- Assets: Reload files reads one file a frame under the busy overlay; a file that fails no longer stops the rest, and it is shown in red.
+- Flags and saves: `GameSaves.Restore`'s message says the save it replaced is kept as a snapshot.
+
 ### Code graph without the game (standalone app)
 
 - Experimental, not in a release. `codegraph-standalone/` (CodeGraphStandalone.exe, Windows): the code graph of any .NET assembly without the game (docs/CODE_GRAPH_STANDALONE.md). Opens DLLs, a folder (leaving out .NET's and Unity's own unless `--all`) or a Mono Unity game's folder, by Open…, the command line or a drop; refuses IL2CPP games with the reason. Shows the Bridge's page in WebView2 and answers its calls inside the process (`WebResourceRequested`), with no port and no network.
