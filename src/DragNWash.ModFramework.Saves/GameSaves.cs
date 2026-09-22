@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
 
@@ -231,7 +232,10 @@ namespace DragNWash.ModFramework.Saves
                     TakeSnapshot(slot, savePath, current);
                 }
                 Directory.CreateDirectory(System.IO.Path.GetDirectoryName(savePath));
-                File.WriteAllText(savePath, ForPath(savePath, File.ReadAllText(snapshot.Path)));
+                string restored = ForPath(savePath, File.ReadAllText(snapshot.Path));
+                // Same bytes as the plain File.WriteAllText(path, text) this
+                // replaces: UTF-8, no byte-order mark.
+                SafeFile.Write(savePath, new UTF8Encoding(false), w => w.Write(restored));
                 LastWrite[slot] = File.GetLastWriteTimeUtc(savePath);
                 LastContent[slot] = File.ReadAllText(savePath);
                 SavesLibraryPlugin.Log.LogInfo($"Restored {slot} to {snapshot.Label}.");
@@ -456,7 +460,9 @@ namespace DragNWash.ModFramework.Saves
                 {
                     return $"Nothing changed ({what}).";
                 }
-                File.WriteAllText(savePath, edited);
+                // Same bytes as the plain File.WriteAllText(path, text) this
+                // replaces: UTF-8, no byte-order mark.
+                SafeFile.Write(savePath, new UTF8Encoding(false), w => w.Write(edited));
                 LastWrite[slot] = File.GetLastWriteTimeUtc(savePath);
                 LastContent[slot] = edited;
                 SavesLibraryPlugin.Log.LogInfo($"{owner ?? "A mod"} changed {slot}: {what}.");
