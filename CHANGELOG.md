@@ -8,6 +8,11 @@ Versions of the core and of each library are separate, and follow semantic versi
 
 - Experimental, not in a release. `codegraph-standalone/` (CodeGraphStandalone.exe, Windows): the code graph of any .NET assembly without the game (docs/CODE_GRAPH_STANDALONE.md). Opens DLLs, a folder (leaving out .NET's and Unity's own unless `--all`) or a Mono Unity game's folder, by Open…, the command line or a drop; refuses IL2CPP games with the reason. Shows the Bridge's page in WebView2 and answers its calls inside the process (`WebResourceRequested`), with no port and no network.
 
+### Public CSV reading, and a safe write for any library
+
+- `CsvReader` (`DragNWash.ModFramework.Saves`) is public, no longer internal to the flags catalog: `ReadRows` reads a CSV file the shared way the catalog does, and `Escape` writes one field back, now also quoting a value starting with `#` so it is not read back as a comment line. From the localization mod.
+- `SafeFile` (`DragNWash.ModFramework`), new: `Write(path, encoding, Action<StreamWriter>)` fills a temporary file beside the target and moves it into place, so a crash or a sharing violation partway through never leaves the target truncated. From the localization mod, where it protects a translator's saved work; no framework call site uses it yet.
+
 ## 2026-09-20: a way into the editor
 
 The core and the preloader patcher go to 1.4.3, the Bridge to 0.1.2.
