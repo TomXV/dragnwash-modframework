@@ -124,6 +124,12 @@ namespace DragNWash.ModFramework.Assets
             EnsureCells(s);
             float row = TW.RowHeight, pad = TW.Padding;
             float x = area.x + pad, y = area.y + pad, w = area.width - 2 * pad;
+            // A reload reads a file a frame; the tab waits for it, and says how far it is.
+            if (AssetReplacements.Reloading)
+            {
+                TW.Busy("Reloading files...", AssetReplacements.ReloadingName == null ? null
+                    : $"{AssetReplacements.ReloadingName}  ({AssetReplacements.ReloadingDone + 1} of {AssetReplacements.ReloadingTotal})");
+            }
 
             if (GUI.Button(new Rect(x, y, 90, row), "List", s.Button))
             {
@@ -143,18 +149,18 @@ namespace DragNWash.ModFramework.Assets
                 _scroll = Vector2.zero;
             }
             bool wasEnabled = GUI.enabled;
-            GUI.enabled = !AssetReplacements.ReloadDisabled;
+            GUI.enabled = !AssetReplacements.ReloadDisabled && !AssetReplacements.Reloading;
             if (GUI.Button(new Rect(x + 440, y, 110, row), "Reload files", s.Button))
             {
-                int n = 0, bad = 0;
-                foreach (ReloadResult r in AssetReplacements.ReloadFiles())
+                if (AssetsLibraryPlugin.Instance != null)
                 {
-                    if (r.Status == "reloaded") n++;
-                    else if (r.Status != "unchanged") bad++;
+                    _status = "Reloading files...";
+                    AssetsLibraryPlugin.Instance.StartCoroutine(AssetReplacements.ReloadFilesOverFrames(Reloaded));
                 }
-                _status = $"Reloaded {n} file(s)" + (bad > 0 ? $", {bad} with problems (see Show replacements)" : "") + ".";
-                _showReplacements = bad > 0 || _showReplacements;
-                _textures = null;
+                else
+                {
+                    Reloaded(AssetReplacements.ReloadFiles());
+                }
             }
             GUI.enabled = wasEnabled;
             // The text field blends into the panel; an underline and a placeholder show where it is.
@@ -209,6 +215,22 @@ namespace DragNWash.ModFramework.Assets
         }
 
         private static TextureInfo _selected;
+
+        // After Reload files: the count on the status line, and a notice - a
+        // warning when a file did not load, which the replacements list then shows.
+        private static void Reloaded(IReadOnlyList<ReloadResult> results)
+        {
+            int n = 0, bad = 0;
+            foreach (ReloadResult r in results)
+            {
+                if (r.Status == "reloaded") n++;
+                else if (r.Status != "unchanged") bad++;
+            }
+            _status = $"Reloaded {n} file(s)" + (bad > 0 ? $", {bad} with problems (see Show replacements)" : "") + ".";
+            _showReplacements = bad > 0 || _showReplacements;
+            _textures = null;
+            TW.ShowNotice(_status, bad > 0 ? NoticeKind.Warning : NoticeKind.Info, bad > 0 ? 12f : 6f);
+        }
 
         // The texture as it is on the GPU, scaled to fit, with its facts. Drawing
         // a loaded texture uploads nothing, so this is safe on Direct3D 12.

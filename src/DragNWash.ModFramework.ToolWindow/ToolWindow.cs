@@ -312,6 +312,45 @@ namespace DragNWash.ModFramework.ToolWindow
             ToolWindowPlugin.Instance?.MarkBusy(what, detail);
         }
 
+        /// <summary>
+        /// Asks before an action that cannot be taken back, in place rather than
+        /// in a dialog: call it when the action's button is pressed, draw that
+        /// button with <see cref="ToolWindowStyles.SelectedButton"/> while
+        /// <see cref="IsConfirming"/> is true, and draw <see cref="Confirm"/> on a
+        /// row under it. The question waits five seconds, and goes on Cancel,
+        /// Esc, a tab change or the window closing. One question at a time in
+        /// the window: asking another replaces it. For an action that loses
+        /// nothing (nothing to disconnect, nothing to clear), just do it.
+        /// </summary>
+        /// <param name="id">Names the action, unique to the mod, e.g. "mymod.cache.clear".</param>
+        public static void AskConfirm(string id)
+        {
+            InlineConfirm.Ask(id);
+        }
+
+        /// <summary>True while the question <see cref="AskConfirm"/> asked for <paramref name="id"/> waits for its answer.</summary>
+        public static bool IsConfirming(string id)
+        {
+            return InlineConfirm.IsAsking(id);
+        }
+
+        /// <summary>
+        /// Draws the question for <paramref name="id"/> on <paramref name="row"/>
+        /// while it waits: the question, a Yes button, Cancel, and the seconds
+        /// left; the hint line says what the answers do. Returns true on the
+        /// event Yes is pressed - do the action then. Draws nothing and returns
+        /// false while the id is not asking.
+        /// </summary>
+        /// <param name="row">One row of controls, as wide as the tab allows.</param>
+        /// <param name="id">As given to <see cref="AskConfirm"/>.</param>
+        /// <param name="question">One line saying how much and what happens, e.g. "Clear 12 edits? They stay applied, Revert is gone."</param>
+        /// <param name="yes">The Yes button's text, e.g. "Yes, clear".</param>
+        /// <param name="hint">For the hint line, e.g. "Yes clears the history; Cancel or 5 s keeps it. Esc = Cancel."; a general one when null.</param>
+        public static bool Confirm(Rect row, string id, string question, string yes = "Yes", string hint = null)
+        {
+            return InlineConfirm.Draw(row, id, question, yes, hint, Styles);
+        }
+
         // "..." where the window font has no ellipsis; set at startup.
         internal static string Ellipsis = "...";
 

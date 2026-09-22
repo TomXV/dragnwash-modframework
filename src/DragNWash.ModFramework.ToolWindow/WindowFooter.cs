@@ -135,25 +135,30 @@ namespace DragNWash.ModFramework.ToolWindow
 
         // ---- hint line ----------------------------------------------------------------
 
-        // What the hint line says this draw instead of the keys: a tab's hint
-        // (bright), or the window's own word while it waits (muted).
+        // What the hint line says this draw instead of the keys: what a
+        // question waiting for its answer means, a hint for what the pointer is
+        // on (bright), or what a busy tab is doing - the later over the earlier.
+        internal const int HintConfirm = 1, HintPointer = 2, HintBusy = 3;
         private static string _hint;
         private static bool _hintBright;
+        private static int _hintRank;
 
         internal static void BeginDraw()
         {
             _hint = null;
             _hintBright = false;
+            _hintRank = 0;
         }
 
-        internal static void SetHint(string text, bool bright)
+        internal static void SetHint(string text, int rank)
         {
-            if (string.IsNullOrEmpty(text))
+            if (string.IsNullOrEmpty(text) || rank < _hintRank)
             {
                 return;
             }
             _hint = text;
-            _hintBright = bright;
+            _hintBright = rank == HintPointer;
+            _hintRank = rank;
         }
 
         // ---- busy ---------------------------------------------------------------------
@@ -273,7 +278,7 @@ namespace DragNWash.ModFramework.ToolWindow
             }
             if (hovered)
             {
-                SetHint("Click the notice to dismiss it.", true);
+                SetHint("Click the notice to dismiss it.", HintPointer);
             }
             ToolWindow.Fill(box, ToolWindow.PanelColor);
             ToolWindow.Fill(new Rect(box.x, box.y, 3, box.height), ColorOf(n.Kind));
@@ -319,7 +324,7 @@ namespace DragNWash.ModFramework.ToolWindow
             }
             y += 26;
             GUI.Label(new Rect(x, y, w, 26), "The window waits until it is done.", s.MutedLabel);
-            SetHint(string.IsNullOrEmpty(_busyDetail) ? _busyWhat : _busyWhat + "  " + _busyDetail, false);
+            SetHint(string.IsNullOrEmpty(_busyDetail) ? _busyWhat : _busyWhat + "  " + _busyDetail, HintBusy);
         }
     }
 }

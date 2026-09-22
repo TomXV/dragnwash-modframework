@@ -616,13 +616,123 @@ namespace DragNWash.ModFramework.Assets
         public static IReadOnlyList<ReloadResult> ReloadFiles()
         {
             var results = new List<ReloadResult>();
-            if (ReloadDisabled)
+            if (Reloading)
             {
-                results.Add(new ReloadResult("(reload)", ReloadDisabledReason ?? "reloading is switched off"));
+                results.Add(new ReloadResult("(reload)", "a reload is already running"));
+                return results;
+            }
+            List<TextureReplacement> changed = ChangedFiles(results);
+            if (changed.Count == 0)
+            {
                 LastReload = results;
                 return results;
             }
+            ReloadGuard.Begin(NamesOf(changed));
+            try
+            {
+                foreach (TextureReplacement r in changed)
+                {
+                    ReloadOne(r, results);
+                }
+                ApplyNow();
+            }
+            finally
+            {
+                ReloadGuard.End();
+            }
+            LastReload = results;
+            return results;
+        }
+
+        /// <summary>True while the Assets tab's reload works through the files, one a frame.</summary>
+        internal static bool Reloading { get; private set; }
+
+        /// <summary>The file that reload is at, and how many it has done of how many.</summary>
+        internal static string ReloadingName { get; private set; }
+        internal static int ReloadingDone { get; private set; }
+        internal static int ReloadingTotal { get; private set; }
+
+        // The Assets tab's Reload files: what ReloadFiles does, one file a
+        // frame, so the window can say how far it is and the game never stops
+        // for all of them at once. A coroutine of the library's plugin; the
+        // work starts on the frame after the button, outside the window's
+        // drawing, and done gets the results.
+        internal static System.Collections.IEnumerator ReloadFilesOverFrames(Action<IReadOnlyList<ReloadResult>> done)
+        {
+            if (Reloading)
+            {
+                yield break;
+            }
+            Reloading = true;
+            ReloadingName = null;
+            ReloadingDone = 0;
+            ReloadingTotal = 0;
+            var results = new List<ReloadResult>();
+            try
+            {
+                yield return null;
+                List<TextureReplacement> changed = ChangedFiles(results);
+                if (changed.Count > 0)
+                {
+                    ReloadingTotal = changed.Count;
+                    ReloadGuard.Begin(NamesOf(changed));
+                    try
+                    {
+                        for (int i = 0; i < changed.Count; i++)
+                        {
+                            // Named on screen a frame before it is read.
+                            ReloadingName = changed[i].Name;
+                            ReloadingDone = i;
+                            yield return null;
+                            ReloadOne(changed[i], results);
+                        }
+                        ReloadingDone = changed.Count;
+                        ApplyNow();
+                    }
+                    finally
+                    {
+                        ReloadGuard.End();
+                    }
+                }
+                LastReload = results;
+            }
+            finally
+            {
+                Reloading = false;
+                ReloadingName = null;
+            }
+            try
+            {
+                done?.Invoke(results);
+            }
+            catch (Exception ex)
+            {
+                AssetsLibraryPlugin.Log.LogError($"After reloading texture replacements: {ex}");
+            }
+        }
+
+        // The plugin went away in the middle of a reload (a mod reload): its
+        // coroutine will not finish, so the guard and the flag are put right here.
+        internal static void AbandonReload()
+        {
+            if (!Reloading)
+            {
+                return;
+            }
+            ReloadGuard.End();
+            Reloading = false;
+            ReloadingName = null;
+        }
+
+        // Which files differ from what was loaded; what does not is in results already.
+        private static List<TextureReplacement> ChangedFiles(List<ReloadResult> results)
+        {
             var changed = new List<TextureReplacement>();
+            if (ReloadDisabled)
+            {
+                results.Add(new ReloadResult("(reload)", ReloadDisabledReason ?? "reloading is switched off"));
+                return changed;
+            }
             foreach (TextureReplacement r in All)
             {
                 if (!File.Exists(r.Path))
@@ -637,65 +747,61 @@ namespace DragNWash.ModFramework.Assets
                 }
                 changed.Add(r);
             }
-            if (changed.Count == 0)
-            {
-                LastReload = results;
-                return results;
-            }
+            return changed;
+        }
+
+        private static string NamesOf(List<TextureReplacement> changed)
+        {
             var names = new List<string>();
             foreach (TextureReplacement r in changed)
             {
                 names.Add(r.Name);
             }
-            ReloadGuard.Begin(string.Join(" ", names));
+            return string.Join(" ", names);
+        }
+
+        // One file read again and swapped in wherever the old texture was. A
+        // failure is that file's result; the others still go.
+        private static void ReloadOne(TextureReplacement r, List<ReloadResult> results)
+        {
             try
             {
-                foreach (TextureReplacement r in changed)
+                Texture2D fresh = GameAssets.LoadTextureFresh(r.Path, out string error);
+                if (fresh == null)
                 {
-                    Texture2D fresh = GameAssets.LoadTextureFresh(r.Path, out string error);
-                    if (fresh == null)
-                    {
-                        r.Problem = error;
-                        results.Add(new ReloadResult(r.Name, error));
-                        AssetsLibraryPlugin.Log.LogWarning($"Texture \"{r.Name}\" was not reloaded: {error}");
-                        continue;
-                    }
-                    fresh.name = r.Name;
-                    Texture2D old = r.Texture;
-                    Replacements.Remove(old);
-                    Replacements.Add(fresh);
-                    r.Texture = fresh;
-                    r.Problem = null;
-                    r.ContentHash = HashFile(r.Path);
-                    r.Applied = 0;
-                    var stale = new List<Sprite>();
-                    foreach (KeyValuePair<Sprite, Sprite> kv in SpriteFor)
-                    {
-                        if (kv.Value != null && kv.Value.texture == old)
-                        {
-                            stale.Add(kv.Key);
-                        }
-                    }
-                    foreach (Sprite s in stale)
-                    {
-                        SpriteFor.Remove(s);
-                    }
-                    ReplaceEverywhere(old, fresh);
-                    results.Add(new ReloadResult(r.Name, "reloaded"));
+                    r.Problem = error;
+                    results.Add(new ReloadResult(r.Name, error));
+                    AssetsLibraryPlugin.Log.LogWarning($"Texture \"{r.Name}\" was not reloaded: {error}");
+                    return;
                 }
-                ApplyNow();
+                fresh.name = r.Name;
+                Texture2D old = r.Texture;
+                Replacements.Remove(old);
+                Replacements.Add(fresh);
+                r.Texture = fresh;
+                r.Problem = null;
+                r.ContentHash = HashFile(r.Path);
+                r.Applied = 0;
+                var stale = new List<Sprite>();
+                foreach (KeyValuePair<Sprite, Sprite> kv in SpriteFor)
+                {
+                    if (kv.Value != null && kv.Value.texture == old)
+                    {
+                        stale.Add(kv.Key);
+                    }
+                }
+                foreach (Sprite s in stale)
+                {
+                    SpriteFor.Remove(s);
+                }
+                ReplaceEverywhere(old, fresh);
+                results.Add(new ReloadResult(r.Name, "reloaded"));
             }
             catch (Exception ex)
             {
-                AssetsLibraryPlugin.Log.LogError($"Reloading texture replacements failed: {ex}");
-                results.Add(new ReloadResult("(reload)", ex.Message));
+                AssetsLibraryPlugin.Log.LogError($"Reloading the texture replacement \"{r.Name}\" failed: {ex}");
+                results.Add(new ReloadResult(r.Name, ex.Message));
             }
-            finally
-            {
-                ReloadGuard.End();
-            }
-            LastReload = results;
-            return results;
         }
 
         // Materials and sprite users that hold the previous replacement get the new one.
@@ -820,6 +926,11 @@ namespace DragNWash.ModFramework.Assets
             if (ReloadDisabled)
             {
                 _reloadRequested = false;
+            }
+            // The Assets tab's reload is under way; the files it reads are the same.
+            if (Reloading)
+            {
+                return;
             }
             if (!_reloadRequested)
             {

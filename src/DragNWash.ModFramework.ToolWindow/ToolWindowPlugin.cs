@@ -248,6 +248,7 @@ namespace DragNWash.ModFramework.ToolWindow
             {
                 _current = tab;
                 WindowFooter.Clear();
+                InlineConfirm.Cancel();
             }
         }
 
@@ -282,6 +283,7 @@ namespace DragNWash.ModFramework.ToolWindow
                 {
                     CursorUnlock.Release();
                     VirtualClick.Cancel();
+                    InlineConfirm.Cancel();
                 }
                 ToolWindow.RaiseOpenChanged(ShowWindow);
             }
@@ -575,6 +577,12 @@ namespace DragNWash.ModFramework.ToolWindow
             Event ev = Event.current;
             bool busy = WindowFooter.IsBusy(_current);
             WindowFooter.HandleInput(ev, noticeRect);
+            // Esc answers a waiting question with Cancel, whatever the tab does with Esc.
+            if (InlineConfirm.Active && ev.type == EventType.KeyDown && ev.keyCode == KeyCode.Escape)
+            {
+                InlineConfirm.Cancel();
+                ev.Use();
+            }
             if (busy && (ev.isKey || ((ev.isMouse || ev.type == EventType.ScrollWheel || ev.type == EventType.ContextClick) && body.Contains(ev.mousePosition))))
             {
                 ev.Use();
@@ -643,6 +651,7 @@ namespace DragNWash.ModFramework.ToolWindow
             if (ev.type == EventType.Repaint)
             {
                 WindowFooter.Tick();
+                InlineConfirm.Tick();
             }
 
             HandleResize(new Rect(width - GripSize, height - GripSize, GripSize, GripSize));

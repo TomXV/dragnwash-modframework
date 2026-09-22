@@ -239,7 +239,9 @@ namespace DragNWash.ModFramework.Saves
                 LastWrite[slot] = File.GetLastWriteTimeUtc(savePath);
                 LastContent[slot] = File.ReadAllText(savePath);
                 SavesLibraryPlugin.Log.LogInfo($"Restored {slot} to {snapshot.Label}.");
-                return $"Restored {ShortName(slot)} to {snapshot.Label}. Return to the title screen and load the slot for it to take effect; saving in game will overwrite it again.";
+                // Told rather than confirmed beforehand: the save it replaced is
+                // a snapshot now, so the restore can itself be undone.
+                return $"Restored {ShortName(slot)} to {snapshot.Label}; the old save is kept as a snapshot. Load the slot from the title screen.";
             }
             catch (Exception ex)
             {

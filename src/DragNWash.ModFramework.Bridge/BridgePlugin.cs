@@ -180,6 +180,43 @@ namespace DragNWash.ModFramework.Bridge
             }
         }
 
+        private const string NewTokenId = "bridge.token.new", DisconnectId = "bridge.disconnect";
+
+        private static void NewToken(string disconnected)
+        {
+            BridgeToken.Renew();
+            McpProtocol.EndAll();
+            PageDoor.EndAll();
+            TW.ShowNotice(disconnected == null
+                ? "New token made; Copy setup has the new one."
+                : $"New token made. {disconnected} {(disconnected.Contains(" and ") || disconnected.EndsWith(" clients") ? "were" : "was")} disconnected; Copy setup has the new one.", NoticeKind.Info, 8f);
+        }
+
+        // Who is connected, for the question and the notice: "claude-code",
+        // "claude-code and the page", "3 clients and the page"; null for nobody.
+        private static string Connected(List<McpProtocol.Session> sessions)
+        {
+            var names = new List<string>();
+            foreach (McpProtocol.Session c in sessions)
+            {
+                string name = string.IsNullOrEmpty(c.Client) ? "a client" : c.Client;
+                if (!names.Contains(name)) names.Add(name);
+            }
+            if (names.Count > 3)
+            {
+                names = new List<string> { sessions.Count + " clients" };
+            }
+            if (PageDoor.SignedIn > 0)
+            {
+                names.Add("the page");
+            }
+            if (names.Count == 0)
+            {
+                return null;
+            }
+            return names.Count == 1 ? names[0] : string.Join(", ", names.Take(names.Count - 1)) + " and " + names[names.Count - 1];
+        }
+
         private string Setup => $"claude mcp add --transport http dragnwash http://127.0.0.1:{_port.Value}/mcp --header \"Authorization: Bearer {BridgeToken.Value}\"";
 
         private string Command(string[] args)
@@ -225,7 +262,7 @@ namespace DragNWash.ModFramework.Bridge
             float inner = w - 20;
             List<McpProtocol.Session> sessions = McpProtocol.AllSessions();
             List<McpProtocol.CallRecord> calls = McpProtocol.RecentCalls();
-            float content = 360 + (sessions.Count + calls.Count) * 26;
+            float content = 360 + (sessions.Count + calls.Count) * 26 + (TW.IsConfirming(NewTokenId) || TW.IsConfirming(DisconnectId) ? row + 6 : 0);
             TW.ApplyScroll(area, ref _scroll);
             _scroll = GUI.BeginScrollView(area, _scroll, new Rect(0, 0, inner, Mathf.Max(area.height, content)), false, false);
             float y = 8;
@@ -239,19 +276,19 @@ namespace DragNWash.ModFramework.Bridge
             // The row wraps: six buttons do not fit a narrow window, and the
             // last of them was walking off the edge.
             float bx = x, by = y;
-            bool Button(string label, float width)
+            bool Button(string label, float width, bool lit = false)
             {
                 if (bx > x && bx + width > x + inner)
                 {
                     bx = x;
                     by += row + 6;
                 }
-                bool pressed = GUI.Button(new Rect(bx, by, width, row), label, label == "Turn off" || label == "Turn on" ? (_enabled.Value ? s.SelectedButton : s.Button) : s.Button);
+                bool pressed = GUI.Button(new Rect(bx, by, width, row), label, lit ? s.SelectedButton : s.Button);
                 bx += width + 8;
                 return pressed;
             }
 
-            if (Button(Server != null || _enabled.Value ? "Turn off" : "Turn on", 120))
+            if (Button(Server != null || _enabled.Value ? "Turn off" : "Turn on", 120, _enabled.Value))
             {
                 _enabled.Value = !_enabled.Value;
             }
@@ -273,20 +310,41 @@ namespace DragNWash.ModFramework.Bridge
                 GUIUtility.systemCopyBuffer = Setup;
                 TW.ShowNotice("The Claude Code setup command, with the token, is on the clipboard.", NoticeKind.Info, 8f);
             }
-            if (Button("New token", 120))
+            // Both cut off whoever is connected, so they ask first - and only
+            // then: with nobody connected there is nothing to lose.
+            string who = Connected(sessions);
+            if (Button("New token", 120, TW.IsConfirming(NewTokenId)))
             {
-                BridgeToken.Renew();
-                McpProtocol.EndAll();
-                PageDoor.EndAll();
-                TW.ShowNotice("New token made; every client was disconnected and needs the new setup.");
+                if (who == null) NewToken(null);
+                else TW.AskConfirm(NewTokenId);
             }
-            if (Button("Disconnect all", 150))
+            if (Button("Disconnect all", 150, TW.IsConfirming(DisconnectId)))
             {
-                McpProtocol.EndAll();
-                PageDoor.EndAll();
+                if (who == null) TW.ShowNotice("No client is connected.", NoticeKind.Info, 6f);
+                else TW.AskConfirm(DisconnectId);
             }
             y = by;
             y += row + 10;
+            if (TW.IsConfirming(NewTokenId))
+            {
+                if (TW.Confirm(new Rect(x, y, inner, row), NewTokenId, who != null ? $"New token? Disconnects {who}." : "New token?", "Yes, new token",
+                    "Yes makes the token; Cancel or 5 s keeps the old one. Esc = Cancel."))
+                {
+                    NewToken(who);
+                }
+                y += row + 6;
+            }
+            if (TW.IsConfirming(DisconnectId))
+            {
+                if (TW.Confirm(new Rect(x, y, inner, row), DisconnectId, who != null ? $"Disconnect {who}?" : "Disconnect every client?", "Yes, disconnect",
+                    "Yes disconnects them; they can connect again with the same token. Cancel or 5 s keeps them. Esc = Cancel."))
+                {
+                    McpProtocol.EndAll();
+                    PageDoor.EndAll();
+                    TW.ShowNotice(who != null ? $"Disconnected {who}." : "Disconnected every client.", NoticeKind.Info, 8f);
+                }
+                y += row + 6;
+            }
             if (_note.Length > 0)
             {
                 GUI.Label(new Rect(x, y, inner, 44), _note, s.WrappedLabel);

@@ -12,6 +12,7 @@ namespace DragNWash.ModFramework.Inspector
     {
         private static bool _showHistory;
         private static Vector2 _scrollHistory;
+        private const string ClearHistoryId = "inspector.history.clear";
         private static void DrawHistory(Rect pane, ToolWindowStyles s, float row)
         {
             TW.Fill(pane, TW.InsetColor);
@@ -19,15 +20,20 @@ namespace DragNWash.ModFramework.Inspector
             GUI.Label(new Rect(x, y, w, row), $"History: {InspectorHistory.Count} edit(s) this session, newest first. Nothing is saved.", _mutedCell);
             y += row;
             float bx = x;
+            // With nothing in it there is nothing to undo or clear.
+            bool wasEnabled = GUI.enabled;
+            GUI.enabled = wasEnabled && InspectorHistory.Count > 0;
             if (GUI.Button(new Rect(bx, y, 100, row), "Undo last", s.Button))
             {
                 _status = InspectorHistory.Undo();
             }
             bx += 108;
-            if (GUI.Button(new Rect(bx, y, 70, row), "Clear", s.Button))
+            // Clearing loses every Revert and cannot be taken back, so it asks.
+            if (GUI.Button(new Rect(bx, y, 70, row), "Clear", TW.IsConfirming(ClearHistoryId) ? s.SelectedButton : s.Button))
             {
-                InspectorHistory.Clear();
+                TW.AskConfirm(ClearHistoryId);
             }
+            GUI.enabled = wasEnabled;
             bx += 78;
             if (GUI.Button(new Rect(bx, y, 120, row), "< Members", s.Button))
             {
@@ -40,6 +46,20 @@ namespace DragNWash.ModFramework.Inspector
                 _exportNote = "";
             }
             y += row + 4;
+            if (TW.IsConfirming(ClearHistoryId))
+            {
+                int n = InspectorHistory.Count;
+                string edits = n == 1 ? "1 edit" : n + " edits";
+                if (TW.Confirm(new Rect(x, y, w, row), ClearHistoryId, $"Clear {edits}? They stay applied, Revert is gone.", "Yes, clear",
+                    "Yes clears the history; Cancel or 5 s keeps it. Esc = Cancel."))
+                {
+                    InspectorHistory.Clear();
+                    _exporting = false;
+                    TW.ShowNotice($"Cleared {edits}. They stay applied in the game.", NoticeKind.Info, 8f);
+                    InspectorPlugin.Log.LogInfo($"[inspector] History cleared ({edits}).");
+                }
+                y += row + 4;
+            }
             if (_exporting)
             {
                 y = DrawExportForm(x, y, w, s, row);

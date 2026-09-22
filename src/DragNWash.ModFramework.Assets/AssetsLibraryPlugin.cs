@@ -14,6 +14,7 @@ namespace DragNWash.ModFramework.Assets
     internal sealed class AssetsLibraryPlugin : BaseUnityPlugin
     {
         internal static ManualLogSource Log;
+        internal static AssetsLibraryPlugin Instance;
         internal static ConfigEntry<int> AtlasPointSize;
         internal static ConfigEntry<bool> AllowReload;
         internal static ConfigEntry<bool> WatchFiles;
@@ -32,6 +33,7 @@ namespace DragNWash.ModFramework.Assets
         private void Awake()
         {
             Log = Logger;
+            Instance = this;
             // A reloaded mod's old handlers go (ModReload); the new build subscribes again.
             ModReload.Unloading += (guid, assembly) => ModReload.PruneEvent(typeof(GameFonts), nameof(GameFonts.CharactersPrepared), assembly);
             AssetsOperations.Register();
@@ -155,6 +157,11 @@ namespace DragNWash.ModFramework.Assets
                     AssetReplacements.ReloadDisabledReason = "switched off in the config ([Reload] AllowReload)";
                 }
             };
+        }
+
+        private void OnDestroy()
+        {
+            AssetReplacements.AbandonReload();
         }
 
         private void Update()
