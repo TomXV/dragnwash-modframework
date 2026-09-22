@@ -147,9 +147,20 @@ namespace DragNWash.ModFramework.Mods
                 Cache[path] = (stamp, plugins);
                 return plugins;
             }
+            catch (BadImageFormatException ex)
+            {
+                // Not a .NET assembly (a native DLL some mods ship next to their
+                // own): not a plugin, and nothing is wrong. BepInEx skips these at
+                // Debug level too.
+                if (Reported.Add(path))
+                {
+                    ModFramework.Log.LogDebug($"Skipped {Path.GetFileName(path)} on the Mods screen: not a .NET assembly ({ex.Message})");
+                }
+                return new List<Found>();
+            }
             catch (Exception ex)
             {
-                // Not a .NET assembly, or unreadable: not a plugin we can describe.
+                // Unreadable: not a plugin we can describe.
                 if (Reported.Add(path))
                 {
                     ModFramework.Log.LogInfo($"Could not read {Path.GetFileName(path)} for the Mods screen: {ex.GetType().Name}: {ex.Message}");
