@@ -8,6 +8,11 @@ Versions of the core and of each library are separate, and follow semantic versi
 
 - Experimental, not in a release. `codegraph-standalone/` (CodeGraphStandalone.exe, Windows): the code graph of any .NET assembly without the game (docs/CODE_GRAPH_STANDALONE.md). Opens DLLs, a folder (leaving out .NET's and Unity's own unless `--all`) or a Mono Unity game's folder, by Open…, the command line or a drop; refuses IL2CPP games with the reason. Shows the Bridge's page in WebView2 and answers its calls inside the process (`WebResourceRequested`), with no port and no network.
 
+### Text-field underline and filter field for tool-window tabs
+
+- `ToolWindow.Underline(Rect)` (ToolWindow library), new: the accent underline the built-in tabs draw under a text field.
+- `ToolWindow.FilterField(Rect, string, string, ToolWindowStyles)`, new: a text field with that underline and a muted placeholder while it is empty; returns the new text. The Inspector, Assets and Console tabs now use both instead of their own copies, so a mod's tab can look the same with one call.
+
 ## 2026-09-20: a way into the editor
 
 The core and the preloader patcher go to 1.4.3, the Bridge to 0.1.2.
