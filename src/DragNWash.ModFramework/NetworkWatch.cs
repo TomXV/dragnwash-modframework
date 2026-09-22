@@ -163,12 +163,18 @@ namespace DragNWash.ModFramework
                 // hooked now if it is there, or as soon as a mod loads it.
                 AppDomain.CurrentDomain.AssemblyLoad += (_, args) =>
                 {
-                    if (args.LoadedAssembly.GetName().Name == "System.Net.Http")
+                    if (args.LoadedAssembly.GetName().Name == HttpAssembly)
                     {
-                        HookHttpClient();
+                        HookHttpClient(args.LoadedAssembly);
                     }
                 };
-                HookHttpClient();
+                foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    if (assembly.GetName().Name == HttpAssembly)
+                    {
+                        HookHttpClient(assembly);
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -176,15 +182,20 @@ namespace DragNWash.ModFramework
             }
         }
 
-        private static void HookHttpClient()
+        private const string HttpAssembly = "System.Net.Http";
+
+        // The types are looked for in System.Net.Http itself: AccessTools.TypeByName
+        // would go through every type of every loaded assembly, three times, and
+        // warn for each type while the game has not loaded that assembly.
+        private static void HookHttpClient(Assembly http)
         {
             if (_httpClientPatched)
             {
                 return;
             }
-            Type client = AccessTools.TypeByName("System.Net.Http.HttpClient");
-            Type message = AccessTools.TypeByName("System.Net.Http.HttpRequestMessage");
-            Type option = AccessTools.TypeByName("System.Net.Http.HttpCompletionOption");
+            Type client = http.GetType("System.Net.Http.HttpClient", false);
+            Type message = http.GetType("System.Net.Http.HttpRequestMessage", false);
+            Type option = http.GetType("System.Net.Http.HttpCompletionOption", false);
             if (client == null || message == null || option == null)
             {
                 return;
