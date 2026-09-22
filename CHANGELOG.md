@@ -30,6 +30,12 @@ Versions of the core and of each library are separate, and follow semantic versi
 - Install.exe: a failure says what went wrong in plain words (download failed, game folder not writable, not a valid zip, anything else), with **Show details**, **Copy details** for a bug report, and **Retry**. The log and the details stay English.
 - install-steamdeck.sh: in a terminal the BepInEx download shows curl's progress bar, and a `mod-install.json` that is there but broken says to download the zip again instead of saying the mod's files are missing.
 
+### Code Graph app
+
+- The waiting page says why it is waiting (the game or the Bridge is not there, no token yet, or the token was refused), has a Retry now button, and shows how many tries were made and when the next one is; a refused token waits for Retry instead of retrying every 2 seconds.
+- A start whose hand-over the open window does not answer opens a window of its own and says so once, instead of exiting without a word.
+- Its own words in English, Japanese and Chinese, following Windows' language, window title included.
+
 ### Code graph without the game (standalone app)
 
 - Experimental, not in a release. `codegraph-standalone/` (CodeGraphStandalone.exe, Windows): the code graph of any .NET assembly without the game (docs/CODE_GRAPH_STANDALONE.md). Opens DLLs, a folder (leaving out .NET's and Unity's own unless `--all`) or a Mono Unity game's folder, by Open…, the command line or a drop; refuses IL2CPP games with the reason. Shows the Bridge's page in WebView2 and answers its calls inside the process (`WebResourceRequested`), with no port and no network.
