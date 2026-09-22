@@ -14,12 +14,14 @@ Security problems do not go in a pull request or a public issue — see
 
 - **Report what broke.** A bug report with `BepInEx/LogOutput.log`, the game
   build and the platform is worth a lot, especially after a game update.
-  A new issue is labelled automatically (kind, area, severity), and a bug
-  report missing a version, steps or a log gets one comment asking for them.
-  For that, the title and the body's own words, without code blocks, tables or
-  images, and the error lines of a pasted log with user names taken out of
-  paths, are sent to TypeSafe AI's classification model
-  ([`tools/issue-triage.py`](tools/issue-triage.py)). A person reads every issue.
+  - **Labels:** a new issue is labelled automatically (kind, area, severity),
+    and a bug report missing a version, steps or a log gets one comment asking
+    for them.
+  - **What is sent:** for that, the title and the body's own words, without
+    code blocks, tables or images, and the error lines of a pasted log with
+    user names taken out of paths, are sent to TypeSafe AI's classification
+    model ([`tools/issue-triage.py`](tools/issue-triage.py)).
+  - **A person reads every issue.**
 - **Say what your mod cannot do.** The framework exists because mods kept
   rebuilding the same machinery. If you are patching the game directly because
   the framework gives you no way to do something, that is the most useful issue
@@ -37,11 +39,13 @@ Security problems do not go in a pull request or a public issue — see
 
 ## Before you start on something big
 
-Open an issue first. A new library, a change to a public API, or anything that
-changes how mods are loaded is worth agreeing on before you write it — partly
-so the work is not wasted, partly because [`docs/DESIGN.md`](docs/DESIGN.md) and
-[`docs/ROADMAP.md`](docs/ROADMAP.md) may already have a plan for it that reads
-differently from yours.
+Open an issue first.
+
+- **What needs one:** a new library, a change to a public API, or anything that
+  changes how mods are loaded. It is worth agreeing on before you write it.
+- **Why:** partly so the work is not wasted, partly because
+  [`docs/DESIGN.md`](docs/DESIGN.md) and [`docs/ROADMAP.md`](docs/ROADMAP.md)
+  may already have a plan for it that reads differently from yours.
 
 Small fixes need none of that. Send them.
 
