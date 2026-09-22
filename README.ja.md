@@ -4,14 +4,27 @@
 
 [English](README.md)
 
-[Drag'n Wash](https://store.steampowered.com/app/4739660/) 用の前提 Mod（BepInEx 5）です。ゲームに入り込むためのコードを 1 か所にまとめた小さな中核で、ほかの Mod や、その上に乗るライブラリ（前提 Mod の上の前提 Mod）に安定した API を提供します。ゲームの Options 画面から開く Mods 画面（Minecraft Forge の Mod 一覧のようなもので、Mod のオン・オフもできる）、ゲームの Options 画面への設定の追加、テキストや会話のイベント、Direct3D 12 で安全なアセットの読み込みなどです。ゲームがアップデートされても、追従が必要なのはフレームワークだけになります。
+[Drag'n Wash](https://store.steampowered.com/app/4739660/) 用の前提 Mod（BepInEx 5）です。ゲームに入り込むためのコードを 1 か所にまとめた小さな中核で、ほかの Mod や、その上に乗るライブラリ（前提 Mod の上の前提 Mod）に安定した API を提供します。
+
+- ゲームの Options 画面から開く Mods 画面（Minecraft Forge の Mod 一覧のようなもので、Mod のオン・オフもできる）
+- ゲームの Options 画面への設定の追加
+- テキストや会話のイベント
+- Direct3D 12 で安全なアセットの読み込み
+- など
+
+ゲームがアップデートされても、追従が必要なのはフレームワークだけになります。
 
 > [!NOTE]
-> 最新のリリースは **1.4.3** です。Bridge タブに **Open page** と **Graphs** のボタンが付き、エディターがひと押しで開きます。**1.4.2** の内容は次のとおりです。キーに反応するグラフが、同じキーを使っているほかの Mod の名前を出すようになりました（`ModFramework.WhoElseUses`）。**1.4.1** の内容は次のとおりです。**[Graphs](https://github.com/TomXV/dragnwash-modframework/wiki/Graphs-ja)** 0.1.0 （何かを「する」コードのない Mod。*これが起きたら、これをする*）が入りました。最初の書き込み操作、Bridge のページのブロックとノードのエディター、グラフが何を変えるかの Mods 画面での表示、止めたときの巻き戻し、2 つの Mod が同じ値を変えたときの知らせまで揃っています。中核と preloader パッチャーは 1.4.1、Overrides は 0.1.1、Bridge は 0.1.1、Inspector は 1.1.1 になり、Inspector の History にはほかの Mod が変えたものも並ぶようになりました。1.4.0 の内容は次のとおりです：コードのない Mod（[Overrides](https://github.com/TomXV/dragnwash-modframework/wiki/Overrides-ja)：Inspector で作った、値を書き換えるだけのフォルダー）、各ライブラリができることを登録する[操作の登録簿](https://github.com/TomXV/dragnwash-modframework/wiki/Operations-ja)、その読み取り操作を MCP でこの PC の AI クライアントに渡す [Bridge](https://github.com/TomXV/dragnwash-modframework/wiki/Bridge-ja)、[コードのグラフ](https://github.com/TomXV/dragnwash-modframework/wiki/Code-graph-ja)、[Inspector](https://github.com/TomXV/dragnwash-modframework/wiki/Inspector-ja) のオブジェクトエクスプローラー・Animator・Rigidbody・シーンとレベルが入りました。中核と preloader パッチャーが 1.4.0、Tool window と Dialogue が 1.2.0、Text・Flags and saves・Inspector が 1.1.0、Assets が 1.2.0 です。新しいものはすべて実験的な扱いです。**1.3.0** では、何が起きたかをゲームの外のウィンドウで知らせる[クラッシュレポート](https://github.com/TomXV/dragnwash-modframework/wiki/Crash-reports-ja)、それで突き止めた Direct3D 12 のクラッシュの修正（フォントのアトラスの転送を 1 フレームに 1 回に）、`GameOptions.AddSlider` が加わり、Tool window と Assets は 1.1.1 になりました。1.2.1 では、2026 年 9 月 14 日のゲームのアップデート以降に作ったセーブを Saves タブがまた見つけられるようにしました。**中核 1.2.0** では開発者ツールのスイッチ（既定はオフ）、設定ページの文字列とキー割り当ての入力欄、[`GameEvents`](https://github.com/TomXV/dragnwash-modframework/wiki/Playing-well-with-others-ja)、`SettingMeta`、ゲームを動かしたままの Mod のリロード、[外と通信する Mod の申告](https://github.com/TomXV/dragnwash-modframework/wiki/Going-online-ja) が加わり、あわせて Tool window、Assets、Dialogue の各ライブラリが 1.1.0 になり、新しい [Inspector](https://github.com/TomXV/dragnwash-modframework/wiki/Inspector-ja) ライブラリ（1.0.0）が加わります（[Console](https://github.com/TomXV/dragnwash-modframework/wiki/Console-ja)、[テクスチャの差し替えとリロード](https://github.com/TomXV/dragnwash-modframework/wiki/Assets-ja)、[安定した行キー](https://github.com/TomXV/dragnwash-modframework/wiki/Dialogue-ja)）。新しい機能は実験的な扱いで、Inspector は今後も実験的な機能のままです。1.1.0 で [更新のお知らせ](#更新のお知らせ)、共通インストーラー、Mods 画面からのアンインストールを追加し、1.1.1 でフレームワークのアイコンを追加、1.1.2 でそのアイコンを手作りのロゴの「Dg」に差し替えました。1.0.0 は、最初にこの上で動く Mod である [Drag'n Wash Localization](https://github.com/TomXV/dragnwash-localization) の v1.0.0 と一緒にリリースしました。1.0.0 以降、公開 API の互換性を壊す変更はメジャーバージョンを上げるときだけにします。[CHANGELOG.md](CHANGELOG.md) を参照してください。
->
-> これからの予定：[docs/ROADMAP.ja.md](docs/ROADMAP.ja.md)。
+> 最新のリリースは **1.4.3** です。バージョンごとの変更は下の[リリース](#リリース)に、細かいところまでは [CHANGELOG.md](CHANGELOG.md) にあります。これからの予定：[docs/ROADMAP.ja.md](docs/ROADMAP.ja.md)。
 
-目標と作業の順番は [docs/DESIGN.ja.md](docs/DESIGN.ja.md)、この上での Mod の作り方は [Playing well with others (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Playing-well-with-others-ja)、確認したゲームのビルドは [docs/GAME_BUILDS.md](docs/GAME_BUILDS.md) を参照してください。[Wiki](https://github.com/TomXV/dragnwash-modframework/wiki/Home-ja) には、プレイヤー向けのページ、はじめての Mod の手順、ライブラリごとのリファレンスがあります。
+## どこを読むか
+
+| 知りたいこと | 読むところ |
+|---|---|
+| Mod を入れて遊ぶ、はじめての Mod、ライブラリを調べる | [Wiki](https://github.com/TomXV/dragnwash-modframework/wiki/Home-ja)：プレイヤー向けのページ、はじめての Mod の手順、ライブラリごとのリファレンス |
+| この上で Mod を作る | [Playing well with others (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Playing-well-with-others-ja) |
+| 目標と作業の順番 | [docs/DESIGN.ja.md](docs/DESIGN.ja.md) |
+| 確認したゲームのビルド | [docs/GAME_BUILDS.md](docs/GAME_BUILDS.md) |
 
 ## 中身
 
@@ -32,11 +45,59 @@
 
 ### 更新のお知らせ
 
-中核 1.1.0 から、入れている Mod に新しいリリースがあると、Mods 画面とタイトル画面でお知らせします。確認するのは GitHub リポジトリを指定している Mod だけで、それぞれ 1 日に 1 回までです。GitHub の公開 API（`api.github.com`）にリポジトリの最新リリースを問い合わせるだけで、あなたやゲーム、ほかの Mod についての情報は送りません。ほかの Web ページを開くときと同じく、GitHub には IP アドレスが伝わります。ダウンロードやインストールはせず、Mods 画面からリリースページを開けるだけです。止めるには **Options → Mods → Drag'n Wash ModFramework → Settings** で **Check for updates** を Off にするか、`BepInEx/config/com.tomxv.dragnwash.modframework.cfg` の `Check for updates = false` にしてください。
+中核 1.1.0 から、入れている Mod に新しいリリースがあると、Mods 画面とタイトル画面でお知らせします。
+
+- **確認するもの：** GitHub リポジトリを指定している Mod だけで、それぞれ 1 日に 1 回までです。
+- **送るもの：** GitHub の公開 API（`api.github.com`）にリポジトリの最新リリースを問い合わせるだけで、あなたやゲーム、ほかの Mod についての情報は送りません。ほかの Web ページを開くときと同じく、GitHub には IP アドレスが伝わります。
+- **すること：** ダウンロードやインストールはしません。Mods 画面からリリースページを開けるだけです。
+- **止めるには：** **Options → Mods → Drag'n Wash ModFramework → Settings** で **Check for updates** を Off にするか、`BepInEx/config/com.tomxv.dragnwash.modframework.cfg` の `Check for updates = false` にしてください。
+
+## リリース
+
+1.0.0 以降、公開 API の互換性を壊す変更はメジャーバージョンを上げるときだけにします。すべての変更は [CHANGELOG.md](CHANGELOG.md) にあります。
+
+- **1.4.3**（最新）：Bridge タブに **Open page** と **Graphs** のボタンが付き、エディターがひと押しで開きます。
+- **1.4.2**：キーに反応するグラフが、同じキーを使っているほかの Mod の名前を出すようになりました（`ModFramework.WhoElseUses`）。
+- **1.4.1**：**[Graphs](https://github.com/TomXV/dragnwash-modframework/wiki/Graphs-ja)** 0.1.0（何かを「する」コードのない Mod。*これが起きたら、これをする*）が入りました。次のものまで揃っています。
+  - 最初の書き込み操作
+  - Bridge のページのブロックとノードのエディター
+  - グラフが何を変えるかの Mods 画面での表示、止めたときの巻き戻し、2 つの Mod が同じ値を変えたときの知らせ
+
+  中核と preloader パッチャーは 1.4.1、Overrides は 0.1.1、Bridge は 0.1.1、Inspector は 1.1.1 になり、Inspector の History にはほかの Mod が変えたものも並ぶようになりました。
+- **1.4.0**：
+  - コードのない Mod（[Overrides](https://github.com/TomXV/dragnwash-modframework/wiki/Overrides-ja)：Inspector で作った、値を書き換えるだけのフォルダー）
+  - 各ライブラリができることを登録する[操作の登録簿](https://github.com/TomXV/dragnwash-modframework/wiki/Operations-ja)
+  - その読み取り操作を MCP でこの PC の AI クライアントに渡す [Bridge](https://github.com/TomXV/dragnwash-modframework/wiki/Bridge-ja)
+  - [コードのグラフ](https://github.com/TomXV/dragnwash-modframework/wiki/Code-graph-ja)
+  - [Inspector](https://github.com/TomXV/dragnwash-modframework/wiki/Inspector-ja) のオブジェクトエクスプローラー・Animator・Rigidbody・シーンとレベル
+
+  中核と preloader パッチャーが 1.4.0、Tool window と Dialogue が 1.2.0、Text・Flags and saves・Inspector が 1.1.0、Assets が 1.2.0 です。新しいものはすべて実験的な扱いです。
+- **1.3.0**：
+  - 何が起きたかをゲームの外のウィンドウで知らせる[クラッシュレポート](https://github.com/TomXV/dragnwash-modframework/wiki/Crash-reports-ja)
+  - それで突き止めた Direct3D 12 のクラッシュの修正（フォントのアトラスの転送を 1 フレームに 1 回に）
+  - `GameOptions.AddSlider`
+
+  Tool window と Assets は 1.1.1 になりました。
+- **1.2.1**：2026 年 9 月 14 日のゲームのアップデート以降に作ったセーブを、Saves タブがまた見つけられるようにしました。
+- **1.2.0**（中核）：
+  - 開発者ツールのスイッチ（既定はオフ）
+  - 設定ページの文字列とキー割り当ての入力欄
+  - [`GameEvents`](https://github.com/TomXV/dragnwash-modframework/wiki/Playing-well-with-others-ja) と `SettingMeta`
+  - ゲームを動かしたままの Mod のリロード
+  - [外と通信する Mod の申告](https://github.com/TomXV/dragnwash-modframework/wiki/Going-online-ja)
+
+  あわせて Tool window、Assets、Dialogue の各ライブラリが 1.1.0 になり（[Console](https://github.com/TomXV/dragnwash-modframework/wiki/Console-ja)、[テクスチャの差し替えとリロード](https://github.com/TomXV/dragnwash-modframework/wiki/Assets-ja)、[安定した行キー](https://github.com/TomXV/dragnwash-modframework/wiki/Dialogue-ja)）、新しい [Inspector](https://github.com/TomXV/dragnwash-modframework/wiki/Inspector-ja) ライブラリ（1.0.0）が加わりました。新しい機能は実験的な扱いで、Inspector は今後も実験的な機能のままです。
+- **1.1.2**：フレームワークのアイコンを、手作りのロゴの「Dg」に差し替えました。
+- **1.1.1**：フレームワークのアイコンを追加しました。
+- **1.1.0**：[更新のお知らせ](#更新のお知らせ)、共通インストーラー、Mods 画面からのアンインストールを追加しました。
+- **1.0.0**：最初にこの上で動く Mod である [Drag'n Wash Localization](https://github.com/TomXV/dragnwash-localization) の v1.0.0 と一緒にリリースしました。
 
 ## Mod を作る方へ
 
-`DragNWash.ModFramework.dll`（と使うライブラリの DLL）を参照し、BepInEx が先に読み込むようそれぞれを依存関係として宣言します。何に何を使うか、Mod 同士を一緒に動かすためのルールは [Playing well with others (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Playing-well-with-others-ja) にあります。プレイヤーがワンクリックで入れられるようにするには、`mod-install.json` と一緒に共通インストーラーを同梱してください：[Installer (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Installer-ja)。
+`DragNWash.ModFramework.dll`（と使うライブラリの DLL）を参照し、BepInEx が先に読み込むようそれぞれを依存関係として宣言します。
+
+- **何に何を使うか**、Mod 同士を一緒に動かすためのルール：[Playing well with others (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Playing-well-with-others-ja)
+- **プレイヤーがワンクリックで入れられるようにするには：** `mod-install.json` と一緒に共通インストーラーを同梱してください。[Installer (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Installer-ja)
 
 ```csharp
 [BepInPlugin("com.example.mymod", "MyMod", "1.0.0")]
@@ -77,11 +138,19 @@ public class MyMod : BaseUnityPlugin
 > [!TIP]
 > Docker があれば、`docker compose run --rm checks` で CI と同じ検査を、`docker compose run --rm build` で中核とライブラリのビルドを、CI と同じイメージの中で回せます（[docs/DOCKER.ja.md](docs/DOCKER.ja.md)）。手元には何も入りません。
 
-DLL はそれぞれのプロジェクトの `bin/Release/` にできます。試すときは、プラグインの DLL を 1 つずつ `<ゲーム>/BepInEx/plugins/<アセンブリ名>/` に、`DragNWash.ModFramework.Preloader.dll` を `<ゲーム>/BepInEx/patchers/` にコピーしてください。
+DLL はそれぞれのプロジェクトの `bin/Release/` にできます。試すときは次のようにコピーしてください。
+
+- プラグインの DLL は 1 つずつ `<ゲーム>/BepInEx/plugins/<アセンブリ名>/` に
+- `DragNWash.ModFramework.Preloader.dll` は `<ゲーム>/BepInEx/patchers/` に
 
 ### GitHub でビルドする
 
-Actions の **Build** ワークフローが、リリース用の zip を GitHub 上で作ります。`main` への push、`v*` のタグ、手動実行のときに動き、参照アセンブリを非公開リポジトリ（`TomXV/dragnwash-libs`。公開はしません）から `LIBS_TOKEN` シークレットで取り、Windows の runner で `tools/pack.ps1` を回して、`release/DragNWash.ModFramework-<version>.zip` を成果物として残します。タグのときは、zip を添えた **下書き** のリリースも作ります。ノートを書いて公開するのは人の手です。PR では動かないので、フォークからトークンには触れません。ゲームが更新されたら、`tools/copy-libs.ps1` でゲームから取り直して、非公開リポジトリを更新してください。
+Actions の **Build** ワークフローが、リリース用の zip を GitHub 上で作ります。
+
+- **動くとき：** `main` への push、`v*` のタグ、手動実行のとき。PR では動かないので、フォークからトークンには触れません。
+- **すること：** 参照アセンブリを非公開リポジトリ（`TomXV/dragnwash-libs`。公開はしません）から `LIBS_TOKEN` シークレットで取り、Windows の runner で `tools/pack.ps1` を回して、`release/DragNWash.ModFramework-<version>.zip` を成果物として残します。
+- **タグのとき：** zip を添えた **下書き** のリリースも作ります。ノートを書いて公開するのは人の手です。
+- **ゲームが更新されたら：** `tools/copy-libs.ps1` でゲームから取り直して、非公開リポジトリを更新してください。
 
 ## このリポジトリのルール
 
@@ -98,7 +167,12 @@ Actions の **Build** ワークフローが、リリース用の zip を GitHub 
 
 ## 開発者の方へ
 
-本プロジェクトは非公式のファン制作物で、Gator Dragon Games とは無関係です。ゲームのアセットやコードをそのままの形では含まず（[docs/CONTENT_POLICY.ja.md](docs/CONTENT_POLICY.ja.md)）、ゲームのファイルを書き換えることもありません（BepInEx が実行時に読み込みます）。開発チームの方で懸念がある場合は、このリポジトリの Issue かメンテナーへの連絡でお知らせください。ご希望に応じて修正または公開停止します。
+本プロジェクトは非公式のファン制作物で、Gator Dragon Games とは無関係です。
+
+- ゲームのアセットやコードを、そのままの形では含みません（[docs/CONTENT_POLICY.ja.md](docs/CONTENT_POLICY.ja.md)）。
+- ゲームのファイルを書き換えることもありません（BepInEx が実行時に読み込みます）。
+
+開発チームの方で懸念がある場合は、このリポジトリの Issue かメンテナーへの連絡でお知らせください。ご希望に応じて修正または公開停止します。
 
 ## クレジット
 
