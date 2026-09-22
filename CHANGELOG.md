@@ -4,6 +4,12 @@ Versions of the core and of each library are separate, and follow semantic versi
 
 ## Unreleased
 
+### Fonts: rasterized characters kept between starts
+
+- Assets: what the fallback fonts rasterized (atlas pixels, glyph and character tables, free space on the last atlas) is kept in `BepInEx/cache/FontAtlases`, one file per face, and a face created again from the same font file takes it back at once and rasterizes only characters that are new. With the localization mod's 17 languages on Direct3D 12 its load goes from about 1230 ms to about 365 ms after the first start (Direct3D 11: 315 to 205 ms). A restored glyph is the same, pixel for pixel, as a freshly rasterized one.
+- The cache is written about two seconds after the last change, one face a frame; the file is written on a worker thread and moved into place, so a start never reads half a file. A file for another font file or version, other atlas settings, another Unity or TextMeshPro or another library version, or a damaged one, is ignored and written again. Nothing is uploaded while the game runs that was not before.
+- `[Fonts] CacheAtlases` (default on, takes effect at the next start) turns it off.
+
 ### Tool window: notices, questions in place, a remembered window, one row of tabs
 
 - `ToolWindow.ShowNotice(string, NoticeKind, float)` (ToolWindow library), new: a notice in a strip of its own above the footer's hint line, with a colour bar for its kind (`NoticeKind.Info`, `Warning`, `Error`), on one line cut with an ellipsis; the whole text shows while the pointer is on it and a click dismisses it. A timed notice clears itself and the next one waits its turn; an Error goes first and stays until the tab changes. `ShowNotice(string)` is unchanged. The hint line no longer gives way to a notice.
