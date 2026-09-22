@@ -23,6 +23,13 @@ Versions of the core and of each library are separate, and follow semantic versi
 - When the window cannot open, or the report cannot be written, a message box says where the report or the session record is, instead of nothing.
 - The window speaks the language the game is shown in, also without the localization mod: the core keeps `BepInEx/CrashReports/locale.txt` from the language a mod set, or the game's own choice when it offers more than one. Windows' language is the fallback.
 
+### Installer
+
+- Install.exe: **Install** or **Uninstall** is chosen first and only that action's controls are shown, with a list of what it will do, built from `mod-install.json` and the game folder as it is: whether BepInEx is downloaded, the framework version, each choice and the config file it is written to, what is removed and what is kept. The list replaces the "Uninstall …?" question. Enter runs the action, Esc closes, the buttons have Alt keys, and a line says why SmartScreen or Defender may warn about Install.exe. The window is 640 high (at least 560).
+- Install.exe: the BepInEx download shows a progress bar and its percentage, and Close becomes **Cancel** while it runs; the zip goes to the temp folder, so cancelling leaves the game folder as it was.
+- Install.exe: a failure says what went wrong in plain words (download failed, game folder not writable, not a valid zip, anything else), with **Show details**, **Copy details** for a bug report, and **Retry**. The log and the details stay English.
+- install-steamdeck.sh: in a terminal the BepInEx download shows curl's progress bar, and a `mod-install.json` that is there but broken says to download the zip again instead of saying the mod's files are missing.
+
 ### Code graph without the game (standalone app)
 
 - Experimental, not in a release. `codegraph-standalone/` (CodeGraphStandalone.exe, Windows): the code graph of any .NET assembly without the game (docs/CODE_GRAPH_STANDALONE.md). Opens DLLs, a folder (leaving out .NET's and Unity's own unless `--all`) or a Mono Unity game's folder, by Open…, the command line or a drop; refuses IL2CPP games with the reason. Shows the Bridge's page in WebView2 and answers its calls inside the process (`WebResourceRequested`), with no port and no network.
