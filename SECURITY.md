@@ -55,21 +55,29 @@ In scope, everything this repository ships:
 The places worth looking hardest at, because they are where the framework
 touches the outside world:
 
-- **The installer**, which picks a game folder, downloads the official BepInEx
-  5.4.23.5 release and checks it against a SHA-256 pinned in the source before
-  unpacking it, and which reads a mod's `mod-install.json`. A path that escapes
-  the folder it should stay in, or a way to make it accept a different archive,
-  is a real bug.
-- **Update notices**, which ask `api.github.com` once a day for the latest
-  release of a mod that names its repository, send nothing about the player and
-  download nothing — the Mods screen only opens the release page in a browser.
-  Anything that turns that into a download, or that leaks information about the
-  player, is a real bug. See [Going online (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Going-online).
-- **Asset and mod loading**, `GameAssets` and the Overrides library, which read
-  files out of a mod's folder. A crafted file that reaches outside it, or that
-  makes the framework load code the player did not install, is a real bug.
-- **The crash reporter**, which writes a report file and shows it. A report
-  should never contain more of the player's machine than the paths it needs.
+- **The installer**
+  - **What it does:** it picks a game folder, downloads the official BepInEx
+    5.4.23.5 release and checks it against a SHA-256 pinned in the source
+    before unpacking it, and it reads a mod's `mod-install.json`.
+  - **A real bug:** a path that escapes the folder it should stay in, or a way
+    to make it accept a different archive.
+- **Update notices**
+  - **What they do:** they ask `api.github.com` once a day for the latest
+    release of a mod that names its repository, send nothing about the player
+    and download nothing — the Mods screen only opens the release page in a
+    browser.
+  - **A real bug:** anything that turns that into a download, or that leaks
+    information about the player.
+  - See [Going online (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Going-online).
+- **Asset and mod loading**
+  - **What it does:** `GameAssets` and the Overrides library read files out of
+    a mod's folder.
+  - **A real bug:** a crafted file that reaches outside it, or that makes the
+    framework load code the player did not install.
+- **The crash reporter**
+  - **What it does:** it writes a report file and shows it.
+  - **The rule:** a report should never contain more of the player's machine
+    than the paths it needs.
 
 ## What is not covered
 
