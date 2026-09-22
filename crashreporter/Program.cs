@@ -18,8 +18,15 @@ namespace DragNWash.CrashReporter
     // same code the core would run at the next start) and shows it.
     //
     // To look at a report again: CrashReporter.exe --show <report folder>
+    //
+    // If writing or showing the report fails, a plain message box still tells
+    // the player that the game crashed and where to look, rather than nothing.
     internal static class Program
     {
+        private enum Stage { Watching, Writing, Showing, Shown }
+
+        private static Stage _stage;
+
         [STAThread]
         private static int Main(string[] args)
         {
@@ -34,6 +41,7 @@ namespace DragNWash.CrashReporter
                 string show = Arg("--show");
                 if (show != null)
                 {
+                    _stage = Stage.Showing;
                     return Show(show, windowsLanguage);
                 }
                 string folder = Arg("--folder");
@@ -56,9 +64,16 @@ namespace DragNWash.CrashReporter
                 {
                     return 0;
                 }
+                _stage = Stage.Writing;
                 WaitForUnityCrashHandler();
                 string report = CrashReportWriter.Write(folder, Arg("--unity"));
-                return report == null ? 0 : Show(report, windowsLanguage);
+                // Null: the core, started again meanwhile, reported it first.
+                if (report == null)
+                {
+                    return 0;
+                }
+                _stage = Stage.Showing;
+                return Show(report, windowsLanguage);
             }
             catch (Exception ex)
             {
@@ -69,7 +84,37 @@ namespace DragNWash.CrashReporter
                 catch
                 {
                 }
+                if (_stage == Stage.Writing || _stage == Stage.Showing)
+                {
+                    Fallback(_stage == Stage.Writing);
+                }
                 return 1;
+            }
+        }
+
+        // A standard message box needs no form of ours, so it still shows when
+        // the window could not be made. In the window's language when the words
+        // can be had, else in English.
+        private static void Fallback(bool notWritten)
+        {
+            string title, text;
+            try
+            {
+                title = Strings.Get(Strings.Key.WindowTitle);
+                text = Strings.Get(notWritten ? Strings.Key.NotWritten : Strings.Key.NoWindow);
+            }
+            catch
+            {
+                title = "Drag'n Wash - crash report";
+                text = "Drag'n Wash closed unexpectedly. The crash report is in the game's folder under BepInEx\\CrashReports.";
+            }
+            try
+            {
+                Application.EnableVisualStyles();
+                MessageBox.Show(text, title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            catch
+            {
             }
         }
 
@@ -91,7 +136,13 @@ namespace DragNWash.CrashReporter
             Strings.Choose(diagnosis.Language, windowsLanguage);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new ReportForm(diagnosis));
+            // A failure inside the window reaches Main (and its message box),
+            // not WinForms' own exception dialog.
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.ThrowException);
+            var form = new ReportForm(diagnosis);
+            // Once the player has seen the window, a later failure needs no message box.
+            form.Shown += (s, e) => _stage = Stage.Shown;
+            Application.Run(form);
             return 0;
         }
     }

@@ -9,6 +9,7 @@ namespace DragNWash.CrashReporter
         internal enum Key
         {
             WindowTitle, Headline, Subheadline, WhatHappened, WhatToDo, Details, DumpNote, OpenFolder, CopyReport, Copied, Close, Privacy,
+            CopyFailed, OpenFailed, NoWindow, NotWritten,
         }
 
         private static readonly Dictionary<string, Dictionary<Key, string>> All = new Dictionary<string, Dictionary<Key, string>>
@@ -16,47 +17,59 @@ namespace DragNWash.CrashReporter
             ["en"] = new Dictionary<Key, string>
             {
                 [Key.WindowTitle] = "Drag'n Wash - crash report",
-                [Key.Headline] = "Oops, the kobold slipped!",
-                [Key.Subheadline] = "Something went wrong, and Drag'n Wash closed unexpectedly.",
+                [Key.Headline] = "Oops! The kobold slipped!",
+                [Key.Subheadline] = "Drag'n Wash closed unexpectedly. Here is what happened and what you can do about it.",
                 [Key.WhatHappened] = "What happened",
                 [Key.WhatToDo] = "What you can do",
                 [Key.Details] = "Details",
                 [Key.DumpNote] = "The report includes a memory dump. It holds part of the game's memory: share it only privately with whoever looks into the problem.",
-                [Key.OpenFolder] = "Open report folder",
-                [Key.CopyReport] = "Copy report",
+                [Key.OpenFolder] = "&Open report folder",
+                [Key.CopyReport] = "&Copy report (text only)",
                 [Key.Copied] = "Copied",
                 [Key.Close] = "Close",
                 [Key.Privacy] = "Made by Drag'n Wash ModFramework on this PC. Nothing was sent anywhere.",
+                [Key.CopyFailed] = "Could not copy: the clipboard is busy. Open the report folder and copy report.txt instead.",
+                [Key.OpenFailed] = "Could not open the folder. It is {0} inside the game's folder.",
+                [Key.NoWindow] = "Drag'n Wash closed unexpectedly, but the crash report window could not open.\n\nThe report is in the game's folder under BepInEx\\CrashReports. What went wrong with the window is in %TEMP%\\DragNWash.CrashReporter.log.",
+                [Key.NotWritten] = "Drag'n Wash closed unexpectedly, but the crash report could not be written.\n\nThe session record is in the game's folder under BepInEx\\CrashReports\\session.log, and the game will try again the next time it starts. What went wrong is in %TEMP%\\DragNWash.CrashReporter.log.",
             },
             ["ja"] = new Dictionary<Key, string>
             {
                 [Key.WindowTitle] = "Drag'n Wash - クラッシュレポート",
-                [Key.Headline] = "おっと、コボルトが足をすべらせた！",
-                [Key.Subheadline] = "何かがうまくいかず、Drag'n Wash が予期せず終了しました。",
+                [Key.Headline] = "おっと、コボルトが滑ってしまったようです！",
+                [Key.Subheadline] = "Drag'n Wash が予期せず終了しました。何が起きたかと、できることをまとめました。",
                 [Key.WhatHappened] = "何が起きたか",
                 [Key.WhatToDo] = "できること",
                 [Key.Details] = "詳しい情報",
                 [Key.DumpNote] = "レポートにはメモリダンプが入っています。ゲームのメモリの一部が含まれるので、原因を調べる人にだけ個別に渡してください。",
-                [Key.OpenFolder] = "レポートのフォルダーを開く",
-                [Key.CopyReport] = "レポートをコピー",
+                [Key.OpenFolder] = "レポートのフォルダーを開く(&O)",
+                [Key.CopyReport] = "レポートをコピー（テキストのみ）(&C)",
                 [Key.Copied] = "コピーしました",
                 [Key.Close] = "閉じる",
                 [Key.Privacy] = "Drag'n Wash ModFramework がこの PC の中で作りました。どこにも送信していません。",
+                [Key.CopyFailed] = "コピーできませんでした。クリップボードが使用中です。代わりにレポートのフォルダーを開き、report.txt をコピーしてください。",
+                [Key.OpenFailed] = "フォルダーを開けませんでした。場所はゲームのフォルダーの中の {0} です。",
+                [Key.NoWindow] = "Drag'n Wash が予期せず終了しましたが、クラッシュレポートのウィンドウを開けませんでした。\n\nレポートはゲームのフォルダーの BepInEx\\CrashReports にあります。ウィンドウを開けなかった理由は %TEMP%\\DragNWash.CrashReporter.log に記録しています。",
+                [Key.NotWritten] = "Drag'n Wash が予期せず終了しましたが、クラッシュレポートを書けませんでした。\n\nセッションの記録はゲームのフォルダーの BepInEx\\CrashReports\\session.log にあり、次にゲームを起動したときにもう一度レポートを書きます。書けなかった理由は %TEMP%\\DragNWash.CrashReporter.log に記録しています。",
             },
             ["zh"] = new Dictionary<Key, string>
             {
                 [Key.WindowTitle] = "Drag'n Wash - 崩溃报告",
-                [Key.Headline] = "哎呀,狗头人滑倒了!",
-                [Key.Subheadline] = "出了点问题,Drag'n Wash 意外关闭了。",
+                [Key.Headline] = "哎呀，狗头人滑倒了！",
+                [Key.Subheadline] = "Drag'n Wash 意外关闭了。以下是发生的情况，以及你可以采取的措施。",
                 [Key.WhatHappened] = "发生了什么",
                 [Key.WhatToDo] = "你可以做什么",
                 [Key.Details] = "详细信息",
-                [Key.DumpNote] = "报告中包含内存转储。其中有游戏的部分内存,请只私下交给调查问题的人。",
-                [Key.OpenFolder] = "打开报告文件夹",
-                [Key.CopyReport] = "复制报告",
+                [Key.DumpNote] = "报告中包含内存转储，其中含有游戏的部分内存。请只私下发给负责调查问题的人。",
+                [Key.OpenFolder] = "打开报告文件夹(&O)",
+                [Key.CopyReport] = "复制报告（仅文本）(&C)",
                 [Key.Copied] = "已复制",
                 [Key.Close] = "关闭",
-                [Key.Privacy] = "由 Drag'n Wash ModFramework 在这台电脑上生成。没有发送到任何地方。",
+                [Key.Privacy] = "由 Drag'n Wash ModFramework 在这台电脑上生成，没有发送到任何地方。",
+                [Key.CopyFailed] = "无法复制：剪贴板正被其他程序占用。请改为打开报告文件夹，复制其中的 report.txt。",
+                [Key.OpenFailed] = "无法打开文件夹。报告位于游戏文件夹内的 {0}。",
+                [Key.NoWindow] = "Drag'n Wash 意外关闭了，但崩溃报告窗口无法打开。\n\n报告位于游戏文件夹内的 BepInEx\\CrashReports。窗口无法打开的原因记录在 %TEMP%\\DragNWash.CrashReporter.log 中。",
+                [Key.NotWritten] = "Drag'n Wash 意外关闭了，但无法写入崩溃报告。\n\n会话记录位于游戏文件夹内的 BepInEx\\CrashReports\\session.log，下次启动游戏时会再次尝试写入报告。无法写入的原因记录在 %TEMP%\\DragNWash.CrashReporter.log 中。",
             },
         };
 
@@ -123,28 +136,28 @@ namespace DragNWash.CrashReporter
             {
                 [CrashDiagnosis.Kind.Direct3D12Uploads] = new[]
                 {
-                    "游戏在向显卡发送文字或图片时在 Unity 内部崩溃了。这是此 Unity 版本在 Direct3D 12 下的已知问题(Unity 问题 UUM-140564)。",
-                    "Drag'n Wash ModFramework 已避开其最常见的原因。如果仍然发生,请在 Steam 中为游戏的启动选项加上 -force-d3d11。",
+                    "游戏在向显卡发送文字或图片时，在 Unity 内部崩溃了。这是此 Unity 版本在 Direct3D 12 下的已知问题（Unity 问题 UUM-140564）。",
+                    "Drag'n Wash ModFramework 会避开它最常见的原因。如果仍然发生，请在 Steam 中为游戏的启动选项（属性 → 通用 → 启动选项）加上 -force-d3d11。",
                 },
                 [CrashDiagnosis.Kind.GraphicsDevice] = new[]
                 {
-                    "显卡停止响应游戏(Direct3D 12)。在独占全屏下切换到其他窗口时经常发生。",
-                    "请在游戏选项中选择全屏而不是独占全屏,或在 Steam 中为游戏的启动选项加上 -force-d3d11。",
+                    "显卡停止响应游戏（Direct3D 12）。这常发生在独占全屏下切换到其他窗口时。",
+                    "请在游戏选项中选择全屏而不是独占全屏，或在 Steam 中为游戏的启动选项加上 -force-d3d11。",
                 },
                 [CrashDiagnosis.Kind.Freeze] = new[]
                 {
-                    "游戏卡住了,随后被关闭。",
-                    "卡住时的内存转储已和报告一起保存,能帮助 Mod 作者找到原因。",
+                    "游戏卡住了，随后被关闭。",
+                    "卡住时的内存转储已与报告一起保存，可以帮助 Mod 作者查找原因。",
                 },
                 [CrashDiagnosis.Kind.Stopped] = new[]
                 {
-                    "游戏在没有报告崩溃的情况下停止了。可能是从任务管理器关闭的,或电脑关机、断电。",
+                    "游戏在没有报告崩溃的情况下停止了。可能是被任务管理器关闭，或者电脑关机、断电。",
                     null,
                 },
                 [CrashDiagnosis.Kind.Crash] = new[]
                 {
                     "游戏在 Unity 内部崩溃了。",
-                    "如果反复发生,请打开报告文件夹,把 report.txt 发给你怀疑的 Mod 的作者,或发给 Drag'n Wash ModFramework。",
+                    "如果反复发生，请打开报告文件夹，把 report.txt 发给你怀疑的 Mod 的作者，或发给 Drag'n Wash ModFramework。",
                 },
             },
         };
