@@ -11,8 +11,12 @@ namespace DragNWash.ModFramework
     {
         private void Awake()
         {
+            // First, so it sees every log line from here to the title screen.
+            StartupTiming.Install(Logger);
             ModFramework.Initialize(Logger);
             DeveloperTools.Install(Config);
+            // Only with developer tools on: it costs a few tens of milliseconds.
+            StartupTiming.Begin(this);
             ModReload.Install(Config, this);
             Operations.Install();
             CoreOperations.Register();
