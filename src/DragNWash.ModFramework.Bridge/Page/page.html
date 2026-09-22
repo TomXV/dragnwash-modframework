@@ -44,7 +44,7 @@ button { font: inherit; color: var(--text); background: var(--inset); border: 1p
 button:hover { border-color: var(--accent); }
 button:focus-visible, input:focus-visible, a:focus-visible, .node:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 button[disabled] { opacity: .45; cursor: default; }
-button[aria-pressed="true"], button.primary { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+button[aria-pressed="true"], button[aria-expanded="true"], button.primary { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 button.danger { border-color: var(--error); color: var(--error); }
 #status { color: var(--muted); font-size: 12px; margin-left: auto; }
 main { display: grid; grid-template-columns: 240px 1fr 6px var(--right, 650px); min-height: 0; }
@@ -56,6 +56,8 @@ main.folded #left { padding: 0; border: 0; overflow: hidden; }
 /* The line between the graph and the details: drag it to make the details wider or narrower. */
 #split { cursor: col-resize; background: var(--line); opacity: .5; }
 #split:hover, #split.dragging { background: var(--accent); opacity: 1; }
+/* A divider that has the keyboard: the arrow keys move it. */
+#split:focus-visible, #gSplit:focus-visible { background: var(--accent); opacity: 1; outline: 2px solid var(--accent); outline-offset: 2px; }
 aside { background: var(--panel); overflow: auto; min-height: 0; padding: 12px 14px; }
 #left { border-right: 1px solid var(--line); }
 #right { border-left: 1px solid var(--line); }
@@ -137,6 +139,7 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
 #gSide h2 button { font-size: 10px; padding: 1px 6px; text-transform: none; letter-spacing: 0; }
 #gWhich { padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--inset); color: var(--text); font: 12px var(--mono); max-width: 180px; }
 #gSplit { background: var(--line); cursor: col-resize; }
+#gSplit:hover, #gSplit.dragging { background: var(--accent); }
 #gStage { display: grid; grid-template-rows: auto 1fr; min-width: 0; min-height: 0; position: relative; }
 #gBar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
 #gBar label { font-size: 12px; color: var(--muted); display: flex; gap: 4px; align-items: center; }
@@ -156,7 +159,8 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
 .blk input[type="number"] { width: 78px; }
 .blk .slot input[type="text"] { width: 110px; }
 .blk .slot { display: inline-flex; gap: 4px; align-items: center; margin: 2px 6px 2px 0; font-size: 12px; color: var(--muted); }
-.blk .tools { margin-left: auto; display: flex; gap: 4px; }
+.blk .tools { margin-left: auto; display: flex; gap: 4px; position: relative; }
+.blk > .head:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .blk .tools button { padding: 1px 7px; font-size: 12px; }
 .add { margin: 6px 0 2px 0; display: flex; gap: 6px; align-items: center; }
 .add select { padding: 3px 6px; border: 1px solid var(--line); border-radius: 5px; background: var(--inset); color: var(--text); font: inherit; }
@@ -209,6 +213,32 @@ dialog.ask p { margin: 0 0 10px; }
 dialog.ask input { width: 100%; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--inset); color: var(--text); font: 13px var(--mono); }
 dialog.ask .why { color: var(--error); font-size: 12px; margin: 6px 0 0; }
 dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+/* Move to…: the places a block may go, under its button. */
+.menu { position: absolute; right: 0; top: 26px; min-width: 240px; max-height: 50vh; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 0; box-shadow: var(--shadow); z-index: 5; cursor: default; }
+.menu.up { top: auto; bottom: 26px; }
+.menu .title { padding: 4px 12px 6px; font-size: 11px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+.blk .tools .menu button { display: block; width: 100%; text-align: left; white-space: nowrap; font: 12px var(--mono); padding: 5px 12px; background: transparent; border: 0; border-radius: 0; color: var(--text); }
+.blk .tools .menu button:hover, .blk .tools .menu button:focus { background: var(--accent-soft); color: var(--accent); outline: none; }
+.menu .foot { padding: 4px 12px 2px; font-size: 11px; color: var(--muted); }
+/* Why a block cannot be dropped where it is being held. */
+#gRefused { position: fixed; padding: 4px 10px; background: var(--panel); border: 1px solid var(--warn); border-radius: 6px; font-size: 12px; color: var(--warn); z-index: 7; pointer-events: none; max-width: 320px; }
+#gRefused[hidden] { display: none; }
+/* A failed check says so, with the last answer that did come. */
+#gProblems .failed { color: var(--error); cursor: default; }
+#gProblems .failed button { font-size: 12px; padding: 1px 7px; margin-left: 4px; }
+#gProblems .last { color: var(--muted); font-size: 12px; cursor: default; }
+/* The game shows the colour while it is being picked. */
+.pill.live { display: inline-flex; align-items: center; gap: 6px; border-color: var(--warn); color: var(--warn); margin: 0 0 0 6px; padding: 1px 8px; }
+.pill.live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
+/* The keyboard shortcuts, from the ? in the header. */
+#keys { position: fixed; left: 16px; top: 60px; width: 400px; max-width: calc(100vw - 32px); max-height: calc(100vh - 80px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; box-shadow: var(--shadow); z-index: 6; }
+#keys[hidden] { display: none; }
+#keys .top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+#keys .top b { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; flex: 1 1 auto; }
+#keys .top button { font-size: 12px; padding: 1px 7px; }
+#keys .group { font-size: 12px; color: var(--muted); margin: 8px 0 2px; }
+#keys .row { display: grid; grid-template-columns: 130px 1fr; gap: 8px; padding: 2px 0; font-size: 13px; }
+#keys kbd { font: 12px var(--mono); color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; background: var(--inset); justify-self: start; align-self: start; }
 </style>
 </head>
 <body>
@@ -218,12 +248,13 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
   <button id="toCode" type="button" class="view-tab" aria-pressed="true" title="The game's code as blocks and branches">Code</button>
   <button id="toGraphs" type="button" class="view-tab" aria-pressed="false" title="Graphs: mods with no code">Graphs</button>
   <button id="side" type="button" title="Show or fold the search results" aria-pressed="true">Results</button>
-  <button id="back" type="button" title="Back" disabled>←</button>
-  <button id="fwd" type="button" title="Forward" disabled>→</button>
-  <input id="q" type="search" placeholder="Search types and methods (e.g. Dragon, Update)" autocomplete="off" spellcheck="false">
+  <button id="back" type="button" title="Back" aria-label="Back" disabled>←</button>
+  <button id="fwd" type="button" title="Forward" aria-label="Forward" disabled>→</button>
+  <input id="q" type="search" placeholder="Search types and methods (e.g. Dragon, Update)" aria-label="Search types and methods" autocomplete="off" spellcheck="false">
   <button id="fit" type="button" title="Fit the graph to the window">Fit</button>
+  <button id="keysOpen" type="button" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts" aria-expanded="false" aria-controls="keys">?</button>
   <button id="pin" type="button" title="Keep this window above the game and other windows" aria-pressed="false" hidden>Keep on top</button>
-  <span id="status">Structure only: read from the game's assemblies on this computer.</span>
+  <span id="status" role="status" aria-live="polite">Structure only: read from the game's assemblies on this computer.</span>
 </header>
 <main>
   <aside id="left"><h2>Results</h2><ul class="list" id="results"><li class="muted" style="cursor:default">Type part of a name above.</li></ul></aside>
@@ -232,7 +263,7 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
     <div id="types"></div>
     <div id="empty"><div><p><strong>Open a method or a type.</strong></p><p id="hint">Search above, or in the game: F1 → Inspector → a component → Code → <em>Graph</em> on a method.</p></div></div>
   </div>
-  <div id="split" role="separator" aria-orientation="vertical" aria-label="Drag to resize the details" tabindex="0"></div>
+  <div id="split" role="separator" aria-orientation="vertical" aria-label="Drag or use the arrow keys to resize the details" tabindex="0"></div>
   <aside id="right"><div id="details"><h2>Details</h2><p class="muted">Nothing open yet.</p></div></aside>
 </main>
 
@@ -248,7 +279,7 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
       <label>Name <input id="gName" type="text" spellcheck="false" placeholder="scene-notes"></label>
       <button id="gSave" type="button" title="Write this graph to its mod, under the name beside it">Save</button>
       <button id="gRename" type="button" title="Give this graph another name; the file is moved, not copied">Rename</button>
-      <select id="gWhich" title="Which handler Run starts"></select>
+      <select id="gWhich" title="Which handler Run starts" aria-label="Which handler Run starts"></select>
       <button id="gRun" type="button" title="Start this handler now, without waiting for its event">Run</button>
       <button id="gStop" type="button" title="Stop this graph for the session and put back what it changed">Stop</button>
       <button id="gReload" type="button" title="Read the graph files again: what was added, changed or removed outside the editor">Reload</button>
@@ -262,7 +293,7 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
     <div id="gNodes" hidden aria-label="The graph as nodes"></div>
     <div id="gToast" role="status" aria-live="polite" hidden><span class="what" id="gToastText"></span><button id="gUndo" type="button" class="primary">Undo</button><span class="when" id="gToastWhen"></span></div>
   </div>
-  <div id="gSplit" role="separator" aria-orientation="vertical" tabindex="0"></div>
+  <div id="gSplit" role="separator" aria-orientation="vertical" aria-label="Drag or use the arrow keys to resize the problems and log" tabindex="0"></div>
   <aside id="gSide">
     <h2>Problems</h2>
     <ul class="list" id="gProblems"><li class="muted" style="cursor:default">None.</li></ul>
@@ -270,6 +301,23 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
     <div id="gLog" class="log"></div>
   </aside>
 </main>
+<div id="gRefused" role="tooltip" hidden></div>
+<div id="keys" role="dialog" aria-label="Keyboard shortcuts" hidden>
+  <div class="top"><b>Keyboard</b><button id="keysClose" type="button" aria-label="Close the shortcuts list">Close</button></div>
+  <div class="group">Everywhere</div>
+  <div class="row"><kbd>?</kbd><span>This list</span></div>
+  <div class="row"><kbd>Esc</kbd><span>Close it, or cancel a drag</span></div>
+  <div class="group">Code view</div>
+  <div class="row"><kbd>← ↑ → ↓</kbd><span>Pan the graph</span></div>
+  <div class="row"><kbd>F</kbd><span>Fit the graph to the window</span></div>
+  <div class="group">A divider (Tab to it)</div>
+  <div class="row"><kbd>← →</kbd><span>Make the details, or the problems and log, wider or narrower</span></div>
+  <div class="group">A block (Tab to its head)</div>
+  <div class="row"><kbd>Alt+↑ / Alt+↓</kbd><span>Move it up or down</span></div>
+  <div class="row"><kbd>M</kbd><span>Move to… another list</span></div>
+  <div class="row"><kbd>Delete</kbd><span>Remove it (Ctrl+Z puts it back)</span></div>
+  <div class="row"><kbd>Enter</kbd><span>Edit its first field</span></div>
+</div>
 <dialog id="gAsk" class="ask" aria-labelledby="gAskTitle" aria-describedby="gAskText">
   <form method="dialog">
     <h2 id="gAskTitle"></h2>
@@ -686,9 +734,53 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
     e.preventDefault();
   });
 
+  // A key typed into a field is the field's: the page's own keys leave it alone.
+  function typing(t) {
+    if (!t || !t.tagName) return false;
+    if (t.isContentEditable || t.tagName === "TEXTAREA" || t.tagName === "SELECT") return true;
+    return t.tagName === "INPUT" && ["button", "checkbox", "color", "radio", "submit"].indexOf(t.type) < 0;
+  }
+
+  // ---- the keyboard shortcuts, listed ----
+  // The arrow keys on the graph and F were there all along and nowhere said;
+  // "?" (or the button beside Fit) lists them, and Esc or ? again puts it away.
+  const keys = $("keys"), keysOpen = $("keysOpen");
+  function showKeys(on) {
+    keys.hidden = !on;
+    keysOpen.setAttribute("aria-expanded", on ? "true" : "false");
+    if (!on) return;
+    // Under the ?, wherever the header has put it (it wraps on a narrow window).
+    const at = keysOpen.getBoundingClientRect();
+    keys.style.top = (at.bottom + 8) + "px";
+    const w = keys.offsetWidth, left = at.right - w >= 16 ? at.right - w : at.left;
+    keys.style.left = Math.max(16, Math.min(left, window.innerWidth - w - 16)) + "px";
+    keys.style.maxHeight = Math.max(160, window.innerHeight - at.bottom - 24) + "px";
+    $("keysClose").focus();
+  }
+  keysOpen.onclick = () => showKeys(keys.hidden);
+  $("keysClose").onclick = () => { showKeys(false); keysOpen.focus(); };
+  document.addEventListener("keydown", e => {
+    if (e.key === "?" && !e.ctrlKey && !e.metaKey && !e.altKey && !typing(e.target)) {
+      e.preventDefault();
+      const on = keys.hidden;
+      showKeys(on);
+      if (!on) keysOpen.focus();
+    } else if (e.key === "Escape" && !keys.hidden) {
+      e.preventDefault();
+      showKeys(false);
+      keysOpen.focus();
+    }
+  });
+  document.addEventListener("pointerdown", e => {
+    if (!keys.hidden && !keys.contains(e.target) && !keysOpen.contains(e.target)) showKeys(false);
+  });
+
   // The editor (below) signs in with this page and calls through the same door.
   window.dnwCall = call;
   window.dnwStatus = setStatus;
+  // Back to the line the page shows when nothing is going on.
+  window.dnwStatusIdle = () => setStatus(source);
+  window.dnwTyping = typing;
 
   start().catch(e => setStatus(e.message, true));
 })();
@@ -861,6 +953,8 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
   function drawBlocks() {
     const root = $("gBlocks");
     root.replaceChildren();
+    heads.clear();
+    menu = null;
     if (!open) {
       root.append(el("p", { class: "muted" }, "Pick a graph on the left, or make one."));
       return;
@@ -868,7 +962,7 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
     const head = el("div", { class: "blk" });
     const bar = el("div", { class: "head" });
     bar.append(el("span", { class: "kind" }, "graph"));
-    bar.append(field("text", open.doc.name || "", v => { open.doc.name = v; changed(); }, "its name"));
+    bar.append(field("text", open.doc.name || "", v => { open.doc.name = v; changed(); }, "The graph's name"));
     bar.append(slot("says", field("text", open.doc.description || "", v => { open.doc.description = v || undefined; changed(); }, "what it does, for the Mods screen")));
     head.append(bar);
     // Variables: a "set" statement may only use a name listed here, so without
@@ -884,9 +978,9 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
         delete open.doc.variables[name];
         open.doc.variables[v] = kept;
         changed(true);
-      }, "its name"));
-      row.append(slot("starts as", expr(open.doc.variables[name], v => { open.doc.variables[name] = v; changed(); })));
-      const drop = el("button", { type: "button", title: "Remove this variable" }, "✕");
+      }, "The variable's name"));
+      row.append(slot("starts as", expr(open.doc.variables[name], v => { open.doc.variables[name] = v; changed(); }, "Its first value")));
+      const drop = el("button", { type: "button", title: "Remove this variable", "aria-label": "Remove the variable " + name }, "✕");
       drop.onclick = () => removeVariable(name);
       row.append(drop);
       vars.append(row);
@@ -928,7 +1022,7 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
     const bar = el("div", { class: "head" });
     bar.append(el("span", { class: "kind" }, "when"));
     const events = catalog.events.map(e => e.name);
-    bar.append(choice(events, h.event, v => {
+    bar.append(choice(events, h.event, "The event", v => {
       h.event = v;
       // What the event needs comes with it. Shown-but-not-written defaults
       // read as filled in and check as missing, which is the worst of both.
@@ -945,9 +1039,9 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
     // Only when this is true, and what to do when the event comes again while
     // a run of it is still going: both are in the file, so both are editable.
     bar.append(slot("only if", expr(h.when, v => { h.when = v === "" ? undefined : v; changed(); })));
-    bar.append(slot("again while running", choice(["skip", "queue"], h.overlap || "skip", v => { h.overlap = v === "skip" ? undefined : v; changed(); })));
+    bar.append(slot("again while running", choice(["skip", "queue"], h.overlap || "skip", "What to do when the event comes again while a run is going", v => { h.overlap = v === "skip" ? undefined : v; changed(); })));
     bar.append(el("span", { class: "id" }, h.id));
-    bar.append(tools(open.doc.on, h, () => changed(true)));
+    bar.append(tools(open.doc.on, h));
     b.append(bar);
     const body = el("div", { class: "body" });
     statements(body, h.do = h.do || []);
@@ -959,7 +1053,7 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
   function statements(into, list) {
     for (const st of list) into.append(statementBlock(list, st));
     const add = el("div", { class: "add" });
-    const pick = el("select");
+    const pick = el("select", { "aria-label": "Add a statement" });
     pick.append(el("option", { value: "" }, "+ add…"));
     for (const k of STATEMENTS) pick.append(el("option", { value: k }, k));
     pick.onchange = () => { if (pick.value) { list.push(blank(pick.value)); changed(true); } };
@@ -990,33 +1084,33 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
 
     if (kind === "call") {
       const names = catalog.operations.map(o => o.name);
-      bar.append(choice(names, st.call, v => { st.call = v; st.args = {}; changed(true); }));
+      bar.append(choice(names, st.call, "Which operation", v => { st.call = v; st.args = {}; changed(true); }));
       if (op) {
         bar.append(el("span", { class: "muted", style: "font-size:12px" }, op.kind === "write" ? "changes the game" : "reads"));
         bar.title = op.description || "";
       }
-      bar.append(slot("as", field("text", st.as || "", v => { st.as = v || undefined; changed(); })));
+      bar.append(slot("as", field("text", st.as || "", v => { st.as = v || undefined; changed(); }, "Keep the result as")));
     } else if (kind === "set") {
       bar.append(field("text", st.set || "", v => { st.set = v; changed(); }, "variable"));
       bar.append(slot("to", expr(st.to, v => { st.to = v; changed(); })));
     } else if (kind === "log") {
-      bar.append(expr(st.log, v => { st.log = v; changed(); }));
+      bar.append(expr(st.log, v => { st.log = v; changed(); }, "What to write to the log"));
     } else if (kind === "wait") {
       bar.append(field("number", st.wait, v => { st.wait = Number(v); changed(); }, "seconds"));
     } else if (kind === "repeat") {
       bar.append(field("number", st.repeat, v => { st.repeat = Number(v); changed(); }, "times"));
     } else if (kind === "while") {
-      bar.append(expr(st.while, v => { st.while = v; changed(); }));
+      bar.append(expr(st.while, v => { st.while = v; changed(); }, "While this is true"));
       bar.append(slot("max", field("number", st.max != null ? st.max : 100, v => { st.max = Number(v); changed(); })));
     } else if (kind === "each") {
-      bar.append(expr(st.each, v => { st.each = v; changed(); }));
-      bar.append(slot("as", field("text", st.as || "item", v => { st.as = v; changed(); })));
-      bar.append(slot("max", field("number", st.max != null ? st.max : 50, v => { st.max = Number(v); changed(); })));
+      bar.append(expr(st.each, v => { st.each = v; changed(); }, "The list to go through"));
+      bar.append(slot("as", field("text", st.as || "item", v => { st.as = v; changed(); }, "The name of each item")));
+      bar.append(slot("max", field("number", st.max != null ? st.max : 50, v => { st.max = Number(v); changed(); }, "At most this many items")));
     } else if (kind === "if") {
-      bar.append(expr(st.if, v => { st.if = v; changed(); }));
+      bar.append(expr(st.if, v => { st.if = v; changed(); }, "The condition"));
     }
     bar.append(el("span", { class: "id" }, st.id));
-    bar.append(tools(list, st, () => changed(true)));
+    bar.append(tools(list, st));
     b.append(bar);
 
     const body = el("div", { class: "body" });
@@ -1026,9 +1120,9 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
         const has = p.name in st.args;
         const row = el("div");
         row.append(p.choices && p.choices.length
-          ? slot(p.name + (p.required ? " *" : ""), choice([""].concat(p.choices), has ? String(st.args[p.name]) : "", v => { setArg(st, p, v); }))
+          ? slot(p.name + (p.required ? " *" : ""), choice([""].concat(p.choices), has ? String(st.args[p.name]) : "", null, v => { setArg(st, p, v); }))
           : p.type === "boolean"
-            ? slot(p.name + (p.required ? " *" : ""), choice(["", "true", "false"], has ? String(st.args[p.name]) : "", v => { setArg(st, p, v); }))
+            ? slot(p.name + (p.required ? " *" : ""), choice(["", "true", "false"], has ? String(st.args[p.name]) : "", null, v => { setArg(st, p, v); }))
             : p.name === "value"
               ? valueSlot(st, p)
               : slot(p.name + (p.required ? " *" : ""), expr(has ? st.args[p.name] : "", v => { setArg(st, p, v); })));
@@ -1037,7 +1131,7 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
       }
       if (st.onError) {
         const head = el("div", { class: "slot" }, "on error ");
-        const drop = el("button", { type: "button", title: "Remove the on error part" }, "✕");
+        const drop = el("button", { type: "button", title: "Remove the on error part", "aria-label": "Remove the on error part of " + label(st) }, "✕");
         drop.onclick = () => removeOnError(st);
         head.append(drop);
         body.append(head);
@@ -1125,12 +1219,14 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
   const PREVIEW_EVERY = 120;
   let previewAt = 0, previewBusy = false, previewNext = null, previewSaid = null;
 
+  // Whether it went to the game: only a write of a member the block names does.
   function preview(st, value) {
-    if (!("call" in st) || st.call !== "objects.member.set") return;
+    if (!("call" in st) || st.call !== "objects.member.set") return false;
     const a = st.args || {};
-    if (!a.path || !a.component || !a.member) return;
+    if (!a.path || !a.component || !a.member) return false;
     previewNext = { path: a.path, component: a.component, index: a.index || 0, member: a.member, private: !!a.private, value, scene: a.scene };
     sendPreview();
+    return true;
   }
 
   function sendPreview() {
@@ -1172,18 +1268,30 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
 
   // The text field, with a colour picker beside it when the value is a colour -
   // because it looks like one, or because the game says the member is one.
+  // While the picker moves the game is being written, and the pill beside it
+  // says so: it goes when the picker is let go, or soon after it stops moving.
+  const LIVE_AFTER = 1500;
+
   function valueSlot(st, p) {
     const box = el("span", { class: "slot" }, (p.name + (p.required ? " *" : "")) + " ");
-    const text = expr(p.name in (st.args || {}) ? st.args[p.name] : "", v => { setArg(st, p, v); paint(); });
-    const picker = el("input", { type: "color", title: "Pick a colour" });
+    const text = expr(p.name in (st.args || {}) ? st.args[p.name] : "", v => { setArg(st, p, v); paint(); }, p.name + (p.required ? " (required)" : ""));
+    const picker = el("input", { type: "color", title: "Pick a colour", "aria-label": "Pick a colour" });
     const oftype = el("span", { class: "oftype" });
+    const live = el("span", { role: "status" });
+    let liveTimer = null;
+    const still = () => { clearTimeout(liveTimer); live.replaceChildren(); };
     picker.hidden = true;
     picker.oninput = () => {
       text.value = picker.value.toUpperCase();
       setArg(st, p, text.value);
-      preview(st, text.value);
+      if (!preview(st, text.value)) return;
+      if (!live.firstChild) live.append(el("span", { class: "pill live" }, "LIVE in game"));
+      clearTimeout(liveTimer);
+      liveTimer = setTimeout(still, LIVE_AFTER);
     };
-    box.append(text, picker, oftype);
+    picker.addEventListener("change", still);
+    picker.addEventListener("blur", still);
+    box.append(text, picker, oftype, live);
 
     function paint(type) {
       if (type) oftype.textContent = type;
@@ -1212,11 +1320,14 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
   // dropped above or below another block of the same kind, or onto the "+ add"
   // row at the end of a list. A handler only ever lands among handlers, and a
   // statement among statements; a block cannot be dropped inside itself, which
-  // would take it out of the file altogether.
+  // would take it out of the file altogether. Where a drop is refused, the page
+  // says why, beside the pointer and in the status line.
   let carrying = null;
+  // The head of each block drawn, by what it stands for, so that the keyboard
+  // can stay on a block that was moved or put back.
+  const heads = new Map();
 
   function carry(block, head, list, item) {
-    block._where = { list, item };
     head.draggable = true;
     // A field in the head would start the drag instead of taking the text.
     for (const f of head.querySelectorAll("input, select")) {
@@ -1225,7 +1336,8 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
       f.addEventListener("blur", () => { head.draggable = true; });
     }
     head.addEventListener("dragstart", e => {
-      carrying = { list, item, handler: list === open.doc.on };
+      closeMenu();
+      carrying = { list, item, handler: list === open.doc.on, refused: null };
       block.classList.add("dragging");
       e.dataTransfer.effectAllowed = "move";
       // Firefox starts no drag without this.
@@ -1234,11 +1346,17 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
     });
     head.addEventListener("dragend", () => {
       block.classList.remove("dragging");
+      // Let go where nothing takes it: the reason goes with the drag.
+      if (carrying && carrying.refused) window.dnwStatusIdle();
       carrying = null;
       clearMarks();
     });
     block.addEventListener("dragover", e => {
-      if (!fits(list, item)) return;
+      const why = refusal(list, item);
+      if (why === "inside") { e.stopPropagation(); refuse(e, why); return; }
+      // Of the wrong kind here: a block further out may take it, or nothing does
+      // and the blocks' own refusal below says why.
+      if (why) return;
       e.preventDefault();
       e.stopPropagation();
       clearMarks();
@@ -1246,40 +1364,93 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
       block.classList.add(e.clientY < box.top + box.height / 2 ? "drop-before" : "drop-after");
     });
     block.addEventListener("drop", e => {
-      if (!fits(list, item)) return;
+      if (refusal(list, item)) return;
       e.preventDefault();
       e.stopPropagation();
       const box = block.getBoundingClientRect();
       const before = e.clientY < box.top + box.height / 2;
       move(list, list.indexOf(item) + (before ? 0 : 1));
     });
+
+    // The head, from the keyboard: Tab to it, then Alt+arrows, M, Delete, Enter.
+    heads.set(item, head);
+    head.tabIndex = 0;
+    head.setAttribute("role", "group");
+    head.setAttribute("aria-label", label(item));
+    head.setAttribute("aria-keyshortcuts", "Alt+ArrowUp Alt+ArrowDown M Delete Enter");
+    head.addEventListener("keydown", e => {
+      if (e.target !== head) return;
+      if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+        if (step(list, item, e.key === "ArrowUp" ? -1 : 1)) focusHead(item);
+      } else if ((e.key === "m" || e.key === "M") && !e.altKey && !e.ctrlKey && !e.metaKey) {
+        const button = head.querySelector(":scope > .tools > .move-to");
+        if (button) moveMenu(button, list, item, head);
+      } else if (e.key === "Delete") {
+        const at = list.indexOf(item);
+        removeBlock(list, item);
+        const next = list[Math.min(at, list.length - 1)];
+        if (next) focusHead(next); else $("gBlocks").focus();
+      } else if (e.key === "Enter") {
+        const first = head.querySelector("input, select");
+        if (first) first.focus();
+      } else return;
+      e.preventDefault();
+    });
   }
 
   function intoDrop(row, list) {
     row.addEventListener("dragover", e => {
-      if (!fits(list, null)) return;
+      const why = refusal(list, null);
+      if (why === "inside") { e.stopPropagation(); refuse(e, why); return; }
+      if (why) return;
       e.preventDefault();
       e.stopPropagation();
       clearMarks();
       row.classList.add("drop-into");
     });
     row.addEventListener("drop", e => {
-      if (!fits(list, null)) return;
+      if (refusal(list, null)) return;
       e.preventDefault();
       e.stopPropagation();
       move(list, list.length);
     });
   }
 
-  // Handlers go among handlers and statements among statements; and nothing
-  // goes inside itself.
-  function fits(list, item) {
-    if (!carrying) return false;
+  // Why what is carried may not go into this list: "" when it may. Handlers go
+  // among handlers and statements among statements; and nothing goes inside
+  // itself.
+  function refusal(list, item) {
+    if (!carrying) return "nothing";
     const handlers = list === open.doc.on;
-    if (handlers !== carrying.handler) return false;
-    if (item === carrying.item) return true;   // same place: allowed, does nothing
-    return !inside(carrying.item, list);
+    if (handlers !== carrying.handler) return carrying.handler ? "handler" : "statement";
+    if (item === carrying.item) return "";   // same place: allowed, does nothing
+    return inside(carrying.item, list) ? "inside" : "";
   }
+
+  const REFUSED = {
+    handler: ["Not here: a handler goes only among handlers.", "Drop it above or below another when block."],
+    statement: ["Not here: a statement goes inside a when block.", "Drop it above or below another statement, or on a + add row."],
+    inside: ["Not here: a block cannot go inside itself.", "Drop it outside its own branches."],
+  };
+
+  function refuse(e, why) {
+    clearMarks();
+    const tip = $("gRefused"), said = REFUSED[why];
+    tip.textContent = said[0];
+    tip.hidden = false;
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.max(4, Math.min(window.innerWidth - w - 4, e.clientX + 14)) + "px";
+    tip.style.top = Math.max(4, Math.min(window.innerHeight - h - 4, e.clientY + 18)) + "px";
+    if (carrying.refused !== why) { carrying.refused = why; window.dnwStatus(said.join(" "), true); }
+  }
+
+  // Nothing between the pointer and the blocks' box took the drop.
+  $("gBlocks").addEventListener("dragover", e => {
+    if (carrying) refuse(e, carrying.handler ? "handler" : "statement");
+  });
+  $("gBlocks").addEventListener("dragleave", e => {
+    if (!e.relatedTarget || !$("gBlocks").contains(e.relatedTarget)) $("gRefused").hidden = true;
+  });
 
   function inside(item, list) {
     let found = false;
@@ -1294,48 +1465,171 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
 
   function move(list, at) {
     const from = carrying.list, item = carrying.item;
+    carrying = null;
+    clearMarks();
+    if (relocate(from, item, list, at)) window.dnwStatus("Moved " + label(item) + ".");
+  }
+
+  // Takes the item out of one list and puts it in another (or the same one) at
+  // a place counted before it was taken out.
+  function relocate(from, item, list, at) {
     const was = from.indexOf(item);
-    if (was < 0) return;
+    if (was < 0) return false;
     from.splice(was, 1);
     if (from === list && was < at) at--;
     list.splice(Math.max(0, Math.min(at, list.length)), 0, item);
-    carrying = null;
-    clearMarks();
     changed(true);
+    return true;
+  }
+
+  // One place up or down in its own list.
+  function step(list, item, by) {
+    const i = list.indexOf(item);
+    if (i < 0 || i + by < 0 || i + by >= list.length) return false;
+    list.splice(i, 1);
+    list.splice(i + by, 0, item);
+    changed(true);
+    return true;
+  }
+
+  function focusHead(item) {
+    const head = heads.get(item);
+    if (head) head.focus();
   }
 
   function clearMarks() {
+    $("gRefused").hidden = true;
     for (const m of $("gBlocks").querySelectorAll(".drop-before, .drop-after, .drop-into")) {
       m.classList.remove("drop-before", "drop-after", "drop-into");
     }
   }
 
+  // ---- Move to…: another list without dragging ----------------------------
+  // Dragging is the only way into another branch for a mouse, and no way at
+  // all for a keyboard. The menu lists every place the block may go and none
+  // it may not: a statement goes to the top or the end of its own list, or to
+  // the end of any other list of statements that is not inside it (a call
+  // without an on error part offers a new one); a handler to the top or the
+  // end of the graph.
+  function targets(list, item) {
+    const out = [];
+    const ends = (l, where, top, end) => {
+      const at = l.indexOf(item);
+      if (at > 0) out.push({ label: where + top, to: l, at: 0 });
+      if (at < l.length - 1) out.push({ label: where + end, to: l, at: l.length });
+    };
+    if (list === open.doc.on) {
+      ends(list, "", "top of the graph", "end of the graph");
+      return out;
+    }
+    const into = (l, owner, branch) => {
+      if (l === list) ends(l, owner + " › ", branch ? "top of " + branch : "top of the handler", branch ? "end of " + branch : "end of the handler");
+      else out.push({ label: owner + " › " + (branch || "end"), to: l, at: l.length });
+      for (const s of l) {
+        if (s === item) continue;   // nothing inside itself
+        const kind = STATEMENTS.find(k => k in s) || "block", name = s.id + " " + kind;
+        if (kind === "if") { into(s.then = s.then || [], name, "then"); into(s.else = s.else || [], name, "else"); }
+        if (kind === "repeat" || kind === "while" || kind === "each") into(s.do = s.do || [], name, "do");
+        if (s.onError) into(s.onError, name, "on error");
+        else if (kind === "call") out.push({ label: name + " › on error (new)", owner: s, at: 0 });
+      }
+    };
+    for (const h of open.doc.on || []) into(h.do = h.do || [], h.id + " " + h.event, "");
+    return out;
+  }
+
+  let menu = null;   // { box, button, back }
+
+  function moveMenu(button, list, item, back) {
+    const again = menu && menu.button === button;
+    closeMenu();
+    if (again) return;
+    const name = label(item);
+    const box = el("div", { class: "menu", role: "menu", "aria-label": "Move " + name + " to", tabindex: "-1" });
+    box.append(el("div", { class: "title", "aria-hidden": "true" }, "Move " + name + " to"));
+    const places = targets(list, item);
+    if (!places.length) box.append(el("div", { class: "foot" }, "There is nowhere else it can go."));
+    for (const t of places) {
+      const b = el("button", { type: "button", role: "menuitem", tabindex: "-1" }, t.label);
+      b.onclick = () => {
+        closeMenu();
+        if (t.owner) t.to = t.owner.onError = [];
+        if (relocate(list, item, t.to, t.at)) {
+          window.dnwStatus("Moved " + name + " to " + t.label + ".");
+          focusHead(item);
+          showBlock(item.id);
+        }
+      };
+      box.append(b);
+    }
+    box.append(el("div", { class: "foot" }, "Or drag its head onto a block."));
+    box.addEventListener("keydown", e => {
+      const all = Array.from(box.querySelectorAll("[role=menuitem]")), i = all.indexOf(document.activeElement);
+      if (e.key === "Escape") { closeMenu(); (back || button).focus(); }
+      else if (e.key === "Tab") { closeMenu(); return; }
+      else if (!all.length) return;
+      else if (e.key === "ArrowDown") all[(i + 1) % all.length].focus();
+      else if (e.key === "ArrowUp") all[(i - 1 + all.length) % all.length].focus();
+      else if (e.key === "Home") all[0].focus();
+      else if (e.key === "End") all[all.length - 1].focus();
+      else return;
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    button.parentElement.append(box);
+    // Near the bottom of the blocks it opens upwards, when there is more room there.
+    const room = $("gBlocks").getBoundingClientRect(), mine = box.getBoundingClientRect(), at = button.getBoundingClientRect();
+    if (mine.bottom > room.bottom && at.top - room.top > room.bottom - at.bottom) box.classList.add("up");
+    button.setAttribute("aria-expanded", "true");
+    menu = { box, button, back };
+    (box.querySelector("[role=menuitem]") || box).focus();
+  }
+
+  function closeMenu() {
+    if (!menu) return;
+    menu.box.remove();
+    menu.button.setAttribute("aria-expanded", "false");
+    menu = null;
+  }
+
+  // A click anywhere else puts the menu away; its own button toggles it.
+  document.addEventListener("pointerdown", e => {
+    if (menu && !menu.box.contains(e.target) && !menu.button.contains(e.target)) closeMenu();
+  });
+
   // ---- the pieces a block is made of --------------------------------------
   function field(type, value, onchange, title) {
     const i = el("input", { type: type === "number" ? "number" : "text" });
     i.value = value == null ? "" : value;
-    if (title) i.title = title;
+    if (title) { i.title = title; i.setAttribute("aria-label", title); }
     i.onchange = () => onchange(i.value);
     return i;
   }
-  function choice(options, value, onchange) {
+  function choice(options, value, name, onchange) {
     const sel = el("select");
+    if (name) sel.setAttribute("aria-label", name);
     for (const o of options) sel.append(el("option", { value: o }, o === "" ? "—" : o));
     sel.value = value == null ? "" : value;
     sel.onchange = () => onchange(sel.value);
     return sel;
   }
+  // The words beside a field name it for a screen reader too, unless it has a
+  // name of its own.
   function slot(label, control) {
     const s = el("span", { class: "slot" }, label + " ");
+    if (/^(INPUT|SELECT)$/.test(control.tagName) && !control.hasAttribute("aria-label")) {
+      control.setAttribute("aria-label", label.replace(/ \*$/, " (required)"));
+    }
     s.append(control);
     return s;
   }
   // An expression is a value or a small object ({"var":…}, {"event":…}, {"join":…}).
   // Typed as text here; a value that parses as JSON is kept as JSON, so the round
   // blocks of the design can read it later without any change to the file.
-  function expr(value, onchange) {
+  function expr(value, onchange, name) {
     const text = value == null ? "" : (typeof value === "object" ? JSON.stringify(value) : String(value));
     const i = el("input", { type: "text", title: "A value, or JSON such as {\"var\":\"count\"}" });
+    if (name) i.setAttribute("aria-label", name);
     i.value = text;
     i.onchange = () => {
       const t = i.value.trim();
@@ -1347,15 +1641,19 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
     };
     return i;
   }
-  function tools(list, item, after) {
-    const t = el("span", { class: "tools" });
-    const up = el("button", { type: "button", title: "Move up" }, "↑");
-    const down = el("button", { type: "button", title: "Move down" }, "↓");
-    const del = el("button", { type: "button", title: "Remove" }, "✕");
-    up.onclick = () => { const i = list.indexOf(item); if (i > 0) { list.splice(i, 1); list.splice(i - 1, 0, item); after(); } };
-    down.onclick = () => { const i = list.indexOf(item); if (i >= 0 && i < list.length - 1) { list.splice(i, 1); list.splice(i + 1, 0, item); after(); } };
+  // A block's own buttons. Each says what it does to which block, for a
+  // screen reader that cannot see the arrow or the cross.
+  function tools(list, item) {
+    const t = el("span", { class: "tools" }), name = label(item);
+    const up = el("button", { type: "button", title: "Move up (Alt+↑)", "aria-label": "Move up " + name }, "↑");
+    const down = el("button", { type: "button", title: "Move down (Alt+↓)", "aria-label": "Move down " + name }, "↓");
+    const to = el("button", { type: "button", class: "move-to", title: "Move to another list (M)", "aria-label": "Move " + name + " to another list", "aria-haspopup": "menu", "aria-expanded": "false" }, "Move to…");
+    const del = el("button", { type: "button", title: "Remove (Delete)", "aria-label": "Remove " + name }, "✕");
+    up.onclick = () => step(list, item, -1);
+    down.onclick = () => step(list, item, 1);
+    to.onclick = () => moveMenu(to, list, item, null);
     del.onclick = () => removeBlock(list, item);
-    t.append(up, down, del);
+    t.append(up, down, to, del);
     return t;
   }
 
@@ -1487,17 +1785,13 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
     window.dnwStatus(now !== u.what[1]
       ? "Put back " + u.what[1] + " as " + now + ": its id went to a new block meanwhile."
       : "Put back " + u.what.join("") + "." + (r.renamed ? " Blocks inside it whose ids went to new blocks meanwhile have new ones." : ""));
-    if (u.show) showBlock(u.show.id);
+    if (u.show) { showBlock(u.show.id); focusHead(u.show); }
   }
 
   $("gUndo").onclick = takeBack;
 
   // A field keeps Ctrl+Z for its own text.
-  function typing(t) {
-    if (!t || !t.tagName) return false;
-    if (t.isContentEditable || t.tagName === "TEXTAREA" || t.tagName === "SELECT") return true;
-    return t.tagName === "INPUT" && ["button", "checkbox", "color", "radio", "submit"].indexOf(t.type) < 0;
-  }
+  const typing = t => window.dnwTyping(t);
 
   document.addEventListener("keydown", e => {
     if ($("graphsView").hidden || $("gAsk").open) return;
@@ -1704,7 +1998,12 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
     const title = document.createElementNS(svgNS2, "title");
     title.textContent = "Click to edit this block";
     g.append(title);
+    // A node is a button: Tab reaches it, Enter or Space opens its block.
+    g.setAttribute("tabindex", "0");
+    g.setAttribute("role", "button");
+    g.setAttribute("aria-label", "Edit " + kind + (n.st.id ? " " + n.st.id : ""));
     g.onclick = () => openBlock(n.st.id);
+    g.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openBlock(n.st.id); } };
     return g;
   }
 
@@ -1730,7 +2029,8 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
   function openBlock(id) {
     asNodes = false;
     paintView();
-    showBlock(id);
+    const blk = showBlock(id);
+    if (blk) blk.firstChild.focus({ preventScroll: true });
   }
 
   // Scrolled to and flashed, so the eye finds it.
@@ -1742,9 +2042,10 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
         blk.classList.remove("flash");
         void blk.offsetWidth;
         blk.classList.add("flash");
-        return;
+        return blk;
       }
     }
+    return null;
   }
 
   function paintView() {
@@ -1828,20 +2129,38 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
     checkSoon = setTimeout(check, 350);
   }
 
+  // A check that could not be made says so in Problems, where a stale "None."
+  // used to stay, with a way to ask again and the last answer that did come
+  // (for this graph, and marked with its time, since it may be out of date).
+  // An answer that arrives after a newer check was asked for is dropped.
+  let checking = 0;
+
   async function check() {
     if (!open) return;
+    const asked = open, run = ++checking;
+    const ul = $("gProblems");
     try {
       const r = await call("graphs.check", { text: JSON.stringify(open.doc, null, 2) });
-      const ul = $("gProblems");
+      if (run !== checking || asked !== open) return;
       ul.replaceChildren();
+      let said;
       if (r.ok) {
-        ul.append(el("li", { class: "muted", style: "cursor:default" }, "None. " +
-          (r.changes.length ? "It changes: " + r.changes.join(", ") : "It only reads.")));
+        said = "None. " + (r.changes.length ? "It changes: " + r.changes.join(", ") : "It only reads.");
+        ul.append(el("li", { class: "muted", style: "cursor:default" }, said));
       } else {
+        said = r.problems.length + (r.problems.length === 1 ? " problem." : " problems.");
         for (const p of r.problems) ul.append(el("li", { style: "cursor:default; color: var(--error)" }, p));
       }
+      open.lastCheck = { at: new Date().toTimeString().slice(0, 8), said };
     } catch (e) {
-      window.dnwStatus(e.message, true);
+      if (run !== checking || asked !== open) return;
+      ul.replaceChildren();
+      const failed = el("li", { class: "failed" }, "Could not check: " + (e && e.message ? e.message : String(e)) + " ");
+      const again = el("button", { type: "button" }, "Check again");
+      again.onclick = check;
+      failed.append(again);
+      ul.append(failed);
+      if (open.lastCheck) ul.append(el("li", { class: "last" }, "Last result, " + open.lastCheck.at + ": " + open.lastCheck.said));
     }
   }
 
@@ -1946,21 +2265,28 @@ dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top
     if (open && open.changed) { e.preventDefault(); e.returnValue = ""; }
   });
 
-  // The side panel's width, dragged as the code graph's is.
+  // The side panel's width, dragged as the code graph's is - or, with the
+  // divider focused, moved by the arrow keys the same way.
   (function () {
     const split = $("gSplit"), view = $("graphsView");
     let from = 0, width = 320;
+    function setSide(w) {
+      if (window.innerWidth <= 1000) return;   // stacked: there is nothing to drag
+      view.style.gridTemplateColumns = `240px 1fr 6px ${Math.min(640, Math.max(220, w))}px`;
+    }
     split.addEventListener("pointerdown", e => {
       from = e.clientX; width = $("gSide").getBoundingClientRect().width;
       split.setPointerCapture(e.pointerId);
-      const move = ev => {
-        if (window.innerWidth <= 1000) return;   // stacked: there is nothing to drag
-        const w = Math.min(640, Math.max(220, width + (from - ev.clientX)));
-        view.style.gridTemplateColumns = `240px 1fr 6px ${w}px`;
-      };
-      const up = ev => { split.releasePointerCapture(e.pointerId); split.removeEventListener("pointermove", move); split.removeEventListener("pointerup", up); };
+      split.classList.add("dragging");
+      const move = ev => setSide(width + (from - ev.clientX));
+      const up = ev => { split.releasePointerCapture(e.pointerId); split.classList.remove("dragging"); split.removeEventListener("pointermove", move); split.removeEventListener("pointerup", up); };
       split.addEventListener("pointermove", move);
       split.addEventListener("pointerup", up);
+    });
+    split.addEventListener("keydown", e => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      e.preventDefault();
+      setSide($("gSide").getBoundingClientRect().width + (e.key === "ArrowLeft" ? 40 : -40));
     });
   })();
 })();
