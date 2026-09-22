@@ -51,8 +51,8 @@ namespace DragNWash.CodeGraph
         {
             _port = port;
             _focus = Valid(focus) ? focus : null;
-            _notice = tookOver ? "The Code Graph window that was open did not answer; this one took over." : null;
-            Text = "Drag'n Wash Code Graph";
+            _notice = tookOver ? Strings.Get(Strings.Key.TookOver) : null;
+            Text = Strings.Get(Strings.Key.Title);
             BackColor = Color.FromArgb(14, 18, 26);
             StartPosition = FormStartPosition.Manual;
             Bounds = SavedBounds();
@@ -84,8 +84,7 @@ namespace DragNWash.CodeGraph
             }
             catch (WebView2RuntimeNotFoundException)
             {
-                MessageBox.Show(this, "This window needs the Microsoft Edge WebView2 Runtime, which comes with Windows 10 and 11 but is missing here.\n\nSet [Bridge] OpenPageIn to Browser in the game's Mods screen to use the browser instead, or install the WebView2 Runtime from Microsoft.",
-                    Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(this, Strings.Get(Strings.Key.NoWebView2), Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
                 Close();
                 return;
             }
@@ -201,7 +200,7 @@ namespace DragNWash.CodeGraph
                 using (var reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
                 {
                     Match m = Regex.Match(reader.ReadToEnd(), "\"code\"\\s*:\\s*\"([A-Za-z0-9_-]+)\"");
-                    return m.Success ? (m.Groups[1].Value, Why.Other, null) : (null, Why.Other, "the answer had no code");
+                    return m.Success ? (m.Groups[1].Value, Why.Other, null) : (null, Why.Other, Strings.Get(Strings.Key.NoCode));
                 }
             }
             catch (WebException ex) when (ex.Response is HttpWebResponse answer)
@@ -390,53 +389,55 @@ namespace DragNWash.CodeGraph
             string why;
             switch (_why)
             {
-                case Why.NotRunning: why = $"Nothing answers at 127.0.0.1:{_port}: the game is not running, or the Bridge is off."; break;
-                case Why.NoToken: why = "This window has no token yet: the Bridge writes bridge-token.txt the first time it runs in the game."; break;
-                case Why.Refused: why = $"The Bridge refused this window's token ({_detail}). The token was renewed in the game, and this window still has the old one."; break;
-                default: why = $"The game did not give this window a sign-in code: {_detail}."; break;
+                case Why.NotRunning: why = Strings.Get(Strings.Key.NotRunning, _port); break;
+                case Why.NoToken: why = Strings.Get(Strings.Key.NoToken); break;
+                case Why.Refused: why = Strings.Get(Strings.Key.TokenRefused, _detail); break;
+                default: why = Strings.Get(Strings.Key.OtherReason, _detail); break;
             }
             bool refused = _why == Why.Refused;
-            string head = refused ? "The game is there, but this window may not sign in." : "Waiting for the game.";
-            string how = refused
-                ? "In the game: F1 → Bridge shows the token in use; this window reads it from bridge-token.txt. Press Graph again in the Inspector, or Retry now once the Bridge is on."
-                : "Start Drag'n Wash with the developer tools and the Bridge on (F1 → Bridge). This window signs in by itself when the game is there.";
-            string tries = (_tries == 1 ? "Tried 1 time" : $"Tried {_tries} times") + " · last " + _last.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+            string head = Strings.Get(refused ? Strings.Key.NotSignedIn : Strings.Key.Waiting);
+            string how = Strings.Get(refused ? Strings.Key.HowToken : Strings.Key.HowStart);
+            string tries = Strings.Get(_tries == 1 ? Strings.Key.TriedOne : Strings.Key.TriedMany, _tries, _last.ToString("HH:mm:ss", CultureInfo.InvariantCulture));
             int next = _retry.Enabled ? _retry.Interval / 1000 : 0;
             return "{\"head\":" + JsString(head) + ",\"why\":" + JsString(why) + ",\"how\":" + JsString(how)
                 + ",\"notice\":" + (_notice != null ? JsString(_notice) : "null") + ",\"tries\":" + JsString(tries)
                 + ",\"trying\":" + (_trying ? "true" : "false") + ",\"next\":" + next + "}";
         }
 
-        private string WaitingPage() => @"<!doctype html><html lang=""en""><head><meta charset=""utf-8""><title>" + Html(Text) + @"</title>
-<style>html,body{height:100%;margin:0}body{display:grid;place-items:center;background:#0e121a;color:#99a8ba;font:15px/1.5 system-ui,'Segoe UI',sans-serif}
+        private string WaitingPage() => @"<!doctype html><html lang=""" + Strings.Current + @"""><head><meta charset=""utf-8""><title>" + Html(Strings.Get(Strings.Key.Title)) + @"</title>
+<style>html{height:100%}body{min-height:100%;margin:0;display:grid;place-items:center;background:#0e121a;color:#99a8ba;font:15px/1.5 " + Strings.Fonts + @"}
 main{max-width:52ch;padding:16px;text-align:center;display:flex;flex-direction:column;align-items:center}
-.icon{display:flex;flex-direction:column;align-items:center;gap:4px;margin-bottom:10px;font-size:11px}.icon div{width:40px;height:40px;border:1px dashed #99a8ba;border-radius:8px}
-b{color:#52c7b8;letter-spacing:.08em;font-size:13px;text-transform:uppercase}p{margin:.6em 0}
-#head{margin:.6em 0 .2em;color:#e8eff7;font-size:18px}#why{margin:.2em 0 .6em;color:#e8eff7}#notice{margin:.2em 0 .6em;color:#52c7b8}
-.row{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;align-items:center;margin:.8em 0}#tries{font-size:12px}
+b{color:#52c7b8;letter-spacing:.08em;font-size:13px;text-transform:uppercase}p{margin:.6em 0;text-wrap:pretty}:lang(ja) p{word-break:auto-phrase}
+#head{margin:.6em 0 .2em;color:#e8eff7;font-size:18px;text-wrap:balance}#why{margin:.2em 0 .6em;color:#e8eff7}#notice{margin:.2em 0 .6em;color:#52c7b8}
+.row{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;align-items:center;margin:.8em 0}#tries{font-size:12px;text-align:left;font-variant-numeric:tabular-nums}
 button{font:inherit;color:#e8eff7;background:#0b0e14;border:1px solid #2a3342;border-radius:6px;padding:5px 10px;cursor:pointer;white-space:nowrap}
-button:hover{border-color:#52c7b8}button:focus-visible{outline:2px solid #52c7b8;outline-offset:2px}button[aria-disabled=true]{opacity:.5;cursor:default}
+button:hover:not([aria-disabled=true]){border-color:#52c7b8}button:focus-visible{outline:2px solid #52c7b8;outline-offset:2px}button[aria-disabled=true]{cursor:progress}button.pressed{opacity:.5}
 #local{margin:1.4em 0 0;font-size:12px;border-top:1px solid #2a3342;padding-top:10px}</style></head>
 <body><main>
-<div class=""icon""><div aria-hidden=""true""></div><span>icon: hand-made by Tom</span></div>
-<b>" + Html(Text) + @"</b><p id=""head""></p><p id=""why"" role=""status"" aria-live=""polite""></p><p id=""notice"" hidden></p><p id=""how""></p>
-<div class=""row""><button type=""button"" id=""retry"">" + Html("Retry now") + @"</button><span id=""tries""></span></div>
-<p id=""local"">" + Html("Nothing leaves this computer: this window talks only to the game at 127.0.0.1, and shows only what is on this computer.") + @"</p>
+<b>" + Html(Strings.Get(Strings.Key.Title)) + @"</b><p id=""head""></p><p id=""why"" role=""status"" aria-live=""polite""></p><p id=""notice"" hidden></p><p id=""how""></p>
+<div class=""row""><button type=""button"" id=""retry"">" + Html(Strings.Get(Strings.Key.RetryNow)) + @"</button><span id=""tries""></span></div>
+<p id=""local"">" + Html(Strings.Get(Strings.Key.NothingLeaves)) + @"</p>
 </main><script>(function () {
-var nextIn = " + JsString("next in {0} s") + ", tryingNow = " + JsString("trying now") + ", waits = " + JsString("waits for Retry") + @", tick, busy;
+var nextIn = " + JsString(Strings.Get(Strings.Key.NextIn)) + ", tryingNow = " + JsString(Strings.Get(Strings.Key.TryingNow)) + ", waits = " + JsString(Strings.Get(Strings.Key.WaitsForRetry)) + @", tick, busy, wide = 0;
 var $ = function (id) { return document.getElementById(id); };
 function put(id, text) { var e = $(id); if (e.textContent !== text) e.textContent = text; }
 window.dnwWait = function (s) {
   put('head', s.head); put('why', s.why); put('how', s.how);
   $('notice').hidden = !s.notice; put('notice', s.notice || '');
   busy = s.trying; $('retry').setAttribute('aria-disabled', busy ? 'true' : 'false');
+  if (!busy) $('retry').classList.remove('pressed');
   clearInterval(tick);
   var left = s.next;
-  var tail = function () { put('tries', s.tries + ' · ' + (busy ? tryingNow : left > 0 ? nextIn.replace('{0}', left) : waits)); };
+  var tail = function () {
+    put('tries', s.tries + ' · ' + (busy ? tryingNow : left > 0 ? nextIn.replace('{0}', left) : waits));
+    var w = $('tries').getBoundingClientRect().width;
+    if (w > wide) { wide = w; $('tries').style.minWidth = w + 'px'; }
+  };
   tail();
   if (!busy && left > 0) tick = setInterval(function () { if (left > 1) { left--; tail(); } }, 1000);
 };
-$('retry').onclick = function () { if (!busy && window.chrome && window.chrome.webview) window.chrome.webview.postMessage('retry'); };
+$('retry').onclick = function () { if (!busy && window.chrome && window.chrome.webview) { this.classList.add('pressed'); window.chrome.webview.postMessage('retry'); } };
+addEventListener('resize', function () { wide = 0; $('tries').style.minWidth = ''; });
 window.dnwWait(" + WaitingState() + @");
 })();</script></body></html>";
 
