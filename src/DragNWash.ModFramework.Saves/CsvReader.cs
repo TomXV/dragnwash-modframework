@@ -4,11 +4,18 @@ using System.Text;
 
 namespace DragNWash.ModFramework.Saves
 {
-    // Minimal RFC4180-ish CSV reader: quoted fields, escaped quotes ("") and
-    // embedded commas/newlines inside quotes, with no dependency on the game's
-    // bundled CsvHelper. From the localization mod.
-    internal static class CsvReader
+    /// <summary>
+    /// A minimal RFC4180-ish CSV reader: quoted fields, escaped quotes (<c>""</c>) and
+    /// embedded commas/newlines inside quotes, with no dependency on the game's bundled
+    /// CsvHelper. From the localization mod.
+    /// </summary>
+    public static class CsvReader
     {
+        /// <summary>
+        /// Reads a CSV file's data rows, keyed by the header row's column names
+        /// (case-insensitive). A shared read: the file may be open elsewhere
+        /// (Excel, an editor) while the game runs.
+        /// </summary>
         public static IEnumerable<Dictionary<string, string>> ReadRows(string path)
         {
             // Shared read: translators keep these files open in Excel or an
@@ -123,13 +130,22 @@ namespace DragNWash.ModFramework.Saves
             return records;
         }
 
+        // A leading '#' is quoted too: Parse() treats a '#' at the start of a
+        // record as a comment, so an unquoted one would make the whole row
+        // vanish on read-back. Quoting is enough: a record that opens with '"'
+        // enters the quoted branch, where '#' is just another character.
+        /// <summary>
+        /// Escapes a value for a CSV field: quotes it when it contains a comma,
+        /// a quote, a newline, or starts with <c>#</c> (which <see cref="ReadRows"/>
+        /// would otherwise read back as a comment line).
+        /// </summary>
         public static string Escape(string value)
         {
-            if (value == null)
+            if (string.IsNullOrEmpty(value))
             {
                 return string.Empty;
             }
-            bool needsQuotes = value.IndexOfAny(new[] { ',', '"', '\n', '\r' }) >= 0;
+            bool needsQuotes = value[0] == '#' || value.IndexOfAny(new[] { ',', '"', '\n', '\r' }) >= 0;
             if (!needsQuotes)
             {
                 return value;
