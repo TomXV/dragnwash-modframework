@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.IO.Pipes;
 using System.Net;
@@ -35,10 +36,22 @@ namespace DragNWash.CodeGraph
         private bool _waiting;
         private bool _pageShown;
 
-        internal GraphForm(int port, string focus)
+        // Why the last sign-in failed, as the waiting page tells it.
+        private enum Why { NotRunning, NoToken, Refused, Other }
+
+        private Why _why;
+        private string _detail;
+        private int _tries;
+        private DateTime _last;
+        private bool _trying;
+        // Said once, on the first page this window shows: the window that was open did not answer.
+        private string _notice;
+
+        internal GraphForm(int port, string focus, bool tookOver)
         {
             _port = port;
             _focus = Valid(focus) ? focus : null;
+            _notice = tookOver ? "The Code Graph window that was open did not answer; this one took over." : null;
             Text = "Drag'n Wash Code Graph";
             BackColor = Color.FromArgb(14, 18, 26);
             StartPosition = FormStartPosition.Manual;
@@ -90,17 +103,30 @@ namespace DragNWash.CodeGraph
             // The page shows its Keep on top button once it knows it is in this window, and in which state.
             core.NavigationCompleted += async (s, e) =>
             {
-                if (_pageShown) await core.ExecuteScriptAsync("window.dnwPinned && window.dnwPinned(" + (TopMost ? "true" : "false") + ")");
+                if (!_pageShown) return;
+                await core.ExecuteScriptAsync("window.dnwPinned && window.dnwPinned(" + (TopMost ? "true" : "false") + ")");
+                if (_notice != null && e.IsSuccess)
+                {
+                    string notice = _notice;
+                    _notice = null;
+                    await core.ExecuteScriptAsync(NoticeScript(notice));
+                }
             };
             Connect();
         }
 
-        // The page tells where it is ("focus:<f>") and when it lost the game ("lost").
+        // The page tells where it is ("focus:<f>") and when it lost the game ("lost");
+        // the waiting page, that Retry now was pressed ("retry").
         private void OnMessage(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
-            if (!e.Source.StartsWith(Origin + "/page", StringComparison.Ordinal)) return;
             string message;
             try { message = e.TryGetWebMessageAsString(); } catch { return; }
+            if (!e.Source.StartsWith(Origin + "/page", StringComparison.Ordinal))
+            {
+                // The waiting page comes from NavigateToString, so it has no address of its own.
+                if (message == "retry" && _waiting && !_pageShown) Connect();
+                return;
+            }
             if (message.StartsWith("focus:", StringComparison.Ordinal))
             {
                 string f = message.Substring(6);
@@ -123,23 +149,34 @@ namespace DragNWash.CodeGraph
         {
             if (_connecting || _view.CoreWebView2 == null) return;
             _connecting = true;
+            _retry.Stop();
             try
             {
-                string code = await Task.Run(() => RequestCode(out _));
+                if (_waiting)
+                {
+                    _trying = true;
+                    ShowWaiting();
+                }
+                var (code, why, detail) = await Task.Run(() => RequestCode());
+                _trying = false;
                 if (code != null)
                 {
+                    if (_waiting) _notice = null;   // the waiting page has said it
                     _waiting = false;
+                    _tries = 0;
                     _pageShown = true;
                     string url = Origin + "/page#code=" + code + (_focus != null ? "&focus=" + Uri.EscapeDataString(_focus) : "");
                     _view.CoreWebView2.Navigate(url);
                     return;
                 }
-                if (!_waiting)
-                {
-                    _waiting = true;
-                    _view.CoreWebView2.NavigateToString(WaitingPage);
-                }
-                _retry.Start();
+                _tries++;
+                _last = DateTime.Now;
+                _why = why;
+                _detail = detail;
+                // A refused token stays refused however long this waits: only Retry now, or
+                // Graph pressed again in the game, tries again.
+                if (why != Why.Refused) _retry.Start();
+                ShowWaiting();
             }
             finally
             {
@@ -147,14 +184,13 @@ namespace DragNWash.CodeGraph
             }
         }
 
-        // A one-time code from the Bridge, with its token; null while the game (or the Bridge) is not there.
-        private string RequestCode(out string why)
+        // A one-time code from the Bridge, with its token; else why there is none.
+        private (string code, Why why, string detail) RequestCode()
         {
-            why = null;
             try
             {
                 string token = File.Exists(TokenFile) ? File.ReadAllText(TokenFile).Trim() : null;
-                if (string.IsNullOrEmpty(token)) { why = "no token yet"; return null; }
+                if (string.IsNullOrEmpty(token)) return (null, Why.NoToken, null);
                 var request = (HttpWebRequest)WebRequest.Create(Origin + "/page/api/code");
                 request.Method = "POST";
                 request.Timeout = 3000;
@@ -165,13 +201,61 @@ namespace DragNWash.CodeGraph
                 using (var reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8))
                 {
                     Match m = Regex.Match(reader.ReadToEnd(), "\"code\"\\s*:\\s*\"([A-Za-z0-9_-]+)\"");
-                    return m.Success ? m.Groups[1].Value : null;
+                    return m.Success ? (m.Groups[1].Value, Why.Other, null) : (null, Why.Other, "the answer had no code");
                 }
+            }
+            catch (WebException ex) when (ex.Response is HttpWebResponse answer)
+            {
+                using (answer)
+                {
+                    int status = (int)answer.StatusCode;
+                    return (null, status == 401 ? Why.Refused : Why.Other, status + " " + Said(answer));
+                }
+            }
+            catch (WebException ex) when (ex.Status == WebExceptionStatus.ConnectFailure)
+            {
+                return (null, Why.NotRunning, null);
             }
             catch (Exception ex)
             {
-                why = ex.Message;
-                return null;
+                return (null, Why.Other, Clause(ex.Message));
+            }
+        }
+
+        // The first line of what the Bridge said with its refusal ("The Bridge needs its token."), else the status's name.
+        private static string Said(HttpWebResponse answer)
+        {
+            string text = "";
+            try
+            {
+                using (var reader = new StreamReader(answer.GetResponseStream(), Encoding.UTF8))
+                {
+                    var buffer = new char[300];
+                    text = new string(buffer, 0, reader.Read(buffer, 0, buffer.Length));
+                }
+            }
+            catch
+            {
+            }
+            text = text.Split('\n')[0].Trim();
+            if (text.Length == 0 || text.StartsWith("{", StringComparison.Ordinal)) text = answer.StatusDescription;
+            return Clause(text);
+        }
+
+        // A message to go inside a sentence of the waiting page: one line, without a full stop of its own.
+        private static string Clause(string text) => (text ?? "").Replace('\r', ' ').Replace('\n', ' ').Trim().TrimEnd('.');
+
+        // The waiting page the first time, and after that only what it says (so Retry now keeps its focus).
+        private void ShowWaiting()
+        {
+            if (!_waiting)
+            {
+                _waiting = true;
+                _view.CoreWebView2.NavigateToString(WaitingPage());
+            }
+            else
+            {
+                _ = _view.CoreWebView2.ExecuteScriptAsync("window.dnwWait && window.dnwWait(" + WaitingState() + ")");
             }
         }
 
@@ -261,7 +345,7 @@ namespace DragNWash.CodeGraph
             foreach (char c in s)
             {
                 if (c == '"' || c == '\\') sb.Append('\\').Append(c);
-                else if (c < ' ' || c == (char)0x2028 || c == (char)0x2029) sb.Append("\\u").Append(((int)c).ToString("x4"));
+                else if (c < ' ' || c == '<' || c == (char)0x2028 || c == (char)0x2029) sb.Append("\\u").Append(((int)c).ToString("x4"));
                 else sb.Append(c);
             }
             return sb.Append('"').ToString();
@@ -299,10 +383,72 @@ namespace DragNWash.CodeGraph
             }
         }
 
-        private const string WaitingPage = @"<!doctype html><html><head><meta charset=""utf-8""><title>Drag'n Wash Code Graph</title>
+        // What the waiting page says now, for window.dnwWait: why this window is not signed in,
+        // how often it tried, and when it tries next (in seconds; 0 when it waits for Retry now).
+        private string WaitingState()
+        {
+            string why;
+            switch (_why)
+            {
+                case Why.NotRunning: why = $"Nothing answers at 127.0.0.1:{_port}: the game is not running, or the Bridge is off."; break;
+                case Why.NoToken: why = "This window has no token yet: the Bridge writes bridge-token.txt the first time it runs in the game."; break;
+                case Why.Refused: why = $"The Bridge refused this window's token ({_detail}). The token was renewed in the game, and this window still has the old one."; break;
+                default: why = $"The game did not give this window a sign-in code: {_detail}."; break;
+            }
+            bool refused = _why == Why.Refused;
+            string head = refused ? "The game is there, but this window may not sign in." : "Waiting for the game.";
+            string how = refused
+                ? "In the game: F1 → Bridge shows the token in use; this window reads it from bridge-token.txt. Press Graph again in the Inspector, or Retry now once the Bridge is on."
+                : "Start Drag'n Wash with the developer tools and the Bridge on (F1 → Bridge). This window signs in by itself when the game is there.";
+            string tries = (_tries == 1 ? "Tried 1 time" : $"Tried {_tries} times") + " · last " + _last.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+            int next = _retry.Enabled ? _retry.Interval / 1000 : 0;
+            return "{\"head\":" + JsString(head) + ",\"why\":" + JsString(why) + ",\"how\":" + JsString(how)
+                + ",\"notice\":" + (_notice != null ? JsString(_notice) : "null") + ",\"tries\":" + JsString(tries)
+                + ",\"trying\":" + (_trying ? "true" : "false") + ",\"next\":" + next + "}";
+        }
+
+        private string WaitingPage() => @"<!doctype html><html lang=""en""><head><meta charset=""utf-8""><title>" + Html(Text) + @"</title>
 <style>html,body{height:100%;margin:0}body{display:grid;place-items:center;background:#0e121a;color:#99a8ba;font:15px/1.5 system-ui,'Segoe UI',sans-serif}
-div{max-width:46ch;text-align:center}b{color:#52c7b8;letter-spacing:.08em;font-size:13px;text-transform:uppercase}p{margin:.6em 0}</style></head>
-<body><div><b>Drag'n Wash code graph</b><p>Waiting for the game.</p>
-<p>Start Drag'n Wash with the developer tools and the Bridge on (F1 → Bridge). This window signs in by itself when the game is there.</p></div></body></html>";
+main{max-width:52ch;padding:16px;text-align:center;display:flex;flex-direction:column;align-items:center}
+.icon{display:flex;flex-direction:column;align-items:center;gap:4px;margin-bottom:10px;font-size:11px}.icon div{width:40px;height:40px;border:1px dashed #99a8ba;border-radius:8px}
+b{color:#52c7b8;letter-spacing:.08em;font-size:13px;text-transform:uppercase}p{margin:.6em 0}
+#head{margin:.6em 0 .2em;color:#e8eff7;font-size:18px}#why{margin:.2em 0 .6em;color:#e8eff7}#notice{margin:.2em 0 .6em;color:#52c7b8}
+.row{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;align-items:center;margin:.8em 0}#tries{font-size:12px}
+button{font:inherit;color:#e8eff7;background:#0b0e14;border:1px solid #2a3342;border-radius:6px;padding:5px 10px;cursor:pointer;white-space:nowrap}
+button:hover{border-color:#52c7b8}button:focus-visible{outline:2px solid #52c7b8;outline-offset:2px}button[aria-disabled=true]{opacity:.5;cursor:default}
+#local{margin:1.4em 0 0;font-size:12px;border-top:1px solid #2a3342;padding-top:10px}</style></head>
+<body><main>
+<div class=""icon""><div aria-hidden=""true""></div><span>icon: hand-made by Tom</span></div>
+<b>" + Html(Text) + @"</b><p id=""head""></p><p id=""why"" role=""status"" aria-live=""polite""></p><p id=""notice"" hidden></p><p id=""how""></p>
+<div class=""row""><button type=""button"" id=""retry"">" + Html("Retry now") + @"</button><span id=""tries""></span></div>
+<p id=""local"">" + Html("Nothing leaves this computer: this window talks only to the game at 127.0.0.1, and shows only what is on this computer.") + @"</p>
+</main><script>(function () {
+var nextIn = " + JsString("next in {0} s") + ", tryingNow = " + JsString("trying now") + ", waits = " + JsString("waits for Retry") + @", tick, busy;
+var $ = function (id) { return document.getElementById(id); };
+function put(id, text) { var e = $(id); if (e.textContent !== text) e.textContent = text; }
+window.dnwWait = function (s) {
+  put('head', s.head); put('why', s.why); put('how', s.how);
+  $('notice').hidden = !s.notice; put('notice', s.notice || '');
+  busy = s.trying; $('retry').setAttribute('aria-disabled', busy ? 'true' : 'false');
+  clearInterval(tick);
+  var left = s.next;
+  var tail = function () { put('tries', s.tries + ' · ' + (busy ? tryingNow : left > 0 ? nextIn.replace('{0}', left) : waits)); };
+  tail();
+  if (!busy && left > 0) tick = setInterval(function () { if (left > 1) { left--; tail(); } }, 1000);
+};
+$('retry').onclick = function () { if (!busy && window.chrome && window.chrome.webview) window.chrome.webview.postMessage('retry'); };
+window.dnwWait(" + WaitingState() + @");
+})();</script></body></html>";
+
+        private static string Html(string text) => WebUtility.HtmlEncode(text);
+
+        // The Bridge page's status line says the notice. The page's first load sets that line itself
+        // (Loading..., then where the code comes from), so for 10 s the notice is said again each time
+        // the line has settled, unless the page reported an error there (in red), which matters more.
+        private static string NoticeScript(string notice) =>
+            "(function (t) { var s = document.getElementById('status'); if (!s || !window.dnwStatus) return; window.dnwStatus(t);"
+            + " var w, o = new MutationObserver(function () { if (s.textContent === t) return; clearTimeout(w); if (s.style.color) { o.disconnect(); return; }"
+            + " w = setTimeout(function () { window.dnwStatus(t); }, 500); });"
+            + " o.observe(s, { childList: true, characterData: true, subtree: true }); setTimeout(function () { o.disconnect(); clearTimeout(w); }, 10000); })(" + JsString(notice) + ")";
     }
 }

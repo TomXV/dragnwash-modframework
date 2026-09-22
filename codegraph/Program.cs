@@ -12,7 +12,8 @@ namespace DragNWash.CodeGraph
     //   CodeGraph.exe --from-game [--focus m:<method id>|t:<type>] [--port <n>]
     //
     // One window at a time: a second start hands its focus to the window that
-    // is already open (through a named pipe) and leaves.
+    // is already open (through a named pipe) and leaves - unless that window
+    // does not answer, and then it opens a window of its own.
     //
     // Started by the game, it would count as part of the game for Steam (which
     // follows what the game starts), and Steam would say the game is still
@@ -41,23 +42,27 @@ namespace DragNWash.CodeGraph
 
             // A window already open takes the focus. The start from the game does not hold the
             // name itself, so the start from the shell that follows at once can.
+            // One that does not answer (closing, or stuck) is not waited for: this start opens a
+            // window of its own, which says so once.
+            bool tookOver = false;
             if (Mutex.TryOpenExisting(MutexName, out Mutex open))
             {
                 open.Dispose();
-                HandOver(focus);
-                return 0;
+                if (HandOver(focus)) return 0;
+                tookOver = true;
             }
             if (fromGame && StartApart(focus, port)) return 0;
             using (var single = new Mutex(true, MutexName, out bool first))
             {
-                if (!first)
+                // Not first and not tried yet: a window opened in between.
+                if (!first && !tookOver)
                 {
-                    HandOver(focus);
-                    return 0;
+                    if (HandOver(focus)) return 0;
+                    tookOver = true;
                 }
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                Application.Run(new GraphForm(port, focus));
+                Application.Run(new GraphForm(port, focus, tookOver));
                 return 0;
             }
         }
@@ -100,8 +105,9 @@ namespace DragNWash.CodeGraph
             }
         }
 
-        // The window already open shows this focus and comes to the front.
-        private static void HandOver(string focus)
+        // The window already open shows this focus and comes to the front. False when it did
+        // not take it within 2 s: it is closing, or stuck.
+        private static bool HandOver(string focus)
         {
             try
             {
@@ -111,10 +117,11 @@ namespace DragNWash.CodeGraph
                     byte[] data = Encoding.UTF8.GetBytes((focus ?? "") + "\n");
                     pipe.Write(data, 0, data.Length);
                 }
+                return true;
             }
             catch
             {
-                // The other window is closing: nothing to hand over to.
+                return false;
             }
         }
 
