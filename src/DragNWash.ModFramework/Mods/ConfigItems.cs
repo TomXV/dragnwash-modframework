@@ -130,6 +130,14 @@ namespace DragNWash.ModFramework.Mods
                 .ToList();
         }
 
+        // The name a setting goes by on its settings page, for naming it elsewhere.
+        internal static string TitleOf(ConfigEntryBase entry)
+        {
+            var item = new ConfigItem { Entry = entry };
+            ReadMeta(item, entry);
+            return item.Title;
+        }
+
         // Reads SettingMeta and SectionMeta, and any other tag that carries the
         // same member names (ConfigurationManager's attribute uses IsAdvanced,
         // DispName and Order), so a mod need not reference the framework.

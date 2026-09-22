@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using BepInEx.Configuration;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -24,6 +25,9 @@ namespace DragNWash.ModFramework.Mods
         internal const string TextPressKey = "Press a key...";
         internal const string TextShowAdvanced = "Show advanced settings";
         internal const string TextRestart = "Takes effect after the game restarts.";
+        internal const string TextAlsoUsedBy = "is also used by";
+        internal const string TextBothAnswer = "Both will answer it.";
+        internal const string TextAllAnswer = "All of them will answer it.";
         private bool _showAdvanced;
 
         private static readonly Color SettingsColor = new Color(0.3f, 0.42f, 0.62f, 1f);
@@ -297,7 +301,45 @@ namespace DragNWash.ModFramework.Mods
                 var savedRect = (RectTransform)saved.transform;
                 savedRect.anchorMin = new Vector2(0.5f, 0.03f);
                 _settingNote = saved;
+                string shared = SharedKeyWarning(item);
+                if (shared != null)
+                {
+                    saved.text = shared;
+                    saved.color = WarnColor;
+                }
             }
+        }
+
+        // Another setting on the same key, said where the note is: right after
+        // a key is captured or typed, and whenever a setting that already
+        // clashes is opened. A report only; the key stays as the player set it,
+        // since one key doing two things may be just what they want.
+        private string SharedKeyWarning(ConfigItem item)
+        {
+            if (!item.IsShortcut)
+            {
+                return null;
+            }
+            List<KeyBindings.Bound> others;
+            try
+            {
+                others = KeyBindings.SharingKeyWith(item.Entry);
+            }
+            catch (Exception ex)
+            {
+                ModFramework.Log.LogWarning($"Could not look for other mods on the key of {item.Section}.{item.Key}: {ex.Message}");
+                return null;
+            }
+            if (others.Count == 0)
+            {
+                return null;
+            }
+            // By the name each setting has on its own page, and its mod's when
+            // that is another one.
+            IEnumerable<string> names = others.Select(b =>
+                Escape(ConfigItem.TitleOf(b.Entry)) + (b.Guid == _settingsFor?.Guid ? "" : " (" + Escape(b.Mod) + ")"));
+            string key = ((KeyboardShortcut)item.Entry.BoxedValue).MainKey.ToString();
+            return key + " " + TextAlsoUsedBy + " " + string.Join(", ", names.Distinct()) + ". " + (others.Count == 1 ? TextBothAnswer : TextAllAnswer);
         }
 
         // A text field for values BepInEx reads as text (strings, shortcuts,
