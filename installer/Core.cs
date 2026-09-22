@@ -5,9 +5,12 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Win32;
 
 namespace DragNWash.Installer
@@ -204,7 +207,10 @@ namespace DragNWash.Installer
 
         // ---- install ----
 
-        internal void Install(string game, IDictionary<string, string> choices, string bepInExZip = null)
+        // progress hears how far the BepInEx download is, then once that the game folder
+        // is being changed. cancel stops the download; after that it is too late.
+        internal void Install(string game, IDictionary<string, string> choices, string bepInExZip = null,
+            IProgress<InstallProgress> progress = null, CancellationToken cancel = default)
         {
             CheckReady(game);
             string payloadPlugins = Path.Combine(_payload, "BepInEx", "plugins");
@@ -217,7 +223,29 @@ namespace DragNWash.Installer
             }
             _log($"Game: {game}");
 
-            InstallBepInEx(game, bepInExZip);
+            string zip = HasBepInEx(game) ? null : bepInExZip ?? DownloadBepInEx(progress, cancel);
+            try
+            {
+                // Nothing in the game folder has changed up to here, so stopping is
+                // still clean. From here on it would leave the folder half done.
+                cancel.ThrowIfCancellationRequested();
+                progress?.Report(InstallProgress.Changing);
+                if (zip == null)
+                {
+                    _log("BepInEx: already present");
+                }
+                else
+                {
+                    InstallBepInEx(game, zip);
+                }
+            }
+            finally
+            {
+                if (zip != null && zip != bepInExZip)
+                {
+                    TryDelete(zip);
+                }
+            }
             InstallFramework(game);
 
             string plugins = Path.Combine(game, "BepInEx", "plugins");
@@ -243,69 +271,116 @@ namespace DragNWash.Installer
             _log($"{_manifest.Name} {_manifest.Version}: installed");
         }
 
-        private void InstallBepInEx(string game, string localZip)
+        // Into the temp folder, so a download that fails or is stopped leaves the
+        // game folder as it was.
+        private string DownloadBepInEx(IProgress<InstallProgress> progress, CancellationToken cancel)
         {
-            if (HasBepInEx(game))
-            {
-                _log("BepInEx: already present");
-                return;
-            }
-            string zip = localZip;
-            bool downloaded = false;
-            if (zip == null)
-            {
-                zip = Path.Combine(Path.GetTempPath(), "BepInEx_win_x64_5.4.23.5.zip");
-                _log($"BepInEx: downloading {Paths.BepInExUrl}");
-                ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
-                using (var client = new WebClient())
-                {
-                    client.Headers[HttpRequestHeader.UserAgent] = "DragNWash.Installer";
-                    client.DownloadFile(Paths.BepInExUrl, zip);
-                }
-                downloaded = true;
-            }
+            string zip = Path.Combine(Path.GetTempPath(), Path.GetFileName(new Uri(Paths.BepInExUrl).AbsolutePath));
+            _log($"BepInEx: downloading {Paths.BepInExUrl}");
+            progress?.Report(InstallProgress.Downloaded(0));
             try
             {
-                string hash;
-                using (var sha = SHA256.Create())
-                using (var stream = File.OpenRead(zip))
+                Download(Paths.BepInExUrl, zip, progress, cancel);
+            }
+            catch (Exception)
+            {
+                TryDelete(zip);
+                throw;
+            }
+            return zip;
+        }
+
+        private static void Download(string url, string file, IProgress<InstallProgress> progress, CancellationToken cancel)
+        {
+            ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+            using (var client = new HttpClient())
+            {
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("DragNWash.Installer");
+                HttpResponseMessage response;
+                try
                 {
-                    hash = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+                    response = client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancel).GetAwaiter().GetResult();
                 }
-                if (hash != Paths.BepInExSha256)
+                catch (TaskCanceledException ex) when (!cancel.IsCancellationRequested)
                 {
-                    throw new InstallerException(Strings.Key.BepInExHash, hash);
+                    // HttpClient reports its own time-out as a cancellation.
+                    throw new HttpRequestException("The server did not answer in time.", ex);
                 }
-                _log("BepInEx: SHA-256 OK, unpacking");
-                string root = Path.GetFullPath(game).TrimEnd('\\') + "\\";
-                using (ZipArchive archive = ZipFile.OpenRead(zip))
+                using (response)
                 {
-                    foreach (ZipArchiveEntry entry in archive.Entries)
+                    response.EnsureSuccessStatusCode();
+                    long total = response.Content.Headers.ContentLength ?? -1;
+                    using (Stream from = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult())
+                    using (cancel.Register(from.Dispose)) // a read that waits on the network ends at once
+                    using (FileStream to = File.Create(file))
                     {
-                        string target = Path.GetFullPath(Path.Combine(root, entry.FullName));
-                        if (!target.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                        var buffer = new byte[81920];
+                        long done = 0;
+                        int shown = 0;
+                        while (true)
                         {
-                            continue;
+                            int read;
+                            try
+                            {
+                                read = from.Read(buffer, 0, buffer.Length);
+                            }
+                            catch (Exception ex) when (ex is IOException || ex is ObjectDisposedException || ex is WebException)
+                            {
+                                cancel.ThrowIfCancellationRequested();
+                                throw new HttpRequestException("The download broke off: " + ex.Message, ex);
+                            }
+                            if (read == 0)
+                            {
+                                break;
+                            }
+                            to.Write(buffer, 0, read);
+                            done += read;
+                            int percent = total > 0 ? (int)Math.Min(100, done * 100 / total) : -1;
+                            if (percent != shown)
+                            {
+                                shown = percent;
+                                progress?.Report(InstallProgress.Downloaded(percent));
+                            }
                         }
-                        if (entry.FullName.EndsWith("/", StringComparison.Ordinal))
-                        {
-                            Directory.CreateDirectory(target);
-                            continue;
-                        }
-                        Directory.CreateDirectory(Path.GetDirectoryName(target));
-                        entry.ExtractToFile(target, true);
                     }
                 }
-                File.WriteAllText(Path.Combine(game, "BepInEx", Paths.Marker), "BepInEx was added by the Drag'n Wash mod installer.\r\n");
-                _log("BepInEx: installed");
             }
-            finally
+        }
+
+        private void InstallBepInEx(string game, string zip)
+        {
+            string hash;
+            using (var sha = SHA256.Create())
+            using (var stream = File.OpenRead(zip))
             {
-                if (downloaded)
+                hash = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+            }
+            if (hash != Paths.BepInExSha256)
+            {
+                throw new InstallerException(Strings.Key.BepInExHash, hash);
+            }
+            _log("BepInEx: SHA-256 OK, unpacking");
+            string root = Path.GetFullPath(game).TrimEnd('\\') + "\\";
+            using (ZipArchive archive = ZipFile.OpenRead(zip))
+            {
+                foreach (ZipArchiveEntry entry in archive.Entries)
                 {
-                    TryDelete(zip);
+                    string target = Path.GetFullPath(Path.Combine(root, entry.FullName));
+                    if (!target.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+                    if (entry.FullName.EndsWith("/", StringComparison.Ordinal))
+                    {
+                        Directory.CreateDirectory(target);
+                        continue;
+                    }
+                    Directory.CreateDirectory(Path.GetDirectoryName(target));
+                    entry.ExtractToFile(target, true);
                 }
             }
+            File.WriteAllText(Path.Combine(game, "BepInEx", Paths.Marker), "BepInEx was added by the Drag'n Wash mod installer.\r\n");
+            _log("BepInEx: installed");
         }
 
         // The framework and its libraries: another mod may have brought a newer
@@ -812,6 +887,27 @@ namespace DragNWash.Installer
             }
             File.WriteAllLines(path, lines, new UTF8Encoding(false));
         }
+    }
+
+    // How far Install has got, for the window to show.
+    internal readonly struct InstallProgress
+    {
+        // True while BepInEx is downloading: the game folder is untouched and
+        // Install can still be stopped.
+        internal readonly bool Downloading;
+
+        // Of the download; -1 when the server does not say how big it is.
+        internal readonly int Percent;
+
+        private InstallProgress(bool downloading, int percent)
+        {
+            Downloading = downloading;
+            Percent = percent;
+        }
+
+        internal static InstallProgress Downloaded(int percent) => new InstallProgress(true, percent);
+
+        internal static readonly InstallProgress Changing = new InstallProgress(false, -1);
     }
 
     internal sealed class InstallerException : Exception

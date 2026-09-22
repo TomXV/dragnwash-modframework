@@ -62,6 +62,10 @@ namespace DragNWash.Installer
             PlanRemoveBepInExKeep,
             PlanKeepBepInEx,
             PlanKeepBepInExUsed,
+            Cancel,
+            Downloading,
+            Cancelled,
+            Stopped,
         }
 
         private static readonly Dictionary<string, Dictionary<Key, string>> All = new Dictionary<string, Dictionary<Key, string>>
@@ -120,6 +124,10 @@ namespace DragNWash.Installer
                 [Key.PlanRemoveBepInExKeep] = "Remove BepInEx; your kept data stays in the BepInEx folder",
                 [Key.PlanKeepBepInEx] = "Keep BepInEx",
                 [Key.PlanKeepBepInExUsed] = "Keep BepInEx (other mods or patchers use it)",
+                [Key.Cancel] = "&Cancel",
+                [Key.Downloading] = "Downloading BepInEx {0} from {1}",
+                [Key.Cancelled] = "Cancelled. Nothing was changed in the game folder.",
+                [Key.Stopped] = "Stopped.",
             },
             ["ja"] = new Dictionary<Key, string>
             {
@@ -175,6 +183,10 @@ namespace DragNWash.Installer
                 [Key.PlanRemoveBepInExKeep] = "BepInEx を削除する（残すデータは BepInEx フォルダーに残る）",
                 [Key.PlanKeepBepInEx] = "BepInEx は残す",
                 [Key.PlanKeepBepInExUsed] = "BepInEx は残す（ほかの Mod かパッチャーが使っている）",
+                [Key.Cancel] = "キャンセル(&C)",
+                [Key.Downloading] = "BepInEx {0} を {1} からダウンロード中",
+                [Key.Cancelled] = "中止しました。ゲームのフォルダーは何も変わっていません。",
+                [Key.Stopped] = "中断しました。",
             },
             ["zh"] = new Dictionary<Key, string>
             {
@@ -230,6 +242,10 @@ namespace DragNWash.Installer
                 [Key.PlanRemoveBepInExKeep] = "删除 BepInEx；保留的数据留在 BepInEx 文件夹中",
                 [Key.PlanKeepBepInEx] = "保留 BepInEx",
                 [Key.PlanKeepBepInExUsed] = "保留 BepInEx（其他模组或补丁程序在使用）",
+                [Key.Cancel] = "取消(&C)",
+                [Key.Downloading] = "正在从 {1} 下载 BepInEx {0}",
+                [Key.Cancelled] = "已取消。游戏文件夹没有任何更改。",
+                [Key.Stopped] = "已停止。",
             },
         };
 

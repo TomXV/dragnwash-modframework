@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -36,6 +37,12 @@ namespace DragNWash.Installer
         private readonly TableLayoutPanel _installSteps = StepList();
         private readonly TableLayoutPanel _uninstallSteps = StepList();
 
+        // While Install or Uninstall runs; Close becomes Cancel for as long as stopping is clean.
+        private readonly TableLayoutPanel _progressRow = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, ColumnCount = 3, Margin = new Padding(0, 8, 0, 0), Visible = false };
+        private readonly Label _progressText = new Label { AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 8, 0) };
+        private readonly ProgressBar _progress = new ProgressBar { Dock = DockStyle.Fill, Height = 23, Margin = Padding.Empty };
+        private readonly Label _percent = new Label { AutoSize = false, Width = 40, Anchor = AnchorStyles.Right, TextAlign = ContentAlignment.MiddleRight, Margin = Padding.Empty };
+
         private readonly Button _run = new Button { AutoSize = true, MinimumSize = new Size(140, 34) };
         private readonly Button _close = new Button { AutoSize = true, MinimumSize = new Size(140, 34) };
         private readonly LinkLabel _website = new LinkLabel { AutoSize = true, Anchor = AnchorStyles.Right };
@@ -44,6 +51,9 @@ namespace DragNWash.Installer
 
         // The mod's version in the chosen game folder, or null when it is not there.
         private string _installed;
+        private bool _busy;
+        private CancellationTokenSource _cancel;
+        private bool _closeWhenDone;
 
         internal MainForm(ModManifest manifest, string payload)
         {
@@ -110,6 +120,12 @@ namespace DragNWash.Installer
             AddRow(uninstall, _uninstallSteps, 2);
             AddRow(layout, _uninstallGroup, 3);
 
+            _progressRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            _progressRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+            _progressRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            AddRow(_progressRow, _progressText, 1, _progress, 1, _percent, 1);
+            AddRow(layout, _progressRow, 3);
+
             var buttons = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 8, 0, 0) };
             buttons.Controls.Add(_run);
             buttons.Controls.Add(_close);
@@ -139,8 +155,28 @@ namespace DragNWash.Installer
             _keepData.CheckedChanged += (_, __) => RefreshPlan();
             _alsoBepInEx.CheckedChanged += (_, __) => RefreshPlan();
             _run.Click += (_, __) => Run(install: _modeInstall.Checked);
-            _close.Click += (_, __) => Close();
-            // Enter runs the chosen action, Esc closes.
+            _close.Click += (_, __) =>
+            {
+                if (_busy)
+                {
+                    StopDownload();
+                }
+                else
+                {
+                    Close();
+                }
+            };
+            FormClosing += (_, e) =>
+            {
+                // Closing mid-download stops it and closes once the game folder is
+                // known to be untouched; while it is being changed, it waits.
+                if (_busy && e.CloseReason == CloseReason.UserClosing)
+                {
+                    e.Cancel = true;
+                    _closeWhenDone |= StopDownload();
+                }
+            };
+            // Enter runs the chosen action, Esc closes (or cancels the download).
             AcceptButton = _run;
             CancelButton = _close;
             _website.Visible = !string.IsNullOrEmpty(manifest.Website) && manifest.Website.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
@@ -294,6 +330,10 @@ namespace DragNWash.Installer
             bool install = _modeInstall.Checked;
             _installGroup.Visible = install;
             _uninstallGroup.Visible = !install;
+            if (!_busy)
+            {
+                _progressRow.Visible = false;
+            }
             _run.Text = Strings.Get(!install ? Strings.Key.UninstallButton : _installed == null ? Strings.Key.InstallButton : Strings.Key.UpdateButton);
             // Installing: why Windows may warn about this file. Uninstalling: the other way to do it.
             _hint.Text = Strings.Get(install ? Strings.Key.SmartScreenHint : Strings.Key.SteamLaunchHint);
@@ -343,8 +383,12 @@ namespace DragNWash.Installer
             Dictionary<string, string> choices = SelectedChoices();
             bool keepData = _keepData.Checked;
             bool alsoBepInEx = _alsoBepInEx.Checked;
+            _cancel = new CancellationTokenSource();
+            CancellationToken cancel = _cancel.Token;
+            var progress = new Progress<InstallProgress>(ShowProgress);
 
             SetBusy(true);
+            ShowProgress(install && InstallerCore.IsGameFolder(game) && !InstallerCore.HasBepInEx(game) ? InstallProgress.Downloaded(0) : InstallProgress.Changing);
             _log.Clear();
             Task.Run(() =>
             {
@@ -352,13 +396,18 @@ namespace DragNWash.Installer
                 {
                     if (install)
                     {
-                        _core.Install(game, choices);
+                        _core.Install(game, choices, progress: progress, cancel: cancel);
                     }
                     else
                     {
                         _core.Uninstall(game, keepData, alsoBepInEx);
                     }
                     return (Ok: true, Message: Strings.Get(install ? Strings.Key.Installed : Strings.Key.Uninstalled));
+                }
+                catch (OperationCanceledException) when (cancel.IsCancellationRequested)
+                {
+                    AppendLog("Cancelled; the game folder was not changed");
+                    return (Ok: false, Message: (string)null);
                 }
                 catch (InstallerException ex)
                 {
@@ -373,14 +422,67 @@ namespace DragNWash.Installer
             }).ContinueWith(t =>
             {
                 SetBusy(false);
+                _cancel.Dispose();
+                _cancel = null;
+                if (_closeWhenDone)
+                {
+                    Close();
+                    return;
+                }
                 RefreshStatus();
-                MessageBox.Show(this, t.Result.Message, Text, MessageBoxButtons.OK, t.Result.Ok ? MessageBoxIcon.Information : MessageBoxIcon.Error);
+                if (t.Result.Ok)
+                {
+                    MessageBox.Show(this, t.Result.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                // The progress row says how it ended until the next change in the window.
+                _progressRow.Visible = true;
+                _progress.Style = ProgressBarStyle.Continuous;
+                _progress.Value = 0;
+                _percent.Text = "";
+                if (t.Result.Message == null)
+                {
+                    _progressText.Text = Strings.Get(Strings.Key.Cancelled);
+                    return;
+                }
+                _progressText.Text = Strings.Get(Strings.Key.Stopped);
+                MessageBox.Show(this, t.Result.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }, TaskScheduler.FromCurrentSynchronizationContext());
+        }
+
+        private void ShowProgress(InstallProgress progress)
+        {
+            if (!_busy)
+            {
+                return;
+            }
+            bool known = progress.Downloading && progress.Percent >= 0;
+            _progressText.Text = progress.Downloading
+                ? Strings.Get(Strings.Key.Downloading, Paths.BepInExVersion, new Uri(Paths.BepInExUrl).Host)
+                : Strings.Get(Strings.Key.Working);
+            _progress.Style = known ? ProgressBarStyle.Continuous : ProgressBarStyle.Marquee;
+            _progress.Value = known ? progress.Percent : 0;
+            _percent.Text = known ? progress.Percent + "%" : "";
+            _close.Enabled = progress.Downloading && !_cancel.IsCancellationRequested;
+            UseWaitCursor = !progress.Downloading;
+        }
+
+        // True when a download was stopped; false when the game folder is being changed and it cannot be.
+        private bool StopDownload()
+        {
+            if (_cancel == null || !_close.Enabled)
+            {
+                return false;
+            }
+            _cancel.Cancel();
+            _close.Enabled = false;
+            return true;
         }
 
         private void SetBusy(bool busy)
         {
-            UseWaitCursor = busy;
+            _busy = busy;
+            UseWaitCursor = false;
             foreach (Control c in new Control[] { _run, _browse, _game, _modeInstall, _modeUninstall, _keepData, _alsoBepInEx, _language })
             {
                 c.Enabled = !busy;
@@ -389,10 +491,9 @@ namespace DragNWash.Installer
             {
                 box.Enabled = !busy;
             }
-            if (busy)
-            {
-                _status.Text = Strings.Get(Strings.Key.Working);
-            }
+            _close.Text = Strings.Get(busy ? Strings.Key.Cancel : Strings.Key.Close);
+            _close.Enabled = !busy;
+            _progressRow.Visible = busy;
         }
 
         private void AppendLog(string line)
