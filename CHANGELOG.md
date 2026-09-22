@@ -66,6 +66,7 @@ Versions of the core and of each library are separate, and follow semantic versi
 - A page another mod adds that throws while building shows a short message and **Try again** instead of half a page.
 - A shortcut setting says when another setting uses the same key: "F1 is also used by Open / close key (Drag'n Wash ModFramework: Tool window). Both will answer it.", after a key is captured or typed and when a setting that already clashes is opened. A report only; the key stays as set.
 - A change to a setting shows **Saved** beside its value for two seconds; changes are still saved at once. A mod that turned off BepInEx's saving on every change gets its config file saved by the page too.
+- A native (non-.NET) DLL in the plugins folder is skipped quietly, at Debug level, instead of an Info line saying it could not be read. Other read failures are logged as before.
 
 ### Code graph without the game (standalone app)
 
