@@ -13,6 +13,7 @@
   --text: #16202b; --muted: #5b6878; --accent: #1f8f82; --accent-soft: #d5efeb;
   --true: #2f8a4c; --false: #8a95a3; --case: #3a6fc4; --back: #b0621f; --catch: #c0392b; --resume: #7a52b3;
   --warn: #9a6a00; --error: #c0392b; --node: #ffffff; --node-head: #eef3f6; --selected: #1f8f82;
+  --shadow: 0 6px 18px rgba(22, 32, 43, .18);
   --mono: ui-monospace, "Cascadia Mono", "Consolas", "DejaVu Sans Mono", monospace;
   --sans: system-ui, "Segoe UI", "Noto Sans", "Noto Sans JP", "DejaVu Sans", sans-serif;
 }
@@ -22,6 +23,7 @@
     --text: #e8eff7; --muted: #99a8ba; --accent: #52c7b8; --accent-soft: #173a38;
     --true: #6fcf8e; --false: #7d8a9b; --case: #7aa7f0; --back: #eda25a; --catch: #f57366; --resume: #b394ea;
     --warn: #edbf4d; --error: #f57366; --node: #1b2130; --node-head: #212a3b; --selected: #52c7b8;
+    --shadow: 0 6px 18px rgba(0, 0, 0, .45);
   }
 }
 :root[data-theme="dark"] {
@@ -29,6 +31,7 @@
   --text: #e8eff7; --muted: #99a8ba; --accent: #52c7b8; --accent-soft: #173a38;
   --true: #6fcf8e; --false: #7d8a9b; --case: #7aa7f0; --back: #eda25a; --catch: #f57366; --resume: #b394ea;
   --warn: #edbf4d; --error: #f57366; --node: #1b2130; --node-head: #212a3b; --selected: #52c7b8;
+  --shadow: 0 6px 18px rgba(0, 0, 0, .45);
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
@@ -41,7 +44,8 @@ button { font: inherit; color: var(--text); background: var(--inset); border: 1p
 button:hover { border-color: var(--accent); }
 button:focus-visible, input:focus-visible, a:focus-visible, .node:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 button[disabled] { opacity: .45; cursor: default; }
-button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+button[aria-pressed="true"], button.primary { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+button.danger { border-color: var(--error); color: var(--error); }
 #status { color: var(--muted); font-size: 12px; margin-left: auto; }
 main { display: grid; grid-template-columns: 240px 1fr 6px var(--right, 650px); min-height: 0; }
 /* A view that is not on screen is out of the way: display beats hidden. */
@@ -133,7 +137,7 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
 #gSide h2 button { font-size: 10px; padding: 1px 6px; text-transform: none; letter-spacing: 0; }
 #gWhich { padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--inset); color: var(--text); font: 12px var(--mono); max-width: 180px; }
 #gSplit { background: var(--line); cursor: col-resize; }
-#gStage { display: grid; grid-template-rows: auto 1fr; min-width: 0; min-height: 0; }
+#gStage { display: grid; grid-template-rows: auto 1fr; min-width: 0; min-height: 0; position: relative; }
 #gBar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
 #gBar label { font-size: 12px; color: var(--muted); display: flex; gap: 4px; align-items: center; }
 #gBar input { width: 140px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--inset); color: var(--text); font: inherit; }
@@ -187,6 +191,24 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
 #graphList .error { color: var(--error); }
 .log .warning { color: var(--warn); }
 .log .at { color: var(--muted); }
+/* What was just removed, and the way back: under the blocks, for a few seconds. */
+#gToast { position: absolute; left: 14px; right: 14px; bottom: 14px; display: flex; gap: 12px; align-items: center; padding: 8px 12px; background: var(--panel); border: 1px solid var(--accent); border-radius: 8px; box-shadow: var(--shadow); z-index: 4; }
+#gToast[hidden] { display: none; }
+/* While it is up, the end of the blocks can still be scrolled out from under it. */
+#gStage:has(> #gToast:not([hidden])) #gBlocks { padding-bottom: 80px; }
+#gToast .what { flex: 1 1 auto; min-width: 0; }
+#gToast code, dialog.ask code { font: 12px var(--mono); }
+#gToast .when { color: var(--muted); font-size: 12px; white-space: nowrap; }
+/* The page's own questions, in place of the browser's prompt and confirm boxes. */
+dialog.ask { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; width: min(440px, calc(100vw - 32px)); box-shadow: var(--shadow); }
+dialog.ask::backdrop { background: rgba(0, 0, 0, .35); }
+/* The answer Enter gives is ringed even when the question came from a click. */
+dialog.ask .row button:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+dialog.ask h2 { font-size: 14px; letter-spacing: 0; text-transform: none; color: var(--text); margin: 0 0 6px; overflow-wrap: anywhere; }
+dialog.ask p { margin: 0 0 10px; }
+dialog.ask input { width: 100%; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--inset); color: var(--text); font: 13px var(--mono); }
+dialog.ask .why { color: var(--error); font-size: 12px; margin: 6px 0 0; }
+dialog.ask .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
 </style>
 </head>
 <body>
@@ -238,6 +260,7 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
     </div>
     <div id="gBlocks" tabindex="0" aria-label="The graph's blocks"></div>
     <div id="gNodes" hidden aria-label="The graph as nodes"></div>
+    <div id="gToast" role="status" aria-live="polite" hidden><span class="what" id="gToastText"></span><button id="gUndo" type="button" class="primary">Undo</button><span class="when" id="gToastWhen"></span></div>
   </div>
   <div id="gSplit" role="separator" aria-orientation="vertical" tabindex="0"></div>
   <aside id="gSide">
@@ -247,6 +270,15 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
     <div id="gLog" class="log"></div>
   </aside>
 </main>
+<dialog id="gAsk" class="ask" aria-labelledby="gAskTitle" aria-describedby="gAskText">
+  <form method="dialog">
+    <h2 id="gAskTitle"></h2>
+    <p id="gAskText"></p>
+    <input id="gAskInput" type="text" spellcheck="false" autocomplete="off" aria-labelledby="gAskText" hidden>
+    <p id="gAskWhy" class="why" hidden></p>
+    <div class="row"><button id="gAskYes" type="submit" value="yes"></button><button id="gAskNo" type="submit" value="no"></button></div>
+  </form>
+</dialog>
 <script>
 "use strict";
 (function () {
@@ -760,12 +792,13 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
 
   async function openGraph(g) {
     // Work that has not been saved is not thrown away by a click in the list.
-    if (open && open.changed && !confirm("This graph has changes that are not saved. Open " + g.file + " and lose them?")) return;
+    if (open && open.changed && !await loseChanges("Open " + g.file + " and lose them?", "Open and lose them")) return;
     try {
       const r = await call("graphs.read", { mod_guid: g.mod_guid, file: g.file });
       const doc = JSON.parse(r.text);
       const name = g.file.replace(/^graphs\//, "").replace(/\.json$/, "");
       open = { modGuid: g.mod_guid, file: g.file, folder: folderOf(g), name, doc, changed: false };
+      forgetUndo();
       $("gFolder").value = open.folder || "";
       $("gName").value = name;
       // A saved graph is named by Rename, so Save always means "write this one
@@ -784,11 +817,17 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
   const folders = {};
   function folderOf(g) { return folders[g.mod_guid] || ""; }
 
-  $("gNew").onclick = () => {
+  function loseChanges(question, yes) {
+    return ask({ title: "Changes not saved", text: "This graph has changes that are not saved. " + question, yes, no: "Keep editing", danger: true });
+  }
+
+  $("gNew").onclick = async () => {
+    if (open && open.changed && !await loseChanges("Start a new graph and lose them?", "New graph, lose them")) return;
     open = {
       modGuid: null, file: null, folder: $("gFolder").value || "MyGraphs", name: $("gName").value || "new-graph",
       doc: { format: 1, name: "New graph", on: [{ id: "h1", event: "scene.loaded", do: [{ id: "s1", log: "a scene loaded" }] }] },
     };
+    forgetUndo();
     $("gFolder").value = open.folder;
     $("gName").value = open.name;
     $("gState").textContent = "not saved yet";
@@ -848,7 +887,7 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
       }, "its name"));
       row.append(slot("starts as", expr(open.doc.variables[name], v => { open.doc.variables[name] = v; changed(); })));
       const drop = el("button", { type: "button", title: "Remove this variable" }, "✕");
-      drop.onclick = () => { delete open.doc.variables[name]; changed(true); };
+      drop.onclick = () => removeVariable(name);
       row.append(drop);
       vars.append(row);
     }
@@ -999,7 +1038,7 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
       if (st.onError) {
         const head = el("div", { class: "slot" }, "on error ");
         const drop = el("button", { type: "button", title: "Remove the on error part" }, "✕");
-        drop.onclick = () => { delete st.onError; changed(true); };
+        drop.onclick = () => removeOnError(st);
         head.append(drop);
         body.append(head);
         statements(body, st.onError);
@@ -1315,7 +1354,7 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
     const del = el("button", { type: "button", title: "Remove" }, "✕");
     up.onclick = () => { const i = list.indexOf(item); if (i > 0) { list.splice(i, 1); list.splice(i - 1, 0, item); after(); } };
     down.onclick = () => { const i = list.indexOf(item); if (i >= 0 && i < list.length - 1) { list.splice(i, 1); list.splice(i + 1, 0, item); after(); } };
-    del.onclick = () => { const i = list.indexOf(item); if (i >= 0) { list.splice(i, 1); after(); } };
+    del.onclick = () => removeBlock(list, item);
     t.append(up, down, del);
     return t;
   }
@@ -1330,6 +1369,184 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
     let n = 1;
     while (used.has(prefix + n)) n++;
     return prefix + n;
+  }
+
+  // ---- taking something out, and putting it back --------------------------
+  // ✕ takes a block out at once, with no question first: it can be put back.
+  // What went with it is said, because an if or a loop takes everything inside
+  // it along, and that is the part nobody sees from the head they clicked.
+  // Undo in the toast, or Ctrl+Z, puts it back where it was. One step is kept:
+  // the toast goes after a few seconds, and Ctrl+Z still works after that,
+  // until the next removal or another graph is opened.
+  const UNDO_SHOWN = 8;
+  let undo = null, toastTimer = null;
+
+  function inner(list) {
+    let n = 0;
+    for (const s of list || []) n += 1 + inner(s.do) + inner(s.then) + inner(s.else) + inner(s.onError);
+    return n;
+  }
+  function innerOf(item) { return inner(item.do) + inner(item.then) + inner(item.else) + inner(item.onError); }
+
+  // "if s6", "when h1": how the block's head reads.
+  function label(item) {
+    const kind = open && open.doc.on && open.doc.on.indexOf(item) >= 0 ? "when" : (STATEMENTS.find(k => k in item) || "block");
+    return kind + (item.id ? " " + item.id : "");
+  }
+
+  function removeBlock(list, item) {
+    const at = list.indexOf(item);
+    if (at < 0) return;
+    const name = label(item);
+    list.splice(at, 1);
+    removed(["", name, ""], innerOf(item), () => {
+      list.splice(Math.min(at, list.length), 0, item);
+      return freshIds(item, list === open.doc.on ? "h" : "s");
+    }, item);
+    changed(true);
+  }
+
+  function removeVariable(name) {
+    const vars = open.doc.variables, at = Object.keys(vars).indexOf(name), value = vars[name];
+    delete vars[name];
+    removed(["the variable ", name, ""], 0, () => {
+      if (name in open.doc.variables) return { refused: "a variable named " + name + " is there again" };
+      const entries = Object.entries(open.doc.variables);
+      entries.splice(Math.min(at, entries.length), 0, [name, value]);
+      open.doc.variables = Object.fromEntries(entries);
+      return {};
+    });
+    changed(true);
+  }
+
+  function removeOnError(st) {
+    const kept = st.onError;
+    delete st.onError;
+    removed(["the on error part of ", label(st), ""], inner(kept), () => {
+      if (st.onError) return { refused: label(st) + " has an on error part again" };
+      st.onError = kept;
+      const said = {};
+      for (const s of kept) { const r = freshIds(s, "s"); if (r.renamed) said.renamed = (said.renamed || 0) + r.renamed; }
+      return said;
+    }, st);
+    changed(true);
+  }
+
+  // An id freed by the removal may have been given to a new block since; what
+  // comes back takes a free one rather than share it.
+  function freshIds(item, prefix) {
+    const mine = new Set();
+    const walk = (l, f) => { for (const s of l || []) { f(s); walk(s.do, f); walk(s.then, f); walk(s.else, f); walk(s.onError, f); } };
+    walk([item], s => mine.add(s));
+    const elsewhere = new Set();
+    for (const h of open.doc.on || []) walk([h], s => { if (!mine.has(s)) elsewhere.add(s.id); });
+    let renamed = 0;
+    walk([item], s => {
+      if (s.id && elsewhere.has(s.id)) { s.id = nextId(s === item ? prefix : "s"); renamed++; }
+    });
+    return { renamed };
+  }
+
+  // what: [before, the name in code type, after]; back() puts it back and says
+  // { refused } when it cannot, { renamed } when ids had to change.
+  function removed(what, count, back, show) {
+    const inside = count ? " and the " + count + (count === 1 ? " block" : " blocks") + " inside it" : "";
+    const plain = "Removed " + what.join("") + inside + ".";
+    undo = { open, back, show, what };
+    const text = $("gToastText");
+    text.replaceChildren(document.createTextNode("Removed " + what[0]), el("code", null, what[1]), document.createTextNode(what[2] + inside + "."));
+    $("gToast").hidden = false;
+    window.dnwStatus(plain + " Undo: Ctrl+Z.");
+    let left = UNDO_SHOWN;
+    const tick = () => { $("gToastWhen").textContent = "Ctrl+Z · " + left + " s"; };
+    tick();
+    clearInterval(toastTimer);
+    toastTimer = setInterval(() => { left--; if (left <= 0) hideToast(); else tick(); }, 1000);
+  }
+
+  function hideToast() {
+    clearInterval(toastTimer);
+    toastTimer = null;
+    $("gToast").hidden = true;
+  }
+
+  function forgetUndo() {
+    undo = null;
+    hideToast();
+  }
+
+  function takeBack() {
+    if (!undo) return;
+    const u = undo;
+    forgetUndo();
+    if (u.open !== open) return;
+    const r = u.back() || {};
+    if (r.refused) return window.dnwStatus("Could not put it back: " + r.refused + ".", true);
+    changed(true);
+    const now = u.show ? label(u.show) : u.what[1];
+    window.dnwStatus(now !== u.what[1]
+      ? "Put back " + u.what[1] + " as " + now + ": its id went to a new block meanwhile."
+      : "Put back " + u.what.join("") + "." + (r.renamed ? " Blocks inside it whose ids went to new blocks meanwhile have new ones." : ""));
+    if (u.show) showBlock(u.show.id);
+  }
+
+  $("gUndo").onclick = takeBack;
+
+  // A field keeps Ctrl+Z for its own text.
+  function typing(t) {
+    if (!t || !t.tagName) return false;
+    if (t.isContentEditable || t.tagName === "TEXTAREA" || t.tagName === "SELECT") return true;
+    return t.tagName === "INPUT" && ["button", "checkbox", "color", "radio", "submit"].indexOf(t.type) < 0;
+  }
+
+  document.addEventListener("keydown", e => {
+    if ($("graphsView").hidden || $("gAsk").open) return;
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && (e.key === "z" || e.key === "Z") && undo && !typing(e.target)) {
+      e.preventDefault();
+      takeBack();
+    }
+  });
+
+  // ---- asking, in the page ------------------------------------------------
+  // The browser's own prompt and confirm boxes stop the whole page, look like
+  // neither the page nor the game, and a browser may let them be turned off,
+  // after which every question is answered "no" unseen. This one is the
+  // page's own. Esc, or the second button, is always no.
+  //   o: { title, text, yes, no, value (asks for text), check (text -> why not), danger }
+  // Gives the text typed, true for a plain yes, or null.
+  function ask(o) {
+    const d = $("gAsk"), input = $("gAskInput"), why = $("gAskWhy"), yes = $("gAskYes"), no = $("gAskNo");
+    $("gAskTitle").textContent = o.title;
+    $("gAskText").textContent = o.text || "";
+    const typed = o.value != null;
+    input.hidden = !typed;
+    input.value = typed ? o.value : "";
+    why.hidden = true;
+    yes.textContent = o.yes;
+    yes.className = o.danger ? "danger" : "primary";
+    no.textContent = o.no || "Cancel";
+    return new Promise(resolve => {
+      const form = d.querySelector("form");
+      form.onsubmit = e => {
+        if (!typed || e.submitter !== yes || !o.check) return;
+        const bad = o.check(input.value.trim());
+        if (!bad) return;
+        e.preventDefault();
+        why.textContent = bad;
+        why.hidden = false;
+        input.focus();
+      };
+      d.onclose = () => {
+        d.onclose = null;
+        if (d.returnValue !== "yes") return resolve(null);
+        resolve(typed ? input.value.trim() : true);
+      };
+      d.returnValue = "";
+      d.showModal();
+      // Where Enter lands: the text when there is one, otherwise the safe answer
+      // for a question that loses something, and yes for the rest.
+      if (typed) { input.focus(); input.select(); } else (o.danger ? no : yes).focus();
+    });
   }
 
   // ---- the same graph as nodes --------------------------------------------
@@ -1513,6 +1730,11 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
   function openBlock(id) {
     asNodes = false;
     paintView();
+    showBlock(id);
+  }
+
+  // Scrolled to and flashed, so the eye finds it.
+  function showBlock(id) {
     for (const span of $("gBlocks").querySelectorAll(".id")) {
       if (span.textContent === id) {
         const blk = span.closest(".blk");
@@ -1558,7 +1780,10 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
   $("gRename").onclick = async () => {
     if (!open || !open.file) return window.dnwStatus("This graph has not been saved yet; type a name and press Save.", true);
     const now = open.file.replace(/^graphs\//, "").replace(/\.json$/, "");
-    const name = prompt("A new name for this graph (letters, digits, - and _):", now);
+    const name = await ask({
+      title: "Rename " + open.file, text: "A new name for this graph. The file is moved, not copied.", value: now, yes: "Rename",
+      check: v => /^[A-Za-z0-9_-]{1,64}$/.test(v) ? "" : "Letters, digits, - and _ only, at most 64 of them.",
+    });
     if (!name || name === now) return;
     try {
       const r = await call("graphs.rename", { file: open.file, name, mod_guid: open.modGuid });
@@ -1574,11 +1799,12 @@ pre.il .blk.on { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(-
 
   $("gDelete").onclick = async () => {
     if (!open || !open.file) return window.dnwStatus("This graph has not been saved, so there is nothing to remove.", true);
-    if (!confirm("Take " + open.file + " out of " + (open.folder || "its mod") + "? The file is kept beside it as .json.bak.")) return;
+    if (!await ask({ title: "Delete " + open.file + "?", text: "It is taken out of " + (open.folder || "its mod") + ". The file is kept beside it as .json.bak.", yes: "Delete", danger: true })) return;
     try {
       const r = await call("graphs.delete", { file: open.file, mod_guid: open.modGuid });
       window.dnwStatus("Removed " + open.file + "; the file is kept as " + r.kept + ".");
       open = null;
+      forgetUndo();
       $("gName").value = "";
       $("gState").textContent = "";
       naming(true);
