@@ -20,6 +20,7 @@ namespace DragNWash.Installer
         internal const string FrameworkPrefix = "DragNWash.ModFramework";
         internal const string FrameworkConfigPrefix = "com.tomxv.dragnwash.modframework";
         internal const string FrameworkPatcher = "DragNWash.ModFramework.Preloader.dll";
+        internal const string BepInExVersion = "5.4.23.5";
         internal const string BepInExUrl = "https://github.com/BepInEx/BepInEx/releases/download/v5.4.23.5/BepInEx_win_x64_5.4.23.5.zip";
         internal const string BepInExSha256 = "82f9878551030f54657792c0740d9d51a09500eeae1fba21106b0c441e6732c4";
 
@@ -565,6 +566,133 @@ namespace DragNWash.Installer
                     DeletePath(entry);
                 }
             }
+        }
+
+        // ---- what Install and Uninstall will do ----
+
+        // The steps Install takes in this game folder with these choices, in the
+        // installer's language, for the window to show before anything runs.
+        internal List<string> InstallPlan(string game, IDictionary<string, string> choices)
+        {
+            var steps = new List<string>
+            {
+                HasBepInEx(game)
+                    ? Strings.Get(Strings.Key.PlanHaveBepInEx)
+                    : Strings.Get(Strings.Key.PlanDownloadBepInEx, Paths.BepInExVersion, new Uri(Paths.BepInExUrl).Host),
+            };
+            string core = Path.Combine("BepInEx", "plugins", Paths.FrameworkPrefix, Paths.FrameworkPrefix + ".dll");
+            Version offered = DllVersion(Path.Combine(_payload, core));
+            Version have = DllVersion(Path.Combine(game, core));
+            if (offered != null && have != null && have > offered)
+            {
+                steps.Add(Strings.Get(Strings.Key.PlanMod, _manifest.Name));
+                steps.Add(Strings.Get(Strings.Key.PlanKeepNewerFramework, ShortVersion(have)));
+            }
+            else
+            {
+                steps.Add(offered != null
+                    ? Strings.Get(Strings.Key.PlanFrameworkAndMod, ShortVersion(offered), _manifest.Name)
+                    : Strings.Get(Strings.Key.PlanMod, _manifest.Name));
+            }
+            foreach (ModChoice choice in _manifest.Choices)
+            {
+                ModChoiceOption option = choices != null && choices.TryGetValue(choice.Id, out string value) ? choice.Options.FirstOrDefault(o => o.Value == value) : null;
+                if (option != null)
+                {
+                    steps.Add(Strings.Get(Strings.Key.PlanSet, choice.LabelFor(Strings.Current), option.Name ?? option.Value, choice.Config.File));
+                }
+            }
+            steps.Add(Strings.Get(Strings.Key.PlanNothingElse));
+            return steps;
+        }
+
+        // The same decisions Uninstall makes below, taken from the folder as it is now.
+        internal List<string> UninstallPlan(string game, bool keepData, bool removeBepInEx)
+        {
+            var steps = new List<string>();
+            string plugins = Path.Combine(game, "BepInEx", "plugins");
+            bool keptAny = false;
+            foreach (string plugin in _manifest.Plugins)
+            {
+                string dir = Path.Combine(plugins, plugin);
+                if (!Directory.Exists(dir))
+                {
+                    continue;
+                }
+                string[] keep = keepData
+                    ? _manifest.Keep.Where(k => k.StartsWith(plugin + "/", StringComparison.OrdinalIgnoreCase)).Select(k => k.Substring(plugin.Length + 1))
+                        .Where(k => File.Exists(Path.Combine(dir, k)) || Directory.Exists(Path.Combine(dir, k))).ToArray()
+                    : new string[0];
+                keptAny |= keep.Length > 0;
+                steps.Add(keep.Length == 0
+                    ? Strings.Get(Strings.Key.PlanRemovePlugin, plugin)
+                    : Strings.Get(Strings.Key.PlanRemovePluginKeep, plugin, JoinList(keep.Select(k => k.Replace('/', '\\')))));
+            }
+            foreach (string file in _manifest.ConfigFiles)
+            {
+                if (File.Exists(Path.Combine(game, "BepInEx", "config", file)))
+                {
+                    steps.Add(Strings.Get(Strings.Key.PlanRemoveConfig, file));
+                }
+            }
+
+            List<string> others = OtherMods(game).ToList();
+            bool framework = Directory.Exists(plugins) && Directory.EnumerateDirectories(plugins, Paths.FrameworkPrefix + "*").Any();
+            string history = Path.Combine(game, "BepInEx", "SaveHistory");
+            if (others.Count > 0)
+            {
+                if (framework)
+                {
+                    steps.Add(Strings.Get(Strings.Key.PlanKeepFramework, JoinList(others)));
+                }
+            }
+            else
+            {
+                if (framework)
+                {
+                    steps.Add(Strings.Get(Strings.Key.PlanRemoveFramework));
+                }
+                if (!keepData && Directory.Exists(history))
+                {
+                    steps.Add(Strings.Get(Strings.Key.PlanRemoveSaveHistory));
+                }
+            }
+
+            if (HasBepInEx(game))
+            {
+                string patchers = Path.Combine(game, "BepInEx", "patchers");
+                bool patchersLeft = Directory.Exists(patchers) && Directory.EnumerateFileSystemEntries(patchers)
+                    .Any(e => !string.Equals(Path.GetFileName(e), Paths.FrameworkPatcher, StringComparison.OrdinalIgnoreCase));
+                if (!removeBepInEx)
+                {
+                    steps.Add(Strings.Get(Strings.Key.PlanKeepBepInEx));
+                }
+                else if (others.Count > 0 || patchersLeft)
+                {
+                    steps.Add(Strings.Get(Strings.Key.PlanKeepBepInExUsed));
+                }
+                else
+                {
+                    steps.Add(Strings.Get(keepData && (keptAny || Directory.Exists(history)) ? Strings.Key.PlanRemoveBepInExKeep : Strings.Key.PlanRemoveBepInEx));
+                }
+            }
+            return steps;
+        }
+
+        private static string ShortVersion(Version v)
+        {
+            return v.Build >= 0 ? v.ToString(3) : v.ToString();
+        }
+
+        // "a", "a and b", "a, b and c", in the installer's language.
+        private static string JoinList(IEnumerable<string> items)
+        {
+            List<string> list = items.ToList();
+            if (list.Count < 2)
+            {
+                return string.Concat(list);
+            }
+            return string.Join(Strings.Get(Strings.Key.ListComma), list.Take(list.Count - 1)) + Strings.Get(Strings.Key.ListAnd) + list[list.Count - 1];
         }
 
         // ---- helpers ----
