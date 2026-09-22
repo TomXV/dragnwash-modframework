@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using DragNWash.ModFramework.Diagnostics;
 
 namespace DragNWash.CrashReporter
@@ -183,15 +185,31 @@ namespace DragNWash.CrashReporter
 
         internal static string Current = Detect(System.Globalization.CultureInfo.CurrentUICulture.Name);
 
-        // The window's language: the one the player chose in the game when this
-        // window has words for it, else Windows' (as passed with --lang, or the
-        // user's UI culture), else English.
-        internal static void Choose(string gameLanguage, string windowsLanguage)
+        // The window's language: the one the player sees the game in when this
+        // window has words for it (locale.txt, which the core keeps beside the
+        // session record, or else the session's last "language" note), else
+        // Windows' (as passed with --lang, or the user's UI culture), else English.
+        internal static void Choose(string crashReportsFolder, string sessionLanguage, string windowsLanguage)
         {
-            if (Has(gameLanguage)) Current = Detect(gameLanguage);
-            else if (Has(windowsLanguage)) Current = Detect(windowsLanguage);
-            else if (Has(System.Globalization.CultureInfo.CurrentUICulture.Name)) Current = Detect(System.Globalization.CultureInfo.CurrentUICulture.Name);
-            else Current = "en";
+            string chosen = new[] { GameLanguage(crashReportsFolder), sessionLanguage, windowsLanguage, System.Globalization.CultureInfo.CurrentUICulture.Name }.FirstOrDefault(Has);
+            Current = chosen != null ? Detect(chosen) : "en";
+        }
+
+        // The first line of locale.txt; null when missing, unreadable or "-" (not known).
+        private static string GameLanguage(string crashReportsFolder)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(crashReportsFolder)) return null;
+                string path = Path.Combine(crashReportsFolder, CrashReportWriter.LocaleFile);
+                if (!File.Exists(path)) return null;
+                string code = File.ReadLines(path).FirstOrDefault()?.Trim();
+                return string.IsNullOrEmpty(code) || code == "-" ? null : code;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private static bool Has(string culture)

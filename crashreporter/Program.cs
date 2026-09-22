@@ -64,6 +64,8 @@ namespace DragNWash.CrashReporter
                 {
                     return 0;
                 }
+                // Now, so a message box about a report that could not be written speaks it too.
+                Strings.Choose(folder, null, windowsLanguage);
                 _stage = Stage.Writing;
                 WaitForUnityCrashHandler();
                 string report = CrashReportWriter.Write(folder, Arg("--unity"));
@@ -132,8 +134,13 @@ namespace DragNWash.CrashReporter
 
         private static int Show(string report, string windowsLanguage)
         {
+            report = report.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            // Reports lie in the folder with the session record and locale.txt.
+            string crashReports = Path.GetDirectoryName(report);
+            // First without the report, for the message box if reading it fails.
+            Strings.Choose(crashReports, null, windowsLanguage);
             CrashDiagnosis diagnosis = CrashDiagnosis.Read(report);
-            Strings.Choose(diagnosis.Language, windowsLanguage);
+            Strings.Choose(crashReports, diagnosis.Language, windowsLanguage);
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             // A failure inside the window reaches Main (and its message box),

@@ -84,9 +84,18 @@ namespace DragNWash.ModFramework
         /// Cheap, and safe from any thread; does nothing while recording is off.
         /// Keep notes short and do not put personal data in them.
         /// </summary>
+        /// <remarks>
+        /// A note in the <c>language</c> category (a locale code such as "ja" or
+        /// "zh-Hans", or "-" for none, as GameFonts.SetLanguage leaves it) also
+        /// sets the language of the crash report window.
+        /// </remarks>
         public static void Note(string ownerGuid, string category, string message)
         {
             Write(category, message, ownerGuid);
+            if (category == "language")
+            {
+                CrashReportLocale.ModLanguage(message);
+            }
         }
 
         internal static bool TracingGpu => _out != null && _traceGpu != null && _traceGpu.Value;
@@ -125,6 +134,8 @@ namespace DragNWash.ModFramework
             }
             Write("start", $"{DateTime.Now:yyyy-MM-dd} {ModFramework.Name} {ModFramework.Version}, Unity {Application.unityVersion}, {SystemInfo.graphicsDeviceType} \"{SystemInfo.graphicsDeviceName}\" ({SystemInfo.graphicsDeviceVersion}), " +
                                $"{SystemInfo.operatingSystem}, screen {Screen.width}x{Screen.height} {Screen.fullScreenMode}, args \"{string.Join(" ", Environment.GetCommandLineArgs().Skip(1))}\"");
+
+            CrashReportLocale.Start();
 
             SceneManager.sceneLoaded += (scene, mode) => Write("scene", $"loaded '{scene.name}' ({mode})");
             SceneManager.sceneUnloaded += scene => Write("scene", $"unloaded '{scene.name}'");
@@ -179,6 +190,7 @@ namespace DragNWash.ModFramework
                 _nextBeat = Time.unscaledTime + _beatInterval;
                 Write("beat", $"{Time.unscaledDeltaTime * 1000f:0.0} ms/frame");
             }
+            CrashReportLocale.Tick();
         }
 
         // From the core plugin's OnApplicationFocus: a game in the background

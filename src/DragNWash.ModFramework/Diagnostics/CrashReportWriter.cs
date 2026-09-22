@@ -14,6 +14,8 @@ namespace DragNWash.ModFramework.Diagnostics
     internal static class CrashReportWriter
     {
         internal const string SessionFile = "session.log";
+        // The language the player sees the game in ("ja", "zh-Hans"; "-" when not known), kept by the core for the report window.
+        internal const string LocaleFile = "locale.txt";
         internal const string CleanEnd = "END clean exit";
         internal const string ReportedEnd = "END reported";
         internal const int KeepReports = 10;
