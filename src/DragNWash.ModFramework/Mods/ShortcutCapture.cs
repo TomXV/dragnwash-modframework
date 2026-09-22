@@ -61,8 +61,9 @@ namespace DragNWash.ModFramework.Mods
                         continue;
                     }
                     KeyCode[] held = Modifiers.Where(m => UnityInput.Current.GetKey(m)).ToArray();
+                    string before = Item?.SerializedText;
                     Item?.SetShortcut(new KeyboardShortcut(key, held));
-                    Finish();
+                    Finish(before);
                     return;
                 }
             }
@@ -82,10 +83,10 @@ namespace DragNWash.ModFramework.Mods
             Destroy(this);
         }
 
-        private void Finish()
+        private void Finish(string before)
         {
             Destroy(this);
-            Menu?.AfterCapture();
+            Menu?.AfterCapture(Item, before);
         }
     }
 }

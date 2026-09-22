@@ -11,7 +11,8 @@ namespace DragNWash.ModFramework.Mods
     // A mod's settings page on the Mods screen, built from its BepInEx config
     // entries. Any BepInEx plugin has one; the mod does not need to know about
     // the framework. Setting a value saves the config file at once (BepInEx's
-    // SaveOnConfigSet), so there is no separate Save step.
+    // SaveOnConfigSet, or a Save here when the mod turned that off), so there
+    // is no separate Save step.
     internal sealed class ConfigItem
     {
         internal enum Kind
@@ -385,6 +386,13 @@ namespace DragNWash.ModFramework.Mods
             try
             {
                 Entry.BoxedValue = value;
+                // The page says a change is saved; a mod that turned off
+                // BepInEx's saving on every change still gets it written.
+                ConfigFile file = Entry.ConfigFile;
+                if (file != null && !file.SaveOnConfigSet)
+                {
+                    file.Save();
+                }
             }
             catch (Exception ex)
             {

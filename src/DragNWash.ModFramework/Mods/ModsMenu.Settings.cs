@@ -18,7 +18,8 @@ namespace DragNWash.ModFramework.Mods
         internal const string TextSettings = "Settings";
         internal const string TextDefault = "Default";
         internal const string TextResetToDefault = "Reset to default";
-        internal const string TextSavedAtOnce = "Saved right away. Some mods only use a change after a restart.";
+        internal const string TextAfterRestart = "Some mods only use a change after a restart.";
+        internal const string TextSaved = "Saved";
         internal const string TextEditInFile = "Change this in the mod's config file in BepInEx/config.";
         internal const string TextNotAccepted = "Not accepted: ";
         internal const string TextCaptureKey = "Capture key";
@@ -36,6 +37,11 @@ namespace DragNWash.ModFramework.Mods
         private static readonly Color NoteErrorColor = new Color(1f, 0.55f, 0.5f, 1f);
 
         private TMP_Text _settingNote;
+
+        // Changes are saved at once; a "Saved" tag beside the value says so.
+        private const float SavedSeconds = 2f;
+        private ConfigItem _savedItem;
+        private float _savedAt = float.NegativeInfinity;
 
         private ModCatalog.Entry _settingsFor;
         private List<ConfigItem> _items = new List<ConfigItem>();
@@ -296,18 +302,81 @@ namespace DragNWash.ModFramework.Mods
             if (item.Type != ConfigItem.Kind.ReadOnly)
             {
                 MakeButton("Reset", TextResetToDefault, 0.04f, 0.46f, 0.04f, 0.15f, StepColor, () => Reset(item));
-                TMP_Text saved = Label("Saved", TextSavedAtOnce, UiText.BodySize * 0.8f, 0.03f, 0.16f, true);
-                saved.fontStyle |= FontStyles.Italic;
-                var savedRect = (RectTransform)saved.transform;
-                savedRect.anchorMin = new Vector2(0.5f, 0.03f);
-                _settingNote = saved;
+                TMP_Text note = Label("Note", TextAfterRestart, UiText.BodySize * 0.8f, 0.03f, 0.16f, true);
+                note.fontStyle |= FontStyles.Italic;
+                var noteRect = (RectTransform)note.transform;
+                noteRect.anchorMin = new Vector2(0.5f, 0.03f);
+                _settingNote = note;
                 string shared = SharedKeyWarning(item);
                 if (shared != null)
                 {
-                    saved.text = shared;
-                    saved.color = WarnColor;
+                    note.text = shared;
+                    note.color = WarnColor;
+                }
+
+                float elapsed = Time.unscaledTime - _savedAt;
+                if (ReferenceEquals(item, _savedItem) && elapsed < SavedSeconds)
+                {
+                    // Beside the control that changed it: the toggle is narrower
+                    // than the rows of the other kinds.
+                    SavedTag(item.Type == ConfigItem.Kind.Toggle ? 0.44f : 0.77f, SavedSeconds - elapsed);
                 }
             }
+        }
+
+        // A change was just saved: "Saved" beside the value for two seconds,
+        // after each change (a Reset too). A value set to what it already was
+        // is not a change.
+        private void MarkSaved(ConfigItem item, string before)
+        {
+            if (item != null && item.SerializedText != before)
+            {
+                _savedItem = item;
+                _savedAt = Time.unscaledTime;
+            }
+        }
+
+        private void SavedTag(float left, float seconds)
+        {
+            GameObject area = Part("SavedTag", left, 0.96f, 0.2f, 0.33f);
+            TMP_Text label = UiText.Create(area.transform, "Label", TextSaved, UiText.BodySize * 0.9f);
+            label.enableAutoSizing = false;
+            label.fontSize = UiText.BodySize * 0.9f;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.alignment = TextAlignmentOptions.Center;
+            label.color = UpdateColor;
+            Vector2 size = label.GetPreferredValues(label.text);
+
+            // A thin frame around the word, as wide as it is in this language.
+            var box = new GameObject("Box", typeof(RectTransform));
+            var boxRect = (RectTransform)box.transform;
+            boxRect.SetParent(area.transform, false);
+            boxRect.anchorMin = new Vector2(0f, 0.5f);
+            boxRect.anchorMax = new Vector2(0f, 0.5f);
+            boxRect.pivot = new Vector2(0f, 0.5f);
+            boxRect.sizeDelta = new Vector2(Mathf.Ceil(size.x) + 24f, Mathf.Ceil(size.y) + 10f);
+            boxRect.anchoredPosition = Vector2.zero;
+            foreach ((Vector2 min, Vector2 max) in new[]
+            {
+                (new Vector2(0f, 0f), new Vector2(1f, 0f)),
+                (new Vector2(0f, 1f), new Vector2(1f, 1f)),
+                (new Vector2(0f, 0f), new Vector2(0f, 1f)),
+                (new Vector2(1f, 0f), new Vector2(1f, 1f)),
+            })
+            {
+                var edge = new GameObject("Edge", typeof(RectTransform));
+                var edgeRect = (RectTransform)edge.transform;
+                edgeRect.SetParent(boxRect, false);
+                edgeRect.anchorMin = min;
+                edgeRect.anchorMax = max;
+                edgeRect.sizeDelta = new Vector2(min.x == max.x ? 2f : 0f, min.y == max.y ? 2f : 0f);
+                edgeRect.anchoredPosition = Vector2.zero;
+                Image line = edge.AddComponent<Image>();
+                line.color = UpdateColor;
+                line.raycastTarget = false;
+            }
+            label.transform.SetParent(boxRect, false);
+            area.AddComponent<SavedTagTimer>().Until = Time.unscaledTime + seconds;
         }
 
         // Another setting on the same key, said where the note is: right after
@@ -406,6 +475,7 @@ namespace DragNWash.ModFramework.Mods
             {
                 return;
             }
+            string before = item.SerializedText;
             string error = item.SetText(value);
             if (error != null)
             {
@@ -417,6 +487,7 @@ namespace DragNWash.ModFramework.Mods
                 }
                 return;
             }
+            MarkSaved(item, before);
             RebuildList();
             RebuildDetails(false);
             Focus("Reset");
@@ -442,8 +513,9 @@ namespace DragNWash.ModFramework.Mods
             capture.Label = button.GetComponentInChildren<TMP_Text>();
         }
 
-        internal void AfterCapture()
+        internal void AfterCapture(ConfigItem item, string before)
         {
+            MarkSaved(item, before);
             RebuildList();
             RebuildDetails(false);
             Focus("Capture");
@@ -451,7 +523,9 @@ namespace DragNWash.ModFramework.Mods
 
         private void Change(ConfigItem item, int direction, string focus)
         {
+            string before = item.SerializedText;
             item.Step(direction);
+            MarkSaved(item, before);
             RebuildList();
             RebuildDetails(false);
             Focus(focus);
@@ -459,7 +533,9 @@ namespace DragNWash.ModFramework.Mods
 
         private void Reset(ConfigItem item)
         {
+            string before = item.SerializedText;
             item.ResetToDefault();
+            MarkSaved(item, before);
             RebuildList();
             RebuildDetails(false);
             Focus("Reset");
@@ -518,6 +594,21 @@ namespace DragNWash.ModFramework.Mods
             colors.selectedColor = new Color(0.55f, 0.75f, 1f, 1f);
             colors.pressedColor = new Color(0.45f, 0.6f, 0.9f, 1f);
             return colors;
+        }
+    }
+
+    // Hides the "Saved" tag when its time is up, in real time, so a paused
+    // game does not keep it up.
+    internal sealed class SavedTagTimer : MonoBehaviour
+    {
+        internal float Until;
+
+        private void Update()
+        {
+            if (Time.unscaledTime >= Until)
+            {
+                gameObject.SetActive(false);
+            }
         }
     }
 
