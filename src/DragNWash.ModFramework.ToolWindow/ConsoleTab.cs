@@ -52,10 +52,15 @@ namespace DragNWash.ModFramework.ToolWindow
         private const int MaxSuggestionRows = 6;
         private static Dictionary<LogLevel, GUIStyle> _levelStyles;
         private static GUIStyle _dot;
+        private static GUIStyle _toggleOn;
+        private static GUIStyle _toggleOff;
+        private static readonly Color InfoColor = new Color(0.86f, 0.91f, 0.94f);
 
-        private static readonly (LogLevel level, string label)[] Toggles =
+        // Each level's toggle carries the colour its log lines are drawn in.
+        private static readonly (LogLevel level, string label, Color color)[] Toggles =
         {
-            (LogLevel.Error | LogLevel.Fatal, "Error"), (LogLevel.Warning, "Warning"), (LogLevel.Message, "Message"), (LogLevel.Info, "Info"), (LogLevel.Debug, "Debug"),
+            (LogLevel.Error | LogLevel.Fatal, "Error", ToolWindow.ErrorColor), (LogLevel.Warning, "Warning", ToolWindow.WarningColor),
+            (LogLevel.Message, "Message", ToolWindow.AccentColor), (LogLevel.Info, "Info", InfoColor), (LogLevel.Debug, "Debug", ToolWindow.MutedColor),
         };
 
         internal static void Install()
@@ -102,10 +107,14 @@ namespace DragNWash.ModFramework.ToolWindow
                 { LogLevel.Error, Colored(ToolWindow.ErrorColor) },
                 { LogLevel.Warning, Colored(ToolWindow.WarningColor) },
                 { LogLevel.Message, Colored(ToolWindow.AccentColor) },
-                { LogLevel.Info, Colored(new Color(0.86f, 0.91f, 0.94f)) },
+                { LogLevel.Info, Colored(InfoColor) },
                 { LogLevel.Debug, Colored(ToolWindow.MutedColor) },
             };
             _dot = Colored(ToolWindow.ErrorColor);
+            // The level toggles: words on a painted panel, like the tab strip,
+            // with room on the left for the square that says on or off.
+            _toggleOn = new GUIStyle(s.Label) { padding = new RectOffset(28, 10, 0, 0), wordWrap = false };
+            _toggleOff = new GUIStyle(s.MutedLabel) { padding = new RectOffset(28, 10, 0, 0), wordWrap = false };
         }
 
         private static void Draw(Rect area)
@@ -118,18 +127,36 @@ namespace DragNWash.ModFramework.ToolWindow
 
             // Level toggles, wrapping onto more rows in a narrow window, then
             // the source filter and Clear on a row of their own when the
-            // toggles leave no room beside them.
+            // toggles leave no room beside them. A toggle that is on has a bar
+            // in its level's colour along the top and a filled square; one that
+            // is off has an empty square and dimmer words. Bar and square are
+            // painted with Fill, not font glyphs, so the font atlas is untouched.
             float bx = x;
-            foreach ((LogLevel level, string label) in Toggles)
+            foreach ((LogLevel level, string label, Color color) in Toggles)
             {
                 bool on = (ConsoleLog.Shown & level) != 0;
-                float bw = Mathf.Max(70, s.Button.CalcSize(new GUIContent(label)).x + 16);
+                float bw = Mathf.Max(70, _toggleOn.CalcSize(new GUIContent(label)).x);
                 if (bx + bw > x + w && bx > x)
                 {
                     bx = x;
                     y += row + 6;
                 }
-                if (GUI.Button(new Rect(bx, y, bw, row), label, on ? s.SelectedButton : s.Button))
+                var r = new Rect(bx, y, bw, row);
+                var square = new Rect(bx + 10, y + (row - 10) / 2, 10, 10);
+                ToolWindow.Fill(r, ToolWindow.PanelColor);
+                if (on)
+                {
+                    ToolWindow.Fill(new Rect(r.x, r.y, r.width, 3), color);
+                    ToolWindow.Fill(square, color);
+                }
+                else
+                {
+                    ToolWindow.Fill(new Rect(square.x, square.y, square.width, 1), ToolWindow.MutedColor);
+                    ToolWindow.Fill(new Rect(square.x, square.yMax - 1, square.width, 1), ToolWindow.MutedColor);
+                    ToolWindow.Fill(new Rect(square.x, square.y + 1, 1, square.height - 2), ToolWindow.MutedColor);
+                    ToolWindow.Fill(new Rect(square.xMax - 1, square.y + 1, 1, square.height - 2), ToolWindow.MutedColor);
+                }
+                if (GUI.Button(r, label, on || r.Contains(Event.current.mousePosition) ? _toggleOn : _toggleOff))
                 {
                     ConsoleLog.Shown = on ? ConsoleLog.Shown & ~level : ConsoleLog.Shown | level;
                 }
