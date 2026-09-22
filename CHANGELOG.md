@@ -16,6 +16,13 @@ Versions of the core and of each library are separate, and follow semantic versi
 - Assets: Reload files reads one file a frame under the busy overlay; a file that fails no longer stops the rest, and it is shown in red.
 - Flags and saves: `GameSaves.Restore`'s message says the save it replaced is kept as a snapshot.
 
+### Crash report window
+
+- The memory dump warning and the "nothing was sent" line stay in view above the buttons, in darker text, however small the window is. The headline stays playful ("Oops! The kobold slipped!") and the line under it says plainly that Drag'n Wash closed unexpectedly.
+- "Copy report (text only)": Enter copies, Esc closes, Alt+O / Alt+C, tab order as shown. A copy or folder-open that fails now says so in the window instead of doing nothing.
+- When the window cannot open, or the report cannot be written, a message box says where the report or the session record is, instead of nothing.
+- The window speaks the language the game is shown in, also without the localization mod: the core keeps `BepInEx/CrashReports/locale.txt` from the language a mod set, or the game's own choice when it offers more than one. Windows' language is the fallback.
+
 ### Code graph without the game (standalone app)
 
 - Experimental, not in a release. `codegraph-standalone/` (CodeGraphStandalone.exe, Windows): the code graph of any .NET assembly without the game (docs/CODE_GRAPH_STANDALONE.md). Opens DLLs, a folder (leaving out .NET's and Unity's own unless `--all`) or a Mono Unity game's folder, by Open…, the command line or a drop; refuses IL2CPP games with the reason. Shows the Bridge's page in WebView2 and answers its calls inside the process (`WebResourceRequested`), with no port and no network.
