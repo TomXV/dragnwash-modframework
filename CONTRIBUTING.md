@@ -14,6 +14,12 @@ Security problems do not go in a pull request or a public issue — see
 
 - **Report what broke.** A bug report with `BepInEx/LogOutput.log`, the game
   build and the platform is worth a lot, especially after a game update.
+  A new issue is labelled automatically (kind, area, severity), and a bug
+  report missing a version, steps or a log gets one comment asking for them.
+  For that, the title and the body's own words, without code blocks, tables or
+  images, and the error lines of a pasted log with user names taken out of
+  paths, are sent to TypeSafe AI's classification model
+  ([`tools/issue-triage.py`](tools/issue-triage.py)). A person reads every issue.
 - **Say what your mod cannot do.** The framework exists because mods kept
   rebuilding the same machinery. If you are patching the game directly because
   the framework gives you no way to do something, that is the most useful issue
