@@ -1,0 +1,69 @@
+name: Issue triage
+
+# Labels a new issue by kind, area and severity, and asks a bug report for a
+# missing version, steps or log with one fixed comment (tools/issue-triage.py
+# says what is sent to the model and how the labels are decided).
+#
+# The localization mod's repository runs this same workflow through
+# workflow_call, so the script lives in one place. It is always checked out
+# from this repository's main, whichever repository called it.
+#
+# SECURITY: the issue's title and body are written by anyone. They are only
+# read by the script from the event file, never put into a shell command or an
+# expression here, and the script can only add labels from its own fixed list
+# and post its own fixed text.
+
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: Issue number to triage
+        required: true
+      dry_run:
+        description: Judge and show the result only, change nothing
+        type: boolean
+        default: true
+  workflow_call:
+    inputs:
+      issue:
+        description: Issue number (empty = the issue in the calling event)
+        type: string
+        default: ""
+      dry_run:
+        type: boolean
+        default: false
+    secrets:
+      TYPESAFE_API_KEY:
+        required: false
+
+permissions:
+  issues: write
+  contents: read
+
+concurrency:
+  group: issue-triage-${{ github.repository }}-${{ inputs.issue || github.event.issue.number }}
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: TomXV/dragnwash-modframework
+          ref: main
+          sparse-checkout: tools/issue-triage.py
+          sparse-checkout-cone-mode: false
+      - name: Triage
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ inputs.issue }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          args=()
+          if [ -n "$ISSUE" ]; then args+=(--issue "$ISSUE"); fi
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          python3 tools/issue-triage.py "${args[@]}"
