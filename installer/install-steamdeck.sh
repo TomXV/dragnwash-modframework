@@ -82,9 +82,9 @@ mf() {
 import json, os, re, sys
 path, cmd, args = sys.argv[1], sys.argv[2], sys.argv[3:]
 
-def fail(msg):
+def fail(msg, code=3):
     print(msg, file=sys.stderr)
-    sys.exit(3)
+    sys.exit(code)
 
 SIMPLE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._ \-]{0,99}$")
 ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._\-]{0,63}$")
@@ -98,6 +98,8 @@ def config_name(f):
 def load():
     try:
         m = json.load(open(path, encoding="utf-8-sig"))
+    except ValueError as e:
+        fail(f"mod-install.json is not valid JSON: {e}", 4)  # the script says so in the player's language
     except Exception as e:
         fail(f"mod-install.json could not be read: {e}")
     if m.get("schema") != 1:
@@ -297,6 +299,12 @@ t() {
         ja:nopayload) echo "Mod のファイルが見つかりません。zip を丸ごと展開して、その中でこのスクリプトを実行してください。" ;;
         zh:nopayload) echo "找不到 Mod 文件。请完整解压 zip，并在解压后的文件夹中运行此脚本。" ;;
         *:nopayload) echo "The mod files are missing. Extract the whole zip and run this script from inside it." ;;
+        ja:badjson) echo "このスクリプトの隣にある mod-install.json を読めませんでした（JSON が正しくありません）。zip をもう一度ダウンロードして、丸ごと展開してください。" ;;
+        zh:badjson) echo "无法读取此脚本旁边的 mod-install.json（JSON 无效）。请重新下载 zip 并完整解压。" ;;
+        *:badjson) echo "mod-install.json next to this script could not be read (invalid JSON). Download the zip again and extract it whole." ;;
+        ja:badmanifest) echo "このスクリプトの隣にある mod-install.json を使えませんでした。zip をもう一度ダウンロードして、丸ごと展開してください。理由:" ;;
+        zh:badmanifest) echo "无法使用此脚本旁边的 mod-install.json。请重新下载 zip 并完整解压。原因：" ;;
+        *:badmanifest) echo "mod-install.json next to this script could not be used. Download the zip again and extract it whole. The reason:" ;;
         ja:nopython) echo "python3 が見つかりません。SteamOS には標準で入っています。" ;;
         zh:nopython) echo "找不到 python3。SteamOS 默认自带。" ;;
         *:nopython) echo "python3 was not found. SteamOS includes it." ;;
@@ -309,9 +317,9 @@ t() {
         ja:bep_have) echo "BepInEx: 導入済み" ;;
         zh:bep_have) echo "BepInEx：已安装" ;;
         *:bep_have) echo "BepInEx: already installed" ;;
-        ja:bep_get) echo "BepInEx: ダウンロード中..." ;;
-        zh:bep_get) echo "BepInEx：正在下载..." ;;
-        *:bep_get) echo "BepInEx: downloading..." ;;
+        ja:bep_get) echo "BepInEx: ${BEPINEX_URL##*/} をダウンロード中..." ;;
+        zh:bep_get) echo "BepInEx：正在下载 ${BEPINEX_URL##*/}..." ;;
+        *:bep_get) echo "BepInEx: downloading ${BEPINEX_URL##*/} ..." ;;
         ja:bep_bad) echo "BepInEx のダウンロードが改ざんされているか壊れています（SHA-256 不一致）。中止します。" ;;
         zh:bep_bad) echo "下载的 BepInEx 已损坏或被篡改（SHA-256 不一致）。已中止。" ;;
         *:bep_bad) echo "The BepInEx download is corrupt or tampered with (SHA-256 mismatch). Stopping." ;;
@@ -471,7 +479,16 @@ $1"
 
 command -v python3 >/dev/null 2>&1 || fail "$(t nopython)"
 [ -f "$MANIFEST" ] || fail "$(t nopayload)"
-mf check >/dev/null || fail "$(t nopayload)"
+# A manifest that is there but cannot be used is a broken download, not a
+# missing one; the reason in English goes to the log (and the dialog, when it
+# is more than bad JSON).
+mf_error="$(mf check 2>&1 >/dev/null)" && mf_rc=0 || mf_rc=$?
+if [ "$mf_rc" -ne 0 ]; then
+    log "$mf_error"
+    [ "$mf_rc" -eq 4 ] && fail "$(t badjson)"
+    fail "$(t badmanifest)
+$mf_error"
+fi
 MOD_NAME="$(mf name)"
 MOD_VERSION="$(mf version)"
 mapfile -t PLUGINS < <(mf plugins)
@@ -847,7 +864,15 @@ $GAME_DIR" 1 || exit 1
         say "$(t bep_get)"
         tmp="$(mktemp -d)"
         trap 'rm -rf "$tmp"' EXIT
-        if [ -n "$LOCAL_ZIP" ]; then cp -f "$LOCAL_ZIP" "$tmp/bepinex.zip"; else curl -fsSL -o "$tmp/bepinex.zip" "$BEPINEX_URL"; fi
+        if [ -n "$LOCAL_ZIP" ]; then
+            cp -f "$LOCAL_ZIP" "$tmp/bepinex.zip"
+        elif [ -t 2 ]; then
+            # In a terminal, curl draws its own progress bar.
+            curl -fL --progress-bar -o "$tmp/bepinex.zip" "$BEPINEX_URL"
+        else
+            # Started from the desktop there is nowhere to draw it; the log has the line above.
+            curl -fsSL -o "$tmp/bepinex.zip" "$BEPINEX_URL"
+        fi
         actual="$(sha256sum "$tmp/bepinex.zip" | cut -d' ' -f1)"
         [ "$actual" = "$BEPINEX_SHA256" ] || fail "$(t bep_bad)"
         unzip -oq "$tmp/bepinex.zip" -d "$GAME_DIR"
