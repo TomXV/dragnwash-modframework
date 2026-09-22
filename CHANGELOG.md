@@ -44,6 +44,13 @@ Versions of the core and of each library are separate, and follow semantic versi
 - Bridge page: ? lists the keyboard shortcuts; the graphs editor's divider moves with the arrow keys; icon-only buttons and every block field have screen-reader labels.
 - Graphs editor: a refused drop says why, a failed check shows its reason with Check again and the last result, and a LIVE in game pill shows while the colour picker writes to the game.
 
+### Mods screen
+
+- The screen opens at once: the loaded mods are listed straight away, and reading every plugin DLL and looking for patch conflicts happen off the frame. Until they are in, a "Checking mods..." row ends the list and stands in for Uses in the details, and On/Off and Uninstall wait for it (Settings does not).
+- A page another mod adds that throws while building shows a short message and **Try again** instead of half a page.
+- A shortcut setting says when another setting uses the same key: "F1 is also used by Open / close key (Drag'n Wash ModFramework: Tool window). Both will answer it.", after a key is captured or typed and when a setting that already clashes is opened. A report only; the key stays as set.
+- A change to a setting shows **Saved** beside its value for two seconds; changes are still saved at once. A mod that turned off BepInEx's saving on every change gets its config file saved by the page too.
+
 ### Code graph without the game (standalone app)
 
 - Experimental, not in a release. `codegraph-standalone/` (CodeGraphStandalone.exe, Windows): the code graph of any .NET assembly without the game (docs/CODE_GRAPH_STANDALONE.md). Opens DLLs, a folder (leaving out .NET's and Unity's own unless `--all`) or a Mono Unity game's folder, by Open…, the command line or a drop; refuses IL2CPP games with the reason. Shows the Bridge's page in WebView2 and answers its calls inside the process (`WebResourceRequested`), with no port and no network.
