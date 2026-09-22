@@ -62,6 +62,10 @@ namespace DragNWash.ModFramework.Mods
 
         private static readonly HashSet<string> Reported = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+        // The Mods screen scans on a worker thread while mods.list may scan on
+        // the game's; the cache and Cecil's resolver are not made for both.
+        private static readonly object Gate = new object();
+
         internal static List<Found> ScanPluginsFolder()
         {
             var all = new List<Found>();
@@ -77,6 +81,14 @@ namespace DragNWash.ModFramework.Mods
         }
 
         internal static List<Found> Read(string path)
+        {
+            lock (Gate)
+            {
+                return ReadLocked(path);
+            }
+        }
+
+        private static List<Found> ReadLocked(string path)
         {
             try
             {

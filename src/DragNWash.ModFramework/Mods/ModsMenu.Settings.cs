@@ -425,7 +425,8 @@ namespace DragNWash.ModFramework.Mods
 
         // Selection moves to a button of the rebuilt panel so a pad user keeps
         // their place. Unity destroys the old objects at the end of the frame,
-        // so look only among the current parts.
+        // so look only among the current parts; a button held while the mods
+        // are checked is passed over.
         private void Focus(params string[] names)
         {
             if (EventSystem.current == null)
@@ -434,7 +435,7 @@ namespace DragNWash.ModFramework.Mods
             }
             foreach (string name in names)
             {
-                GameObject target = _detailParts.FirstOrDefault(p => p != null && p.name == name && p.GetComponent<Selectable>() != null);
+                GameObject target = _detailParts.FirstOrDefault(p => p != null && p.name == name && p.GetComponent<Selectable>() is Selectable s && s.IsInteractable());
                 if (target != null)
                 {
                     EventSystem.current.SetSelectedGameObject(target);

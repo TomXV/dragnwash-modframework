@@ -25,11 +25,31 @@ namespace DragNWash.ModFramework.Mods
             public bool Risky;
         }
 
-        internal static List<Conflict> Find(List<ModCatalog.Entry> entries)
+        // Who owns which patch, read from BepInEx and the plugins' objects on
+        // the game's thread, so that Find can run on a worker thread.
+        internal sealed class Owners
+        {
+            internal Dictionary<Assembly, string> ByAssembly;
+            internal HashSet<string> Loaded;
+            internal HashSet<string> Shared;
+        }
+
+        internal static Owners OwnersOf(List<ModCatalog.Entry> entries)
+        {
+            return new Owners
+            {
+                ByAssembly = PluginAssemblies(),
+                Loaded = new HashSet<string>(Chainloader.PluginInfos.Keys),
+                Shared = new HashSet<string>(entries.Where(e => e.IsFramework || e.IsLibrary).Select(e => e.Guid).Where(g => g != null)),
+            };
+        }
+
+        // Harmony's patch lists and reflection only (Harmony locks its own
+        // state), so safe off the game's thread.
+        internal static List<Conflict> Find(Owners known)
         {
             var conflicts = new List<Conflict>();
-            Dictionary<Assembly, string> byAssembly = PluginAssemblies();
-            var shared = new HashSet<string>(entries.Where(e => e.IsFramework || e.IsLibrary).Select(e => e.Guid).Where(g => g != null));
+            HashSet<string> shared = known.Shared;
 
             foreach (MethodBase method in Harmony.GetAllPatchedMethods().ToList())
             {
@@ -60,7 +80,7 @@ namespace DragNWash.ModFramework.Mods
                 {
                     foreach (Patch patch in group.Patches)
                     {
-                        string guid = OwnerOf(patch, byAssembly);
+                        string guid = OwnerOf(patch, known);
                         if (guid == null || shared.Contains(guid))
                         {
                             continue;
@@ -96,14 +116,14 @@ namespace DragNWash.ModFramework.Mods
 
         // Harmony IDs are free text; most mods use their GUID, but not all. The
         // assembly the patch method lives in is the reliable link to a plugin.
-        private static string OwnerOf(Patch patch, Dictionary<Assembly, string> byAssembly)
+        private static string OwnerOf(Patch patch, Owners known)
         {
-            if (patch.owner != null && Chainloader.PluginInfos.ContainsKey(patch.owner))
+            if (patch.owner != null && known.Loaded.Contains(patch.owner))
             {
                 return patch.owner;
             }
             Assembly assembly = patch.PatchMethod?.DeclaringType?.Assembly;
-            return assembly != null && byAssembly.TryGetValue(assembly, out string guid) ? guid : null;
+            return assembly != null && known.ByAssembly.TryGetValue(assembly, out string guid) ? guid : null;
         }
 
         private static Dictionary<Assembly, string> PluginAssemblies()

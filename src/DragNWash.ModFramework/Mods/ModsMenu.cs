@@ -72,11 +72,14 @@ namespace DragNWash.ModFramework.Mods
             _confirmingUninstall = null;
             _settingsFor = null;
             _page = null;
+            DropCheck();
             try
             {
-                _entries = ModCatalog.Build();
-                _conflicts = PatchConflicts.Find(_entries);
+                // The loaded mods at once; the rest when the check is in (ModsMenu.Check.cs).
+                _entries = ModCatalog.Build(null);
+                _conflicts = new List<PatchConflicts.Conflict>();
                 _selected = _entries.FirstOrDefault(e => SameMod(e, _selected)) ?? _entries.FirstOrDefault();
+                StartCheck();
                 RebuildList();
                 RebuildDetails(false);
             }
@@ -158,6 +161,10 @@ namespace DragNWash.ModFramework.Mods
             foreach (ModCatalog.Entry entry in _entries)
             {
                 _rows.Add(CreateListRow(entry));
+            }
+            if (Checking)
+            {
+                _rows.Add(CreateCheckingRow());
             }
         }
 
@@ -369,17 +376,25 @@ namespace DragNWash.ModFramework.Mods
             {
                 notes.Add(("Unavailable", TextUnavailable, string.Join(", ", unavailable), true));
             }
+            // What the mod uses and clashes with is only certain once the check
+            // is in; until then one line says it is coming, in the place those
+            // notes take, so the notes above it neither move nor drop out of
+            // the band when the check ends.
+            if (Checking && !entry.IsFramework)
+            {
+                notes.Add(("Checking", null, TextChecking, false));
+            }
             foreach (PatchConflicts.Conflict c in ConflictsOf(entry))
             {
                 string others = string.Join(", ", c.Guids.Where(g => g != entry.Guid).Select(g => ModCatalog.NameOf(_entries, g)));
                 notes.Add(("Conflict", c.Risky ? TextSameCodeRisky : TextSameCode, others + " (" + c.Method + ")", true));
             }
-            if (entry.Uses.Count > 0 && _confirming != entry && !entry.IsFramework)
+            if (entry.Uses.Count > 0 && _confirming != entry && !entry.IsFramework && !Checking)
             {
                 notes.Add(("Uses", TextUses, string.Join(", ", entry.Uses.Select(u =>
                     ModCatalog.ShortNameOf(_entries, u.Key) + (u.Value != null && u.Value > new Version(0, 0) ? " " + u.Value + "+" : ""))), false));
             }
-            if (entry.IsLibrary && entry.Dependents.Count > 0 && _confirming != entry && entry.ProblemGuids.Count == 0)
+            if (entry.IsLibrary && entry.Dependents.Count > 0 && _confirming != entry && entry.ProblemGuids.Count == 0 && !Checking)
             {
                 notes.Add(("UsedBy", TextNeededBy, string.Join(", ", entry.Dependents.Select(g => ModCatalog.NameOf(_entries, g))), false));
             }
@@ -410,6 +425,11 @@ namespace DragNWash.ModFramework.Mods
                 if (note.Label == null)
                 {
                     text = Label(note.Name + i, Escape(note.Value), size, top - 0.07f, top, false);
+                    if (note.Name == "Checking")
+                    {
+                        CheckingStyle(text);
+                        _detailParts.Add(AddSpinner(Details, text, 28f, size).gameObject);
+                    }
                     line++;
                 }
                 else
@@ -460,7 +480,11 @@ namespace DragNWash.ModFramework.Mods
             if (entry.CanSwitch)
             {
                 GameObject button = CreateSwitch(entry, three ? 0.32f : 0.4f);
-                if (focusSwitch && EventSystem.current != null)
+                if (Checking)
+                {
+                    Hold(button);
+                }
+                else if (focusSwitch && EventSystem.current != null)
                 {
                     EventSystem.current.SetSelectedGameObject(button);
                 }
@@ -474,8 +498,12 @@ namespace DragNWash.ModFramework.Mods
             if (three)
             {
                 bool confirming = _confirmingUninstall == entry;
-                MakeButton("Uninstall", entry.PendingUninstall ? TextCancelUninstall : TextUninstall, 0.66f, 0.96f, 0.04f, 0.16f,
+                GameObject uninstall = MakeButton("Uninstall", entry.PendingUninstall ? TextCancelUninstall : TextUninstall, 0.66f, 0.96f, 0.04f, 0.16f,
                     confirming ? OffColor : UninstallColor, () => OnUninstall(entry));
+                if (Checking)
+                {
+                    Hold(uninstall);
+                }
             }
 
             // A row of up to two buttons above Switch and Settings: the release page
@@ -512,30 +540,7 @@ namespace DragNWash.ModFramework.Mods
         // left alone until the player comes back to the list.
         internal void OnUpdatesChanged()
         {
-            if (!isActiveAndEnabled || _page != null || _settingsFor != null)
-            {
-                return;
-            }
-            GameObject focused = EventSystem.current != null ? EventSystem.current.currentSelectedGameObject : null;
-            ModCatalog.Entry focusedRow = focused != null ? focused.GetComponent<ModRowSelect>()?.Entry : null;
-            string focusName = focused != null && _detailParts.Contains(focused) ? focused.name : null;
-            RebuildList();
-            RebuildDetails(false);
-            if (focusedRow != null && EventSystem.current != null)
-            {
-                ModRowSelect row = _rows
-                    .Where(r => r != null)
-                    .Select(r => r.GetComponentInChildren<ModRowSelect>())
-                    .FirstOrDefault(s => s != null && s.Entry == focusedRow);
-                if (row != null)
-                {
-                    EventSystem.current.SetSelectedGameObject(row.gameObject);
-                }
-            }
-            else if (focusName != null)
-            {
-                Focus(focusName);
-            }
+            RebuildKeepingFocus();
         }
 
         private GameObject Part(string name, float left, float right, float bottom, float top)
@@ -621,6 +626,10 @@ namespace DragNWash.ModFramework.Mods
         // uninstalled the button takes the wish back.
         private void OnUninstall(ModCatalog.Entry entry)
         {
+            if (Checking)
+            {
+                return;
+            }
             try
             {
                 if (!entry.PendingUninstall && _confirmingUninstall != entry)
@@ -645,6 +654,10 @@ namespace DragNWash.ModFramework.Mods
 
         private void OnSwitch(ModCatalog.Entry entry)
         {
+            if (Checking)
+            {
+                return;
+            }
             try
             {
                 if (entry.WantOn)
@@ -765,7 +778,8 @@ namespace DragNWash.ModFramework.Mods
         }
     }
 
-    // Tells the menu when an update check has a result.
+    // Tells the menu when an update check has a result, and when the check of
+    // the mods' files is in.
     internal sealed class UpdateResultWatcher : MonoBehaviour
     {
         internal ModsMenu Menu;
@@ -781,6 +795,14 @@ namespace DragNWash.ModFramework.Mods
         // Also when the framework sees a mod connect somewhere new.
         private void LateUpdate()
         {
+            try
+            {
+                Menu?.PollCheck();
+            }
+            catch (Exception ex)
+            {
+                ModFramework.Log.LogError($"Could not show the check of the mods: {ex}");
+            }
             if (_seen == Updates.UpdateCheck.Revision && _seenNetwork == NetworkWatch.Revision)
             {
                 return;

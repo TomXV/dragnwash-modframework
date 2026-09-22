@@ -1,4 +1,5 @@
 using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -8,6 +9,9 @@ namespace DragNWash.ModFramework.Mods
     // The details panel is handed over to the page; Back returns to the list.
     internal sealed partial class ModsMenu
     {
+        internal const string TextPageFailed = "This page could not be shown. See BepInEx/LogOutput.log.";
+        internal const string TextTryAgain = "Try again";
+
         private ModsScreenPage _page;
         private ModCatalog.Entry _pageFor;
 
@@ -48,6 +52,20 @@ namespace DragNWash.ModFramework.Mods
             catch (Exception ex)
             {
                 ModFramework.Log.LogError($"The page \"{_page.Title}\" of {_page.Guid} threw while building: {ex}");
+                // Whatever the page built before it threw is hidden, so half a
+                // page does not sit there looking like the whole of it. Some of
+                // what a page shows can be missing for a moment only, so one
+                // press builds it again rather than a restart.
+                root.SetActive(false);
+                TMP_Text failed = Label("PageFailed", TextPageFailed, UiText.BodySize, 0.5f, 0.76f, true);
+                failed.alignment = TextAlignmentOptions.TopLeft;
+                failed.color = WarnColor;
+                MakeButton("TryAgain", TextTryAgain, 0.04f, 0.4f, 0.04f, 0.16f, StepColor, () =>
+                {
+                    RebuildDetails(false);
+                    Focus("TryAgain");
+                });
+                Focus("TryAgain");
             }
         }
     }

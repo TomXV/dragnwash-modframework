@@ -66,10 +66,65 @@ namespace DragNWash.ModFramework.Mods
 
         private static bool IsManifest(string rel) => string.Equals(Path.GetFileName(rel), "mod.json", StringComparison.OrdinalIgnoreCase);
 
+        // What only the plugin files themselves can tell: every DLL in
+        // BepInEx/plugins read with Cecil, the switched-off ones too, and the
+        // preloader patchers. The slow part of listing the mods, so the Mods
+        // screen reads them off the frame: this touches files only, never a
+        // Unity object, and is safe on a worker thread.
+        internal sealed class FileScan
+        {
+            public List<PluginScanner.Found> Folder = new List<PluginScanner.Found>();
+
+            // By path under BepInEx/plugins, as the switched-off lists give it.
+            public Dictionary<string, List<PluginScanner.Found>> SwitchedOff =
+                new Dictionary<string, List<PluginScanner.Found>>(StringComparer.OrdinalIgnoreCase);
+
+            public List<KeyValuePair<string, string>> Patchers = new List<KeyValuePair<string, string>>();
+        }
+
+        internal static FileScan ScanFiles()
+        {
+            var scan = new FileScan { Folder = PluginScanner.ScanPluginsFolder() };
+            IEnumerable<string> off = DisabledMods.ReadState(Paths.ConfigPath)
+                .Concat(DisabledMods.ReadDesired(Paths.ConfigPath).Select(r => r.RelativePath));
+            foreach (string rel in off)
+            {
+                if (rel == null || IsManifest(rel) || scan.SwitchedOff.ContainsKey(rel))
+                {
+                    continue;
+                }
+                string path = Path.Combine(Paths.PluginPath, rel) + DisabledMods.DisabledSuffix;
+                if (File.Exists(path))
+                {
+                    scan.SwitchedOff[rel] = PluginScanner.Read(path);
+                }
+            }
+            string patchers = Paths.PatcherPluginPath;
+            if (Directory.Exists(patchers))
+            {
+                foreach (string path in Directory.GetFiles(patchers, "*.dll", SearchOption.AllDirectories))
+                {
+                    if (!string.Equals(Path.GetFileName(path), "DragNWash.ModFramework.Preloader.dll", StringComparison.OrdinalIgnoreCase))
+                    {
+                        scan.Patchers.Add(new KeyValuePair<string, string>(path, SafeVersion(path)));
+                    }
+                }
+            }
+            return scan;
+        }
+
         internal static List<Entry> Build()
         {
+            return Build(ScanFiles());
+        }
+
+        // Without a scan (null), only what BepInEx and the framework already
+        // know: the loaded mods and the ones switched off from here, without
+        // what their files say about them. Quick enough for any frame.
+        internal static List<Entry> Build(FileScan scan)
+        {
             var entries = new List<Entry>();
-            List<PluginScanner.Found> scanned = PluginScanner.ScanPluginsFolder();
+            List<PluginScanner.Found> scanned = scan?.Folder ?? new List<PluginScanner.Found>();
             List<DisabledMods.Record> desired = DisabledMods.ReadDesired(Paths.ConfigPath);
             var desiredPaths = new HashSet<string>(desired.Select(r => r.RelativePath), StringComparer.OrdinalIgnoreCase);
 
@@ -157,31 +212,23 @@ namespace DragNWash.ModFramework.Mods
             }
 
             // Preloader patchers run before plugins and cannot be switched from here.
-            string patchers = Paths.PatcherPluginPath;
-            if (Directory.Exists(patchers))
+            foreach (KeyValuePair<string, string> patcher in scan?.Patchers ?? new List<KeyValuePair<string, string>>())
             {
-                foreach (string path in Directory.GetFiles(patchers, "*.dll", SearchOption.AllDirectories))
+                entries.Add(new Entry
                 {
-                    if (string.Equals(Path.GetFileName(path), "DragNWash.ModFramework.Preloader.dll", StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-                    entries.Add(new Entry
-                    {
-                        Guid = null,
-                        Name = Path.GetFileNameWithoutExtension(path),
-                        Version = SafeVersion(path),
-                        Loaded = true,
-                        WantOn = true,
-                        IsPatcher = true,
-                        ProblemLabel = TextPatcher,
-                    });
-                }
+                    Guid = null,
+                    Name = Path.GetFileNameWithoutExtension(patcher.Key),
+                    Version = patcher.Value,
+                    Loaded = true,
+                    WantOn = true,
+                    IsPatcher = true,
+                    ProblemLabel = TextPatcher,
+                });
             }
 
             // Plugins the preloader renamed at this launch and the player has since
             // switched back on: not loaded, no longer in the list, but still there.
-            foreach (string rel in DisabledMods.ReadState(Paths.ConfigPath))
+            foreach (string rel in scan != null ? DisabledMods.ReadState(Paths.ConfigPath) : new HashSet<string>())
             {
                 if (desiredPaths.Contains(rel) || entries.Any(e => string.Equals(e.RelativePath, rel, StringComparison.OrdinalIgnoreCase)))
                 {
@@ -193,7 +240,7 @@ namespace DragNWash.ModFramework.Mods
                     continue;
                 }
                 // A data mod's mod.json is no assembly; its folder names it.
-                List<PluginScanner.Found> inFile = IsManifest(rel) ? new List<PluginScanner.Found>() : PluginScanner.Read(off);
+                List<PluginScanner.Found> inFile = !IsManifest(rel) && scan.SwitchedOff.TryGetValue(rel, out List<PluginScanner.Found> read) ? read : new List<PluginScanner.Found>();
                 if (inFile.Count == 0)
                 {
                     entries.Add(new Entry { Name = IsManifest(rel) ? Path.GetFileName(Path.GetDirectoryName(rel)) : Path.GetFileNameWithoutExtension(rel), RelativePath = rel, Loaded = false, WantOn = true });
@@ -230,8 +277,9 @@ namespace DragNWash.ModFramework.Mods
                     Loaded = false,
                     WantOn = false,
                     Info = ModFramework.GetInfo(record.Guid),
-                    Scanned = IsManifest(record.RelativePath) ? null : PluginScanner.Read(Path.Combine(Paths.PluginPath, record.RelativePath) + DisabledMods.DisabledSuffix)
-                        .FirstOrDefault(s => s.Guid == record.Guid),
+                    Scanned = scan != null && scan.SwitchedOff.TryGetValue(record.RelativePath, out List<PluginScanner.Found> read)
+                        ? read.FirstOrDefault(s => s.Guid == record.Guid)
+                        : null,
                 });
             }
 
