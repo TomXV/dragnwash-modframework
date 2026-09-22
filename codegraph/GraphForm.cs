@@ -4,14 +4,12 @@ using System.Globalization;
 using System.IO;
 using System.IO.Pipes;
 using System.Net;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
-using Microsoft.Win32;
 using Microsoft.Web.WebView2.WinForms;
 
 namespace DragNWash.CodeGraph
@@ -68,7 +66,7 @@ namespace DragNWash.CodeGraph
             _alive.Start();
             Load += async (s, e) => await Start();
             FormClosing += (s, e) => SaveBounds();
-            HandleCreated += (s, e) => DarkTitleBar();
+            HandleCreated += (s, e) => WindowChrome.DarkTitleBar(this);
             var listener = new Thread(Listen) { IsBackground = true, Name = "CodeGraph pipe" };
             listener.Start();
         }
@@ -89,9 +87,7 @@ namespace DragNWash.CodeGraph
                 return;
             }
             CoreWebView2 core = _view.CoreWebView2;
-            core.Settings.AreDevToolsEnabled = false;
-            core.Settings.IsStatusBarEnabled = false;
-            core.Settings.AreHostObjectsAllowed = false;
+            WindowChrome.LockDown(core.Settings);
             // Only the Bridge's page: any other address stays out of this window.
             core.NavigationStarting += (s, e) =>
             {
@@ -315,24 +311,6 @@ namespace DragNWash.CodeGraph
             else
             {
                 Connect();
-            }
-        }
-
-        [DllImport("dwmapi.dll")]
-        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
-
-        // A dark title bar when Windows' apps are dark, like the page (Windows 10 20H1 and later; ignored before).
-        private void DarkTitleBar()
-        {
-            try
-            {
-                object light = Registry.GetValue(@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "AppsUseLightTheme", 1);
-                if (!(light is int l) || l != 0) return;
-                int on = 1;
-                DwmSetWindowAttribute(Handle, 20, ref on, sizeof(int));   // DWMWA_USE_IMMERSIVE_DARK_MODE
-            }
-            catch
-            {
             }
         }
 

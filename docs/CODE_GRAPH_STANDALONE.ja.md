@@ -110,6 +110,7 @@
 - `Program.cs`：コマンドライン。
 - `Opened.cs`：ファイル、フォルダー、Unity ゲームのフォルダー、IL2CPP とネイティブの DLL を扱い、1 つの `CodeGraphModel` にします。
 - `ViewerForm.cs`：窓、`WebResourceRequested` によるページとその呼び出し、Open…（アセンブリ、フォルダー、読み直し）、ドロップされたファイル。
+- `codegraph/WindowChrome.cs`：両方のアプリでビルドします。2 つの窓が共有する、暗いタイトルバーと WebView2 の設定。
 
 Windows で、WebView2 の DevTools プロトコル（テストのときだけ開けたデバッグ用のポート）で窓を動かして試しました。ゲームのアセンブリの型とメソッドの表示、検索、ステートマシンを通したコルーチン、知らない操作のエラー、ほかのパスへの要求（404）、DLL、フォルダー、Unity ゲームのフォルダー、IL2CPP のゲームのフォルダーのドロップです。
 

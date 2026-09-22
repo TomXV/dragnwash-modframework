@@ -4,7 +4,6 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
@@ -12,7 +11,6 @@ using System.Windows.Forms;
 using DragNWash.ModFramework.CodeGraph;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
-using Microsoft.Win32;
 
 namespace DragNWash.CodeGraph.Standalone
 {
@@ -50,7 +48,7 @@ namespace DragNWash.CodeGraph.Standalone
             Bounds = new Rectangle(area.X + area.Width / 10, area.Y + area.Height / 10, area.Width * 8 / 10, area.Height * 8 / 10);
             Controls.Add(_view);
             Load += async (s, e) => await Start();
-            HandleCreated += (s, e) => DarkTitleBar();
+            HandleCreated += (s, e) => WindowChrome.DarkTitleBar(this);
         }
 
         private async Task Start()
@@ -67,9 +65,7 @@ namespace DragNWash.CodeGraph.Standalone
                 return;
             }
             CoreWebView2 core = _view.CoreWebView2;
-            core.Settings.AreDevToolsEnabled = false;
-            core.Settings.IsStatusBarEnabled = false;
-            core.Settings.AreHostObjectsAllowed = false;
+            WindowChrome.LockDown(core.Settings);
             core.Settings.IsWebMessageEnabled = true;
             core.NavigationStarting += OnNavigationStarting;
             core.NewWindowRequested += (s, e) => e.Handled = true;
@@ -277,23 +273,5 @@ addEventListener('drop', e => {
         }
 
         private static Stream Stream(string text) => new MemoryStream(Encoding.UTF8.GetBytes(text));
-
-        [DllImport("dwmapi.dll")]
-        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
-
-        // A dark title bar when Windows' apps are dark, like the page.
-        private void DarkTitleBar()
-        {
-            try
-            {
-                object light = Registry.GetValue(@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "AppsUseLightTheme", 1);
-                if (!(light is int l) || l != 0) return;
-                int on = 1;
-                DwmSetWindowAttribute(Handle, 20, ref on, sizeof(int));   // DWMWA_USE_IMMERSIVE_DARK_MODE
-            }
-            catch
-            {
-            }
-        }
     }
 }

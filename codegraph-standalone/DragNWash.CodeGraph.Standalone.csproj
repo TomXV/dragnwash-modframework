@@ -34,6 +34,8 @@
     <Compile Include="..\src\DragNWash.ModFramework.Inspector\CodeGraphModel.cs" Link="Shared\CodeGraphModel.cs" />
     <!-- The same page the Bridge serves. -->
     <EmbeddedResource Include="..\src\DragNWash.ModFramework.Bridge\Page\page.html" LogicalName="page.html" Link="Shared\page.html" />
+    <!-- The dark title bar and the WebView2 settings CodeGraph.exe's window has. -->
+    <Compile Include="..\codegraph\WindowChrome.cs" Link="Shared\WindowChrome.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -110,6 +110,7 @@ Measured 2026-09-20 on this PC (Windows 11, .NET Framework 4.7.2 with the Mono.C
 - `Program.cs`: the command line.
 - `Opened.cs`: files, folders, Unity game folders, IL2CPP and native DLLs, into one `CodeGraphModel`.
 - `ViewerForm.cs`: the window, the page and its calls through `WebResourceRequested`, Open… (assemblies, folder, read again), dropped files.
+- `codegraph/WindowChrome.cs`, built into both apps: the dark title bar and the WebView2 settings the two windows share.
 
 Tried on Windows by driving the window through WebView2's DevTools protocol (a debugging port turned on only for the test): the type and method views of the game's assemblies, search, a coroutine through its state machine, an unknown operation's error, a request for another path (404), dropping a DLL, a folder, a Unity game's folder and an IL2CPP game's folder.
 
