@@ -494,7 +494,6 @@ const Countdown = {
 
   // the number, and the ring when nothing moves; a screen reader hears it at the start and at 3 only
   show(clock, n, tick) {
-    clock.dataset.n = n;
     const num = clock.querySelector('.num');
     num.textContent = n;
     if (tick) replay(num, 'tick');
