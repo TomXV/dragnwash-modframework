@@ -73,7 +73,7 @@ const modLabel = (name, version) => `${shortName(name)} ${version || ''}`.trim()
 // ---------- the shared parts' markup ----------
 
 LogoIntro.build($('intro'));
-Pics.stage($('stage'), ['wait', 'dl', 'chk', 'bak', 'ins', 'steam', 'opt']).box.id = 'pictures';
+Pics.stage($('stage'), ['wait', 'dl', 'chk', 'bak', 'modup', 'steam', 'opt', 'optx']).box.id = 'pictures';
 
 // ---------- state ----------
 
@@ -422,6 +422,8 @@ const PACE = {
   countdown: 1.5,                      // from the all-in moment to the countdown starting (the celebration comes first)
   stepIn: .5, stepGap: .15,            // the steps come in one after another (from the list or Try again: .17, .06)
   steam: 1.8, opt: 1.8,                // the launch option's steps: closing Steam (its window shrinks away), the change
+  mod: 1.4, modLoop: 2.4,              // installing: the least time one mod's icon stays up (it turns over at .9 s),
+                                       // and one round of its picture
   failAfter: 2.4,                      // the launch option: a failure shows once its step has been up this long
 };
 
@@ -430,6 +432,11 @@ const PACE = {
 const BAR = { dl: 45, chk: 60, bak: 72 };
 
 const STEP_NAME = { wait: 'stepWait', dl: 'stepDl', chk: 'stepChk', bak: 'stepBak', ins: 'stepIns', steam: 'stepSteam', opt: 'stepOpt' };
+// the picture each step shows: installing shows the icon of the mod going in, and the launch option's change its
+// chip going in or coming out
+const PICTURE = { ins: 'modup', opt: () => (S.option === 'off' ? 'optx' : 'opt') };
+const pictureOf = (key) => (typeof PICTURE[key] === 'function' ? PICTURE[key]() : PICTURE[key] || key);
+
 const PHASE_NAME = { wait: 'phaseWait', dl: 'phaseDl', chk: 'phaseChk', bak: 'phaseBak', ins: 'phaseIns', steam: 'phaseSteam', opt: 'phaseOpt' };
 
 const Updating = {
@@ -449,6 +456,7 @@ const Updating = {
       files: [], fileIdx: 0, fileAt: 0, fileMin: 0, dlShare: 0,
       zips: 0, ticks: 0, sweepIdx: 1, sweepEnd: null, chkDoneAt: null,
       proceeded: false, cancelling: false,
+      mod: -1, modAt: null, modEvents: false, // installing: the mod whose icon is up, since when, and whether the launcher says which
       T: null, insFrom: 0, insFromAt: 0, // the all-in moment, and where the bar left off when it became known
       shown: 0, lastFrame: 0, pct: -1,
     });
@@ -560,6 +568,11 @@ const Updating = {
         return this.cur ? this.curAt + PACE.failAfter - now : PACE.firstStep - now;
       case 'download':
         return this.fileIdx && e.index > this.fileIdx ? this.fileAt + this.fileMin - now : 0;
+      case 'installing': {
+        // each mod's icon stays up long enough to turn over (the one already up needs no wait)
+        const i = S.chosen.findIndex((m) => m.guid === e.guid);
+        return this.modAt === null || i === this.mod ? 0 : this.modAt + PACE.mod - now;
+      }
       case 'verified':
         // its tick pops when the lens has finished looking over that zip
         if (this.cur !== 'chk' || e.index !== this.sweepIdx || this.sweepEnd === null) return Infinity;
@@ -587,6 +600,7 @@ const Updating = {
       }
       return this.closingAt + PACE.closing - now;
     }
+    if (this.cur === 'ins' && this.modAt !== null) return Math.max(this.curAt + PACE.ins, this.modAt + PACE.mod) - now;
     return this.curAt + PACE[this.cur] - now;
   },
 
@@ -597,6 +611,7 @@ const Updating = {
       case 'verified': return this.onVerified(e, now);
       case 'checked': return this.onChecked();
       case 'log': return this.log(e.text);
+      case 'installing': return this.onInstalling(e, now);
       case 'done': return this.onDone(e, now);
       case 'failed': return Fail.show(e);
     }
@@ -614,7 +629,7 @@ const Updating = {
       dl: this.fileIdx ? this.fileLine(this.fileIdx) : '',
       chk: this.chkLine(1),
       bak: t('subBak'),
-      ins: this.allNames(),
+      ins: S.chosen.length > 1 ? modLabel(S.chosen[0].name, S.chosen[0].to) : this.allNames(),
       steam: t('subSteam'),
       opt: t('subOpt'),
     }[key];
@@ -622,6 +637,7 @@ const Updating = {
     this.cur = key;
     this.curAt = now;
     this.closingAt = null;
+    if (key === 'ins') this.showMod(0, now);
     if (key === 'chk') {
       this.sweepIdx = 1;
       this.sweep();
@@ -641,12 +657,13 @@ const Updating = {
     }
   },
 
-  picture(key) { return $('pictures').querySelector('.sc.' + key); },
+  picture(key) { return $('pictures').querySelector('.sc.' + pictureOf(key)); },
 
   // the picture for the running step fades in over the last one (null: none)
   showPicture(key) {
+    const name = key && pictureOf(key);
     for (const pic of $('pictures').children) {
-      if (key && pic.classList.contains(key)) {
+      if (name && pic.classList.contains(name)) {
         pic.classList.remove('leaving');
         pic.classList.add('on');
       } else if (pic.classList.contains('on')) {
@@ -672,6 +689,32 @@ const Updating = {
   },
 
   allNames() { return S.chosen.map((m) => modLabel(m.name, m.to)).join(' · '); },
+
+  // ----- install: the icon of the mod going in, one mod after another -----
+
+  // the launcher says which mod it is putting in; without that the page goes through the chosen mods by itself
+  onInstalling(e, now) {
+    this.modEvents = true;
+    const i = S.chosen.findIndex((m) => m.guid === e.guid);
+    this.showMod(i >= 0 ? i : Math.max(0, (e.index || 1) - 1), now);
+  },
+
+  showMod(i, now) {
+    const mod = S.chosen[i];
+    if (!mod || this.cur !== 'ins') return;
+    const changed = i !== this.mod;
+    this.mod = i;
+    this.modAt = now;
+    if (changed) {
+      Pics.setMod(this.picture('ins'), mod);
+      if (S.chosen.length > 1) swapText($('psub'), modLabel(mod.name, mod.to));
+    }
+    if (!this.modEvents && S.chosen.length > 1) {
+      this.timers.after(PACE.modLoop, () => {
+        if (!this.modEvents && this.cur === 'ins') this.showMod((this.mod + 1) % S.chosen.length, this.now());
+      });
+    }
+  },
 
   onDownload(e, now) {
     this.files[e.index - 1] = { name: e.name, version: e.version, total: e.total };
@@ -852,6 +895,14 @@ function onCancelled() {
 
 const FAIL_KINDS = ['offline', 'busy', 'limited', 'notfound', 'mismatch', 'install', 'running', 'otherloader', 'other', 'steamstuck', 'writefail'];
 
+// the mark beside the heading, for each kind of failure: GitHub's mark when it couldn't be reached, a picture of
+// what went wrong for the others, and "!" for anything else
+const FAIL_MARK = {
+  offline: 'github', busy: 'busy', limited: 'limited', notfound: 'notfound', mismatch: 'mismatch',
+  running: 'running', otherloader: 'otherloader', writefail: 'lock', steamstuck: 'steamstuck', other: 'bang',
+};
+const markOf = (kind, changed) => (kind === 'install' ? (changed === 'partly' ? 'partly' : 'rolled') : FAIL_MARK[kind] || 'bang');
+
 const Fail = {
   details: '',
 
@@ -885,7 +936,7 @@ const Fail = {
     const words = STRINGS[lang];
     const mod = e.mod ? `${e.mod.name || ''} ${e.mod.version || ''}`.trim() : '';
 
-    const mark = Pics.mark(kind === 'offline' ? 'github' : 'bang');
+    const mark = Pics.mark(markOf(kind, e.changed));
     mark.id = 'fail-mark';
     $('fail-mark').replaceWith(mark);
     $('fail-title').textContent = words.failTitle[kind](mod);
@@ -1048,7 +1099,7 @@ window.dnw = (e) => {
     case 'init': return init(e);
     case 'cancelled': return onCancelled();
     case 'bye': return bye();
-    case 'step': case 'download': case 'verified': case 'checked': case 'log': case 'done': case 'failed':
+    case 'step': case 'download': case 'verified': case 'checked': case 'installing': case 'log': case 'done': case 'failed':
       return Updating.push(e);
   }
 };
