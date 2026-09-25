@@ -456,7 +456,8 @@ const Updating = {
       files: [], fileIdx: 0, fileAt: 0, fileMin: 0, dlShare: 0,
       zips: 0, ticks: 0, sweepIdx: 1, sweepEnd: null, chkDoneAt: null,
       proceeded: false, cancelling: false,
-      mod: -1, modAt: null, modEvents: false, // installing: the mod whose icon is up, since when, and whether the launcher says which
+      mod: -1, modAt: null, modEvents: false, modSeen: new Set(), // installing: the mod whose icon is up, since when,
+                                        // whether the launcher says which, and the ones shown so far
       T: null, insFrom: 0, insFromAt: 0, // the all-in moment, and where the bar left off when it became known
       shown: 0, lastFrame: 0, pct: -1,
     });
@@ -600,7 +601,11 @@ const Updating = {
       }
       return this.closingAt + PACE.closing - now;
     }
-    if (this.cur === 'ins' && this.modAt !== null) return Math.max(this.curAt + PACE.ins, this.modAt + PACE.mod) - now;
+    if (this.cur === 'ins' && this.modAt !== null) {
+      // on its own, the page shows every chosen mod once before it moves on
+      if (!this.modEvents && this.modSeen.size < S.chosen.length) return this.modAt + PACE.mod - now + .01;
+      return Math.max(this.curAt + PACE.ins, this.modAt + PACE.mod) - now;
+    }
     return this.curAt + PACE[this.cur] - now;
   },
 
@@ -705,13 +710,16 @@ const Updating = {
     const changed = i !== this.mod;
     this.mod = i;
     this.modAt = now;
+    this.modSeen.add(i);
     if (changed) {
       Pics.setMod(this.picture('ins'), mod);
       if (S.chosen.length > 1) swapText($('psub'), modLabel(mod.name, mod.to));
     }
     if (!this.modEvents && S.chosen.length > 1) {
-      this.timers.after(PACE.modLoop, () => {
-        if (!this.modEvents && this.cur === 'ins') this.showMod((this.mod + 1) % S.chosen.length, this.now());
+      this.timers.after(this.modSeen.size < S.chosen.length ? PACE.mod : PACE.modLoop, () => {
+        if (this.modEvents || this.cur !== 'ins') return;
+        this.showMod((this.mod + 1) % S.chosen.length, this.now());
+        this.pump();
       });
     }
   },
