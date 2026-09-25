@@ -312,6 +312,8 @@ namespace DragNWash.Launcher
         internal void Gone()
         {
             _closing = true;
+            // An owner still waiting for a page that never came up learns it won't.
+            _ready.TrySetResult(false);
             if (IsDisposed)
             {
                 return;

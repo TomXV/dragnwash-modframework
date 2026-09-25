@@ -196,6 +196,11 @@ namespace DragNWash.Launcher
                 Log.Line("Steam: not running");
                 return true;
             }
+            // The X came while that was being looked at: Steam isn't asked, so nothing has to start it again.
+            if (_closeAsked)
+            {
+                return false;
+            }
             string exe;
             try
             {
