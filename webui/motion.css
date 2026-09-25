@@ -1,0 +1,8 @@
+/* Shared page parts (webui/): how boards come and go (motion.js switches the classes).
+   .layer.leave   a board fading out as a whole
+   .lw.bye        the whole page fading out before the window closes */
+
+.layer.leave{animation:xgone .25s ease both}
+/* closing: the whole page fades out, then the app fades the window itself away */
+.lw.bye{animation:byeout .25s ease forwards}
+@keyframes byeout{from{opacity:1}to{opacity:0}}

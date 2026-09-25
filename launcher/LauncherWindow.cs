@@ -186,11 +186,16 @@ namespace DragNWash.Launcher
         {
 #if DEBUG
             // For working on the page without building again: DNW_LAUNCHER_WEB=<the launcher/web folder>.
-            // Only in Debug builds; a Release build serves nothing but its own resources.
+            // The shared parts come from the repo's webui folder next to it. Only in Debug builds; a
+            // Release build serves nothing but its own resources.
             string folder = Environment.GetEnvironmentVariable("DNW_LAUNCHER_WEB");
             if (!string.IsNullOrEmpty(folder))
             {
                 string file = Path.Combine(folder, name);
+                if (!File.Exists(file))
+                {
+                    file = Path.Combine(folder, "..", "..", "webui", name);
+                }
                 if (!File.Exists(file) && name == "logo-notagames.png")
                 {
                     file = Path.Combine(folder, "..", "..", "images", name);

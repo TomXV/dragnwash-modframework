@@ -67,9 +67,11 @@
     <Compile Include="..\installer\SteamConfig.cs" Link="Installer\SteamConfig.cs" />
   </ItemGroup>
 
-  <!-- The page, served to WebView2 from the exe itself: nothing is read from disk. -->
+  <!-- The page, served to WebView2 from the exe itself: nothing is read from disk. The parts Install.exe's page
+       shares with it (webui/) sit next to its own files, so their names must not clash. -->
   <ItemGroup>
     <EmbeddedResource Include="web\*" LogicalName="web/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\webui\*" LogicalName="web/%(Filename)%(Extension)" />
     <EmbeddedResource Include="..\images\logo-notagames.png" LogicalName="web/logo-notagames.png" />
   </ItemGroup>
 

@@ -142,7 +142,7 @@ The window is in Japanese when Drag'n Wash Localization is set to Japanese (`Tar
 
 ## The window
 
-A borderless 720 × 440 window with WebView2 (part of Windows 10 and 11). The page (`launcher/web/`) is inside the exe and served from it at `https://launcher.invalid/`: the page can't load anything else, can't go online, and can't open other pages. **Open release page** and **Open the log folder** go through the launcher, which checks the address and opens it in your browser.
+A borderless 720 × 440 window with WebView2 (part of Windows 10 and 11). The page (`launcher/web/`, plus the parts it shares with Install.exe's page in `webui/`) is inside the exe and served from it at `https://launcher.invalid/`: the page can't load anything else, can't go online, and can't open other pages. **Open release page** and **Open the log folder** go through the launcher, which checks the address and opens it in your browser.
 
 The page and the launcher talk in small JSON messages. The page posts `{cmd, ...}` with `chrome.webview.postMessage`, and the launcher calls `window.dnw(event)`:
 
@@ -169,7 +169,7 @@ A Debug build also reads these environment variables, for trying it without GitH
 | `DNW_LAUNCHER_FAIL=offline\|busy\|limited\|notfound` | With the above, fails the download that way. |
 | `DNW_LAUNCHER_NO_WEBVIEW2=1` | Behaves as if WebView2 isn't installed. |
 | `DNW_LAUNCHER_NO_STEAM=1` | Doesn't ask Steam to start the game. |
-| `DNW_LAUNCHER_WEB=<launcher/web folder>` | Serves the page from disk, so it can be changed without building again. |
+| `DNW_LAUNCHER_WEB=<launcher/web folder>` | Serves the page from disk, so it can be changed without building again. The shared parts come from `webui/` in the same repo. |
 
 Any exe named `DragNWash.exe` in a folder with `BepInEx\core\BepInEx.dll` will do as the game.
 

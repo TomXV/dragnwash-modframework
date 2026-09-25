@@ -142,7 +142,7 @@ Drag'n Wash Localization が日本語になっているとき（その設定の 
 
 ## 窓
 
-枠なしの 720 × 440 の窓で、WebView2（Windows 10 と 11 に入っています）を使います。ページ（`launcher/web/`）は exe の中にあり、exe から `https://launcher.invalid/` として出します。ページはほかのものを読み込めず、ネットにもつなげず、ほかのページも開けません。「リリースページを開く」と「ログのフォルダーを開く」はランチャーを通り、ランチャーがアドレスを確かめてからブラウザーで開きます。
+枠なしの 720 × 440 の窓で、WebView2（Windows 10 と 11 に入っています）を使います。ページ（`launcher/web/` と、Install.exe のページと共通の部品 `webui/`）は exe の中にあり、exe から `https://launcher.invalid/` として出します。ページはほかのものを読み込めず、ネットにもつなげず、ほかのページも開けません。「リリースページを開く」と「ログのフォルダーを開く」はランチャーを通り、ランチャーがアドレスを確かめてからブラウザーで開きます。
 
 ページとランチャーは小さな JSON でやりとりします。ページは `chrome.webview.postMessage` で `{cmd, ...}` を送り、ランチャーは `window.dnw(event)` を呼びます。
 
@@ -169,7 +169,7 @@ Debug ビルドは、GitHub や Steam やゲームなしで試せるように、
 | `DNW_LAUNCHER_FAIL=offline\|busy\|limited\|notfound` | 上と合わせて、ダウンロードをその形で失敗させる。 |
 | `DNW_LAUNCHER_NO_WEBVIEW2=1` | WebView2 がないものとして動く。 |
 | `DNW_LAUNCHER_NO_STEAM=1` | Steam にゲームの起動を頼まない。 |
-| `DNW_LAUNCHER_WEB=<launcher/web フォルダー>` | ページをディスクから出す。ビルドし直さずにページを直せる。 |
+| `DNW_LAUNCHER_WEB=<launcher/web フォルダー>` | ページをディスクから出す。ビルドし直さずにページを直せる。共通の部品は同じリポジトリの `webui/` から。 |
 
 ゲームの代わりには、`BepInEx\core\BepInEx.dll` があるフォルダーに置いた `DragNWash.exe` という名前の exe なら何でも使えます。
 

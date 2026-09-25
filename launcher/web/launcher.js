@@ -24,95 +24,12 @@ function sendOnce(cmd) {
   send(cmd);
 }
 
-// ---------- small helpers ----------
-
-const $ = (id) => document.getElementById(id);
-const root = document.documentElement;
-const sec = (s) => s.toFixed(3) + 's';
-
-// .reduced mirrors "reduce animations"; the stylesheet keys off it
-const motion = matchMedia('(prefers-reduced-motion: reduce)');
-const syncMotion = () => root.classList.toggle('reduced', motion.matches);
-syncMotion();
-motion.addEventListener('change', syncMotion);
-const reduced = () => root.classList.contains('reduced');
+// ---------- small helpers (the shared ones are in webui/kit.js) ----------
 
 let lang = 'en';
 function t(key, ...args) {
   const v = STRINGS[lang][key];
   return typeof v === 'function' ? v(...args) : v;
-}
-
-function el(tag, cls, text) {
-  const node = document.createElement(tag);
-  if (cls) node.className = cls;
-  if (text != null) node.textContent = text;
-  return node;
-}
-
-// restarts the CSS animation tied to a class
-function replay(node, cls) {
-  node.classList.remove(cls);
-  node.getBoundingClientRect();
-  node.classList.add(cls);
-}
-
-// fades a new text in over the old one in the same grid cell (progress label, sub line, header state)
-function swapText(box, text) {
-  const last = box.lastElementChild;
-  if (last && last.classList.contains('on') && last.textContent === text) return;
-  for (const old of [...box.children]) {
-    old.classList.remove('on');
-    setTimeout(() => old.remove(), 400);
-  }
-  const span = el('span', 'ph', text);
-  box.append(span);
-  span.getBoundingClientRect();
-  span.classList.add('on');
-}
-
-// a box's place in the window at rest (offsets ignore running transforms)
-function boxOf(node) {
-  let x = 0;
-  let y = 0;
-  for (let n = node; n && n !== $('win'); n = n.offsetParent) {
-    x += n.offsetLeft;
-    y += n.offsetTop;
-  }
-  return { x, y, w: node.offsetWidth };
-}
-
-// timeouts that belong to one part of the page, cleared together when it is left
-class Timers {
-  constructor() { this.ids = new Set(); }
-  after(seconds, fn) {
-    const id = setTimeout(() => { this.ids.delete(id); fn(); }, Math.max(0, seconds * 1000));
-    this.ids.add(id);
-  }
-  clear() {
-    for (const id of this.ids) clearTimeout(id);
-    this.ids.clear();
-  }
-}
-
-function showLayer(node) {
-  clearTimeout(node.hideTimer);
-  node.classList.remove('leave');
-  node.hidden = false;
-}
-
-function leaveLayer(node, after = 0) {
-  if (node.hidden) return;
-  clearTimeout(node.hideTimer);
-  if (reduced()) {
-    node.hidden = true;
-    return;
-  }
-  if (!after) replay(node, 'leave');
-  node.hideTimer = setTimeout(() => {
-    node.hidden = true;
-    node.classList.remove('leave');
-  }, (after + .3) * 1000);
 }
 
 // ---------- formatting ----------
@@ -152,6 +69,11 @@ const shortName = (name) => String(name || '').replace(/^drag'?n\s*wash\s+/i, ''
 // the launcher's long path in the launch options, cut down to "…\DragNWash.Installer\Launcher.exe"
 const shortLauncher = (options) => String(options || '').replace(/"[^"]*[\\/](DragNWash\.Installer[\\/]Launcher\.exe)"/gi, '"…\\$1"');
 const modLabel = (name, version) => `${shortName(name)} ${version || ''}`.trim();
+
+// ---------- the shared parts' markup ----------
+
+LogoIntro.build($('intro'));
+Pics.stage($('stage'), ['wait', 'dl', 'chk', 'bak', 'ins', 'steam', 'opt']).box.id = 'pictures';
 
 // ---------- state ----------
 
@@ -193,43 +115,9 @@ const Head = {
 
 // ---------- 0: logo intro ----------
 
-/* Seconds from the start. The logo is done by about 2 s (MOD FRAMEWORK from 1.3 s to 2.0 s) and its light runs
-   over it until 2.8 s; meanwhile "Checking for updates" types itself out and its dots go round once, and the result
-   replaces it at 3.2 s. With no updates, "Starting the game" follows at 3.7 s while the bar fills to the end, and
-   at 4.25 s the page says play: the launcher fades the window out, closes it, and only then starts the game.
-   With updates, "Updates found" stays up for a second and the logo hands over to the list. */
-const INTRO = { chk: 2, chkLen: .36, dots: 2.4, round: .8, res: 3.2, resLen: .3, go: 3.7, goLen: .35, fill: .45, end: .55, ho: 4.2 };
-
-// a line that types itself out: every character gets its own start time (--t); CSS does the motion
-function typed(text, t0, len, cls) {
-  const line = el('span', 'il' + (cls ? ' ' + cls : ''));
-  line.setAttribute('aria-hidden', 'true');
-  const chars = Array.from(text);
-  const per = Math.min(.04, len / chars.length);
-  chars.forEach((c, i) => {
-    const ch = el('span', 'ch', c);
-    ch.style.setProperty('--t', sec(t0 + i * per));
-    line.append(ch);
-  });
-  return line;
-}
-
-// three dots that loop from t0: (none) → . → .. → ... and round again
-function withDots(line, t0) {
-  for (let d = 1; d <= 3; d++) {
-    const dot = el('span', 'dt d' + d, '.');
-    dot.style.setProperty('--t', sec(t0));
-    dot.style.setProperty('--p', sec(INTRO.round));
-    line.append(dot);
-  }
-  return line;
-}
-
-function leaves(line, at) {
-  line.classList.add('out');
-  line.style.setProperty('--t', sec(at));
-  return line;
-}
+// the intro's timeline is shared with the installer: webui/intro.js
+const INTRO = LogoIntro.T;
+const { typed, withDots, leaves } = LogoIntro;
 
 const Intro = {
   timers: new Timers(),
@@ -241,10 +129,8 @@ const Intro = {
     S.board = 'intro';
     const node = $('intro');
     node.hidden = false;
-    node.classList.toggle('found', variant === 'found');
+    LogoIntro.moments(node, variant === 'found');
     const I = INTRO;
-    const moments = { pchk: I.chk, dchk: I.res - I.chk, pres: I.res, pgo: I.go, pho: I.ho };
-    for (const [name, at] of Object.entries(moments)) node.style.setProperty('--' + name, sec(at));
     this.status(false);
     replay(node, 'play');
     if (reduced()) {
@@ -320,12 +206,7 @@ const Intro = {
       List.show();
       return;
     }
-    const big = boxOf($('big'));
-    const target = boxOf(logo);
-    const style = $('big').style;
-    style.setProperty('--hox', target.x - big.x + 'px');
-    style.setProperty('--hoy', target.y - big.y + 'px');
-    style.setProperty('--hok', target.w / big.w);
+    LogoIntro.aim($('big'), logo);
     logo.classList.add('landing');
     Head.reveal(true);
     List.show(true);
@@ -978,8 +859,9 @@ const Fail = {
     const words = STRINGS[lang];
     const mod = e.mod ? `${e.mod.name || ''} ${e.mod.version || ''}`.trim() : '';
 
-    $('fail-gh').hidden = kind !== 'offline';
-    $('fail-mark').hidden = kind === 'offline';
+    const mark = Pics.mark(kind === 'offline' ? 'github' : 'bang');
+    mark.id = 'fail-mark';
+    $('fail-mark').replaceWith(mark);
     $('fail-title').textContent = words.failTitle[kind](mod);
     const advice = words.failAdvice[kind](e.minutes || 0);
     $('fail-lead').textContent = advice + (lang === 'ja' ? '' : ' ') + t(restart ? 'failRestart' : 'failPlayLater');

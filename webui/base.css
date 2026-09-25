@@ -1,0 +1,273 @@
+/* Shared page parts (webui/): the look every page of ours shares, from the launcher's approved mock (v26).
+   Load it first, then intro.css, pics.css and motion.css, then the page's own stylesheet.
+
+   Gives: the colour and font tokens (and the logo's masks --m-body/--m-nogear), the window (.lw, 100vw × 100vh,
+   dark), the header (.lhead with .hlogo, .app, .statewrap, .wc window buttons; .veiled hides it until revealed),
+   buttons (.lb.pri / .lb.gho), links (.llink), checkboxes (input.ck), boards (.layer under the 46 px header, with
+   .lbody → .col-l 290 px + .col-r, or .lbody.one for one column, and .lfoot with .net and the buttons), headings
+   (.lh, .ls), the steps list (ol.steps > li.st.todo|now|done > .mk + text), the working logo with its pictures
+   (.mstage.wsc > .mlogo + .scbox, see pics.js), the header logo's flight to it (.fly.go, .hlogo.away/.back),
+   the progress card (.pcard: .prow .pl/.pp .pn, .pbar .f, .psub), the log box (.logbox), the working board's
+   timeline (.upd.play, all in: .upd.play.fin), the failed board (.fail.play: .errrow, .errtext, .okpill(.warn),
+   .already, details.det) and the countdown / ready card (.again with .cd ring, .at, .start-now).
+   Motion is CSS; the page's script only switches classes, so each animation starts when its moment comes.
+   Under .reduced (kit.js mirrors prefers-reduced-motion) nothing moves and everything just shows its state. */
+:root{
+  --accent:#52c7b8;
+  --bg:#182025; --bg2:#11171b; --ink:#e8eff7; --dim:#a3b3bf; --line:rgba(255,255,255,.09);
+  --card:rgba(255,255,255,.035); --err:#ff9a8f; --warn:#f3c98b; --deep:#0f1519; --on-accent:#0d2522;
+  --ui:"Segoe UI","Yu Gothic UI",system-ui,sans-serif;
+  --mono:Consolas,"Courier New",monospace;
+  /* the banner with the sponge and the gear cut out (they are their own layers, so the gear can turn behind
+     the sponge), and the banner without the gear (for the light sweeps) */
+  --m-body:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1200 624%22 preserveAspectRatio=%22none%22%3E%3Cdefs%3E%3Cmask id=%22m%22 maskUnits=%22userSpaceOnUse%22 x=%220%22 y=%220%22 width=%221200%22 height=%22624%22%3E%3Crect width=%221200%22 height=%22624%22 fill=%22%23fff%22/%3E%3Cpolygon points=%221061.0,292.5 1039.0,292.5 1024.0,289.5 1002.0,280.5 984.0,268.5 969.5,254.0 960.5,241.0 952.6,224.0 945.5,199.0 932.0,189.5 918.5,177.0 907.4,160.0 906.5,144.0 908.5,139.0 908.5,132.0 896.5,118.0 897.5,106.0 901.4,92.0 913.4,68.0 930.5,46.0 945.0,33.5 957.0,27.5 970.0,23.5 992.0,20.5 993.0,19.5 1018.0,19.5 1033.0,23.5 1044.0,29.5 1045.4,31.0 1045.4,36.0 1059.5,49.0 1064.5,56.0 1072.6,73.0 1078.6,95.0 1083.5,108.0 1086.0,110.5 1103.0,118.5 1113.0,125.5 1128.5,142.0 1135.4,153.0 1140.5,165.0 1143.5,177.0 1143.5,185.0 1148.5,194.0 1148.5,200.0 1147.4,201.0 1147.4,210.0 1146.5,211.0 1145.5,221.0 1141.4,233.0 1135.4,245.0 1122.0,261.5 1099.0,279.5 1080.0,288.5 1061.0,292.5%22 fill=%22%23000%22/%3E%3Cpolygon points=%221164.0,200.5 1158.0,200.5 1147.4,193.0 1146.5,189.0 1143.5,185.0 1143.5,177.0 1138.6,160.0 1132.6,148.0 1124.5,137.0 1109.0,122.5 1086.0,110.5 1083.5,108.0 1078.6,95.0 1072.6,73.0 1064.5,56.0 1059.5,49.0 1045.4,36.0 1045.4,30.0 1047.5,24.0 1044.5,9.0 1046.5,4.0 1051.0,-0.5 1071.0,-0.5 1073.5,2.0 1079.5,16.0 1083.0,19.5 1086.0,20.5 1093.0,19.5 1096.6,16.0 1101.5,3.0 1105.0,-0.5 1125.0,-0.5 1128.5,3.0 1130.5,8.0 1129.4,29.0 1131.0,31.5 1135.0,33.5 1142.0,33.5 1155.0,23.5 1163.0,21.5 1168.0,23.5 1176.5,33.0 1177.4,40.0 1174.6,46.0 1165.4,57.0 1165.4,64.0 1170.0,69.5 1173.0,70.5 1191.0,68.5 1196.0,70.5 1199.5,74.0 1199.5,95.0 1188.0,101.5 1184.0,102.5 1179.5,107.0 1179.5,115.0 1181.0,117.5 1183.0,119.5 1192.0,122.5 1199.5,127.0 1199.5,149.0 1193.0,153.5 1171.0,152.5 1166.5,156.0 1165.4,159.0 1166.5,167.0 1174.6,177.0 1177.4,183.0 1177.4,188.0 1171.0,196.5 1164.0,200.5%22 fill=%22%23000%22/%3E%3C/mask%3E%3C/defs%3E%3Crect width=%221200%22 height=%22624%22 fill=%22%23fff%22 mask=%22url%28%23m%29%22/%3E%3C/svg%3E");
+  --m-nogear:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1200 624%22 preserveAspectRatio=%22none%22%3E%3Cdefs%3E%3Cmask id=%22m%22 maskUnits=%22userSpaceOnUse%22 x=%220%22 y=%220%22 width=%221200%22 height=%22624%22%3E%3Crect width=%221200%22 height=%22624%22 fill=%22%23fff%22/%3E%3Cpolygon points=%221164.0,200.5 1158.0,200.5 1147.4,193.0 1146.5,189.0 1143.5,185.0 1143.5,177.0 1138.6,160.0 1132.6,148.0 1124.5,137.0 1109.0,122.5 1086.0,110.5 1083.5,108.0 1078.6,95.0 1072.6,73.0 1064.5,56.0 1059.5,49.0 1045.4,36.0 1045.4,30.0 1047.5,24.0 1044.5,9.0 1046.5,4.0 1051.0,-0.5 1071.0,-0.5 1073.5,2.0 1079.5,16.0 1083.0,19.5 1086.0,20.5 1093.0,19.5 1096.6,16.0 1101.5,3.0 1105.0,-0.5 1125.0,-0.5 1128.5,3.0 1130.5,8.0 1129.4,29.0 1131.0,31.5 1135.0,33.5 1142.0,33.5 1155.0,23.5 1163.0,21.5 1168.0,23.5 1176.5,33.0 1177.4,40.0 1174.6,46.0 1165.4,57.0 1165.4,64.0 1170.0,69.5 1173.0,70.5 1191.0,68.5 1196.0,70.5 1199.5,74.0 1199.5,95.0 1188.0,101.5 1184.0,102.5 1179.5,107.0 1179.5,115.0 1181.0,117.5 1183.0,119.5 1192.0,122.5 1199.5,127.0 1199.5,149.0 1193.0,153.5 1171.0,152.5 1166.5,156.0 1165.4,159.0 1166.5,167.0 1174.6,177.0 1177.4,183.0 1177.4,188.0 1171.0,196.5 1164.0,200.5%22 fill=%22%23000%22/%3E%3C/mask%3E%3C/defs%3E%3Crect width=%221200%22 height=%22624%22 fill=%22%23fff%22 mask=%22url%28%23m%29%22/%3E%3C/svg%3E");
+}
+:root:lang(ja){--ui:"DNW Backslash","Yu Gothic UI","Segoe UI",system-ui,sans-serif}
+/* Japanese fonts draw "\" as a yen sign, which turns folder paths into BepInEx¥config. Take just that one
+   character from Segoe UI (a font on the PC, nothing is loaded) */
+@font-face{font-family:"DNW Backslash";src:local("Segoe UI");unicode-range:U+5C;font-weight:400}
+@font-face{font-family:"DNW Backslash";src:local("Segoe UI Semibold");unicode-range:U+5C;font-weight:600}
+@font-face{font-family:"DNW Backslash";src:local("Segoe UI Bold");unicode-range:U+5C;font-weight:700}
+/* Japanese lines break between phrases, not inside words (Chromium's phrase breaking; plain breaking elsewhere),
+   and never before small kana or closing marks */
+:root:lang(ja) .lw{word-break:auto-phrase;line-break:strict}
+
+/* ===== the window ===== */
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg2)}
+.lw{
+  width:100vw;height:100vh;box-sizing:border-box;position:relative;overflow:hidden;
+  background:radial-gradient(120% 90% at 85% 0%,#1d2a2f 0%,var(--bg) 55%,var(--bg2) 100%);
+  font-family:var(--ui);font-size:12.5px;color:var(--ink);display:flex;flex-direction:column;
+  user-select:none;cursor:default
+}
+[hidden]{display:none !important}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+
+/* ===== header: logo, name, state, window buttons. The whole bar (outside the buttons) moves the window ===== */
+.lhead{height:46px;flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:0 8px 0 16px;position:relative;z-index:2}
+.lhead.veiled > *{visibility:hidden}
+.lhead.reveal{animation:hofade .5s ease .35s both}
+.hlogo{height:26px;width:auto;flex:0 0 auto;display:block}
+.hlogo.landing{visibility:hidden}
+.app{font-weight:700;font-size:13px;white-space:nowrap}
+.statewrap{display:grid;min-width:0}
+.statewrap > span{grid-area:1/1;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .3s ease}
+.statewrap > span.on{opacity:1}
+.statewrap > span::before{content:"\00B7";margin-right:8px}
+.wc{margin-left:auto;display:flex;flex:0 0 auto}
+.wc button{width:34px;height:30px;display:flex;align-items:center;justify-content:center;color:var(--dim);border-radius:6px;font-size:13px;background:none;border:0;padding:0;cursor:pointer}
+.wc button:hover{background:rgba(255,255,255,.08);color:var(--ink)}
+/* one-time shimmer on the name when the header first shows */
+.lhead.shimmer .app{background:linear-gradient(100deg,var(--ink) 40%,#c6f5ee 50%,var(--ink) 60%) 100% 0/250% 100% no-repeat;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shim 1.8s ease .3s both}
+@keyframes shim{from{background-position:0 0}to{background-position:100% 0}}
+
+/* ===== shared parts of the boards ===== */
+.layer{position:absolute;left:0;right:0;top:46px;bottom:0;display:flex;flex-direction:column;z-index:1}
+.lbody{flex:1 1 auto;min-height:0;display:flex;gap:16px;padding:6px 20px 14px}
+.col-l{flex:0 0 290px;display:flex;flex-direction:column;min-height:0;min-width:0}
+.col-r{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;min-height:0}
+.lh{font-size:17px;font-weight:700;margin:0 0 4px;line-height:1.35;overflow-wrap:anywhere}
+.ls{color:var(--dim);line-height:1.55;margin:0 0 12px;font-size:12px;overflow-wrap:anywhere}
+.lfoot{flex:0 0 auto;height:64px;box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:0 20px;border-top:1px solid var(--line);background:rgba(0,0,0,.22)}
+.net{flex:1 1 auto;min-width:0;color:var(--dim);font-size:11.5px;line-height:1.5;margin:0}
+.lb{height:36px;padding:0 18px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-weight:600;white-space:nowrap;flex:0 0 auto;box-sizing:border-box;border:0;background:none;cursor:pointer;transition:opacity .3s ease,background-color .15s ease}
+.lb.pri{background:var(--accent);color:var(--on-accent);box-shadow:0 0 0 3px rgba(82,199,184,.2)}
+.lb.pri:hover{background:#61d3c4}
+.lb.pri:active{background:#46b0a2;box-shadow:0 0 0 3px rgba(82,199,184,.35)}
+.lb.gho{border:1px solid rgba(232,239,247,.3);color:var(--ink)}
+.lb.gho:hover{border-color:var(--accent)}
+.lb:disabled{opacity:.38;cursor:default}
+.lb.pri:disabled{background:var(--accent);box-shadow:none}
+.lb.gho:disabled{border-color:rgba(232,239,247,.3)}
+.llink{color:var(--accent);text-decoration:underline;text-underline-offset:2px;cursor:pointer;background:none;border:0;padding:0;font:inherit}
+.llink:disabled{opacity:.5;cursor:default}
+/* checkboxes: the mock's ticked / empty boxes, on real inputs */
+.ck{appearance:none;-webkit-appearance:none;margin:1px 0 0;width:16px;height:16px;border-radius:4px;flex:0 0 auto;box-sizing:border-box;background:transparent;border:1.5px solid rgba(232,239,247,.55);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.ck:checked{background:var(--accent);border:0}
+.ck:checked::after{content:"";width:8px;height:4px;border-left:2px solid var(--on-accent);border-bottom:2px solid var(--on-accent);transform:translate(0,-1px) rotate(-45deg)}
+
+@keyframes fadeup{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{transform:scale(0)}100%{transform:scale(1)}}
+@keyframes xgone{0%{opacity:1;visibility:visible}100%{opacity:0;visibility:hidden}}
+@keyframes xcome{from{opacity:0}to{opacity:1}}
+@keyframes hofade{from{opacity:0}to{opacity:1}}
+@keyframes unseen{from,to{opacity:0}}
+@keyframes shine{from{left:-30%}to{left:100%}}
+@keyframes shineon{0%,100%{opacity:1}}
+@keyframes gspin{from{rotate:0deg}to{rotate:360deg}}
+/* ===== 2 and B: updating =====
+   The board's clock starts when it gets .play: the header logo lifts off at .2 s and lands above the bar at
+   1.3 s, where the gear and the sponge start working; the card, the bar and the log come in after it.
+   The steps and pictures change with the launcher's events; .fin is added at the moment everything is in */
+.upd.enter{animation:xcome .3s ease .3s both}
+/* the lead names the mods; long names are cut at three lines so the steps keep their room (the names are on
+   the line under the bar and in the log too) */
+.upd .col-l .ls{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+.upd.enter .lh{animation:fadeup .4s ease .4s both}
+.upd.enter .ls{animation:fadeup .4s ease .5s both}
+.upd.enter .lfoot > *{animation:fadeup .4s ease .6s backwards}  /* backwards: Cancel greys out later */
+
+/* steps: to do → now → done */
+.steps{list-style:none;margin:2px 0 0;padding:0;display:flex;flex-direction:column;gap:9px}
+.st{display:flex;gap:10px;align-items:flex-start;line-height:1.45;transition:color .2s ease}
+.st small{display:block;color:var(--dim);font-size:11.5px;font-weight:400}
+.mk{width:18px;height:18px;border-radius:50%;flex:0 0 auto;box-sizing:border-box;display:flex;align-items:center;justify-content:center}
+.st.todo{color:var(--dim)}
+.st.todo .mk{border:1.5px solid rgba(232,239,247,.4)}
+.st.now{font-weight:700}
+.st.now .mk{border:2px solid var(--accent)}
+.st.now .mk::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.st.done .mk{background:var(--accent)}
+.st.done .mk::after{content:"";width:8px;height:4px;border-left:2px solid var(--on-accent);border-bottom:2px solid var(--on-accent);transform:translate(0,-1px) rotate(-45deg)}
+.upd.play .st{animation:fadeup .4s ease var(--t) both}
+.upd.play .st .mk{animation:pop .55s cubic-bezier(.34,1.56,.64,1) calc(var(--t) + .08s) both}
+.upd.play .st.now .mk{animation:pop .55s cubic-bezier(.34,1.56,.64,1) calc(var(--t) + .08s) both,ring 2.6s ease-in-out infinite}
+.upd.play .st.done .mk{animation:pop .55s cubic-bezier(.34,1.56,.64,1) calc(var(--t) + .08s) both,mkdone .45s cubic-bezier(.34,1.56,.64,1)}
+@keyframes ring{0%,100%{box-shadow:0 0 0 0 rgba(82,199,184,.35)}50%{box-shadow:0 0 0 5px rgba(82,199,184,0)}}
+@keyframes mkdone{0%{transform:scale(.6)}100%{transform:none}}
+
+/* progress card: the card comes in, then the dark bar is revealed left to right through a soft-edged mask
+   (no light on it) while the percent fades in at the same time. The fill follows the launcher's numbers */
+.mstage.wsc ~ .pcard{flex:0 0 auto}
+.pcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px 14px}
+.prow{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+.prow .pl{flex:1 1 auto;min-width:0}
+.prow .pp{font-size:24px;font-weight:700;color:var(--accent);font-variant-numeric:tabular-nums}
+.pp .pn{min-width:3.3em;display:inline-block;text-align:right}
+.pbar{position:relative;height:10px;border-radius:5px;background:var(--deep);border:1px solid var(--line);overflow:hidden}
+.pbar .f{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:5px;background:linear-gradient(90deg,#3aa698,#52c7b8);overflow:hidden}
+.pbar .f::after{content:"";position:absolute;top:0;bottom:0;left:0;width:40%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);transform:translateX(-110%)}
+@keyframes sheen{0%{transform:translateX(-110%)}60%,100%{transform:translateX(260%)}}
+.psub{color:var(--dim);font-size:11.5px;margin-top:8px}
+@property --rv{syntax:'<percentage>';inherits:true;initial-value:130%}
+.pcard .pbar{-webkit-mask-image:linear-gradient(90deg,#000 calc(var(--rv) - 30%),transparent var(--rv));mask-image:linear-gradient(90deg,#000 calc(var(--rv) - 30%),transparent var(--rv))}
+@keyframes barin{from{--rv:0%}to{--rv:130%}}
+@keyframes pctin{from{opacity:0;transform:translateX(6px)}to{opacity:1;transform:none}}
+.upd.play .pcard{animation:fadeup .4s ease 1.4s both}
+.upd.play .pcard .pbar{animation:barin 1.1s cubic-bezier(.45,0,.3,1) 1.85s both}
+.upd.play .pcard .pp{animation:pctin .8s ease 1.85s both}
+.upd.play .pbar .f:not(.full)::after{animation:sheen 2.6s ease-in-out 3.3s infinite}
+/* label and sub line: a new text fades in over the old one in the same grid cell */
+.pl,.psub{display:grid}
+.ph{grid-area:1/1;opacity:0;transition:opacity .18s linear;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ph.on{opacity:1}
+
+/* the log runs while it works, then the countdown card takes its place */
+.tail{flex:1 1 0;min-height:0;display:grid;grid-template-rows:minmax(0,1fr);margin-top:10px}
+.tail > *{grid-area:1/1;min-height:0}
+.logbox{flex:1 1 auto;min-height:0;overflow:auto;background:var(--deep);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:var(--mono);font-size:11px;line-height:1.55;color:#b6c4ce;scrollbar-width:thin;scrollbar-color:rgba(232,239,247,.35) transparent;user-select:text;cursor:auto}
+.logbox div{white-space:pre;overflow:hidden;text-overflow:ellipsis}
+.tail .logbox{display:flex;flex-direction:column-reverse}
+.tail .logbox .lns{white-space:normal;overflow:visible}
+.tail .logbox .lns > div{animation:lnin .25s ease both}
+@keyframes lnin{from{max-height:0;opacity:0}to{max-height:1.6em;opacity:1}}
+@keyframes logout{to{opacity:0;transform:translateY(-6px);visibility:hidden}}
+.tail .again{align-self:start}
+.upd .tail .again{visibility:hidden}
+.upd.fin .tail .again{visibility:visible}
+.upd.play .tail{animation:fadeup .45s ease 1.55s both}
+
+/* the logo and the pictures */
+.mstage{position:relative;display:flex;justify-content:center;align-items:center;height:92px;margin:0 0 10px}
+.mstage.wsc{gap:14px;flex:0 0 auto}
+.mlogo{position:relative;width:168px;aspect-ratio:1200/624;max-width:100%}
+.mstage.wsc .mlogo{width:140px}
+.mlogo img{position:absolute;inset:0;width:100%;height:100%;display:block;-webkit-mask:var(--m-body) 0 0/100% 100% no-repeat;mask:var(--m-body) 0 0/100% 100% no-repeat}
+.mlogo .mgear{position:absolute;left:80.867%;top:-1.157%;width:19.667%;height:37.821%;background:url(gear.png) 0 0/100% 100% no-repeat}
+.mlogo .msp{position:absolute;inset:0;background:url(logo-notagames.png) 0 0/100% 100% no-repeat;clip-path:polygon(88.42% 46.88%, 86.58% 46.88%, 85.33% 46.39%, 83.50% 44.95%, 82.00% 43.03%, 80.79% 40.71%, 80.04% 38.62%, 79.38% 35.90%, 78.79% 31.89%, 77.67% 30.37%, 76.54% 28.37%, 75.62% 25.64%, 75.54% 23.08%, 75.71% 22.28%, 75.71% 21.15%, 74.71% 18.91%, 74.79% 16.99%, 75.12% 14.74%, 76.12% 10.90%, 77.54% 7.37%, 78.75% 5.37%, 79.75% 4.41%, 80.83% 3.77%, 82.67% 3.29%, 82.75% 3.12%, 84.83% 3.12%, 86.08% 3.77%, 87.00% 4.73%, 87.12% 4.97%, 87.12% 5.77%, 88.29% 7.85%, 88.71% 8.97%, 89.38% 11.70%, 89.88% 15.22%, 90.29% 17.31%, 90.50% 17.71%, 91.92% 18.99%, 92.75% 20.11%, 94.04% 22.76%, 94.62% 24.52%, 95.04% 26.44%, 95.29% 28.37%, 95.29% 29.65%, 95.71% 31.09%, 95.71% 32.05%, 95.62% 32.21%, 95.62% 33.65%, 95.54% 33.81%, 95.46% 35.42%, 95.12% 37.34%, 94.62% 39.26%, 93.50% 41.91%, 91.58% 44.79%, 90.00% 46.23%, 88.42% 46.88%);transform-origin:85.23% 25.19%}
+.mlogo .mshine{position:absolute;inset:0;overflow:hidden;-webkit-mask:url(logo-notagames.png) 0 0/100% 100% no-repeat,var(--m-nogear) 0 0/100% 100% no-repeat;-webkit-mask-composite:source-in;mask:url(logo-notagames.png) 0 0/100% 100% no-repeat,var(--m-nogear) 0 0/100% 100% no-repeat;mask-composite:intersect}
+.mlogo .mshine::before{content:"";position:absolute;top:0;bottom:0;width:30%;left:-30%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent)}
+.mstage .spk{position:absolute;width:11px;height:11px;background:#fff;opacity:0;clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%)}
+.mstage .spk.a{background:var(--accent)}
+/* working, from the landing: the sponge scrubs, the gear turns fast, now and then a light runs over it.
+   The gear takes 2.4 s a turn (a tooth every 0.2 s) and the scrub 1.1 s, so both are at rest every 2.2 s;
+   launcher.js puts the all-in moment on such a beat, so the switch to the celebration doesn't jerk */
+.upd.play .mlogo{animation:unseen 1.3s}
+.upd.play .mlogo .mgear{animation:gspin 2.4s linear 1.3s infinite}
+.upd.play .mlogo .msp{animation:scrub 1.1s ease-in-out 1.3s infinite}
+.upd.play .mlogo .mshine::before{animation:mshine 3.2s ease-in-out 2.3s infinite}
+@keyframes scrub{0%,100%{transform:none}25%{transform:translate(-2.5%,1.5%) rotate(-7deg)}75%{transform:translate(2%,-1%) rotate(6deg)}}
+@keyframes mshine{0%{left:-30%}30%,100%{left:100%}}
+/* all in (.fin): the picture steps aside and the logo slides to the middle; .4 s later it celebrates
+   (a little pop, one quick turn of the gear, the sponge hops, a few stars twinkle), then the log makes way
+   for the countdown card. The first gspin is the running one, unchanged, so the gear keeps its place;
+   --late makes up for a timer that fired a little late */
+.upd.play.fin .scbox{animation:scout .45s cubic-bezier(.4,0,.2,1) both}
+.upd.play.fin .mlogo{animation:mpop .6s cubic-bezier(.3,1.4,.5,1) .4s both}
+.upd.play.fin .mlogo .mgear{animation:gspin 2.4s linear 1.3s infinite,gfast .9s cubic-bezier(.2,.7,.3,1) calc(.4s + var(--late,0s)) forwards,gspin 9s linear calc(1.3s + var(--late,0s)) infinite}
+.upd.play.fin .mlogo .msp{animation:mhop .55s ease-out .45s forwards}
+.upd.play.fin .mlogo .mshine::before{animation:mshine 3.2s ease-in-out 2.3s infinite,shine .75s ease-in-out .75s forwards}
+.upd.play.fin .mstage .spk{animation:twinkle .75s ease-out calc(.4s + var(--st)) both}
+.upd.play.fin .tail .logbox{animation:logout .35s ease .85s forwards}
+.upd.play.fin .tail .again{animation:fadeup .45s ease 1.1s both}
+@keyframes scout{0%{width:96px;margin-left:0;opacity:1}100%{width:0;margin-left:-14px;opacity:0}}
+@keyframes mpop{0%,100%{transform:none}40%{transform:scale(1.07)}}
+@keyframes gfast{from{rotate:0deg}to{rotate:360deg}}
+@keyframes mhop{0%,100%{transform:none}40%{transform:translateY(-9%) rotate(-7deg)}70%{transform:translateY(1%) rotate(2deg)}}
+@keyframes twinkle{0%{opacity:0;transform:scale(0) rotate(0)}40%{opacity:1;transform:scale(1) rotate(45deg)}100%{opacity:0;transform:scale(.3) rotate(90deg)}}
+/* the header logo glides, growing, along a soft arc to its place above the bar (x and y eased apart);
+   the name in the header slides over into the space it leaves. --fl/--ft/--fw/--dx/--dy/--k are measured */
+.fly{position:absolute;left:var(--fl,16px);top:var(--ft,10px);z-index:3;pointer-events:none;opacity:0}
+.fly img{display:block;width:var(--fw,50px);height:auto;transform-origin:0 0}
+.fly.go{animation:flyx 1.1s cubic-bezier(.4,0,.25,1) .2s both}
+.fly.go img{animation:flyy 1.1s cubic-bezier(.5,0,.3,1) .2s both}
+@keyframes flyx{0%{opacity:1;transform:none}99.9%{opacity:1;transform:translateX(var(--dx,0))}100%{opacity:0;transform:translateX(var(--dx,0))}}
+@keyframes flyy{0%{transform:none}100%{transform:translateY(var(--dy,0)) scale(var(--k,1))}}
+.hlogo.away{animation:hlaway .5s cubic-bezier(.4,0,.2,1) .2s both}
+.hlogo.back{animation:hlback .4s cubic-bezier(.4,0,.2,1) both}
+@keyframes hlaway{0%{opacity:0;width:50px}100%{opacity:0;width:0;margin-right:-10px}}
+@keyframes hlback{0%{opacity:0;width:0;margin-right:-10px}70%{opacity:0}100%{opacity:1;width:50px;margin-right:0}}
+/* ===== the countdown card (after updating, and when a restart after an in-game update failed) ===== */
+.again{display:flex;gap:14px;align-items:center;padding:12px 14px;border-radius:10px;background:rgba(82,199,184,.10);border:1px solid rgba(82,199,184,.45)}
+.again .cd{position:relative;width:46px;height:46px;flex:0 0 auto}
+.again .cd svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.again .cd circle{fill:none;stroke-width:3}
+.again .cd .track{stroke:rgba(232,239,247,.15)}
+.again .cd .run{stroke:var(--accent);stroke-dasharray:126;stroke-dashoffset:0;stroke-linecap:round}
+.again .cd .num{position:absolute;inset:0;display:grid;place-items:center;font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+/* the ring empties evenly over the whole count (--cd, set by launcher.js); the number (10 to 1, from
+   launcher.js) comes in with a small pop each second */
+.again.counting .cd .run{animation:drain var(--cd,10s) linear both}
+.again .cd .num.tick{animation:tick .3s cubic-bezier(.3,1.4,.5,1) both}
+@keyframes drain{from{stroke-dashoffset:0}to{stroke-dashoffset:126}}
+@keyframes tick{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
+.again .at{flex:1 1 auto;min-width:0;line-height:1.5}
+.again .at b{display:block}
+.again .start-now{height:32px;padding:0 14px}
+
+/* ===== 3: failed ===== */
+.fail.play{animation:xcome .3s ease both}
+.one{flex-direction:column;gap:0;padding:6px 24px 14px}
+.errrow{display:flex;gap:14px;align-items:flex-start}
+.errtext .ls{margin:0}
+.fail.play .errtext{animation:fadeup .45s ease .3s both}
+/* what happened to the game folder, always said */
+.okpill{display:inline-flex;align-items:center;gap:8px;margin-top:10px;padding:6px 12px 6px 8px;border-radius:999px;background:rgba(82,199,184,.12);border:1px solid rgba(82,199,184,.45);font-weight:600}
+.okpill .mk{width:18px;height:18px;background:var(--accent)}
+.okpill .mk::after{content:"";width:8px;height:4px;border-left:2px solid var(--on-accent);border-bottom:2px solid var(--on-accent);transform:translate(0,-1px) rotate(-45deg)}
+.okpill.warn{background:rgba(243,201,139,.12);border-color:rgba(243,201,139,.5);color:var(--warn)}
+.okpill.warn .mk{background:var(--warn);color:#2e2210;font-size:12px;font-weight:700}
+.okpill.warn .mk::after{content:"!";width:auto;height:auto;border:0;transform:none}
+.fail.play .okpill{animation:fadeup .45s ease .5s both}
+.already{margin:8px 0 0;color:var(--dim);font-size:11.5px;line-height:1.5}
+.fail .again{margin-top:12px}
+.fail.play .again{animation:fadeup .45s ease .6s both}
+/* the rest follows the pill, so nothing shows before the heading */
+.fail.play .already{animation:fadeup .45s ease .55s both}
+.fail.play details.det{animation:fadeup .45s ease .7s both}
+details.det{margin-top:14px;flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+details.det summary{cursor:pointer;color:var(--accent);width:max-content;list-style:none;border-radius:3px}
+details.det summary::before{content:"\25B8";display:inline-block;margin-right:6px;transition:transform .2s}
+details.det[open] summary::before{transform:rotate(90deg)}
+details.det summary::-webkit-details-marker{display:none}
+details.det .logbox{margin-top:8px;max-height:120px}
+
+/* ===== reduced motion: nothing moves; the states still show ===== */
+.reduced .lw *,.reduced .lw *::before,.reduced .lw *::after{animation:none !important;transition:none !important}
+.reduced .fly,.reduced .hlogo.away{display:none}
+.reduced .upd.fin .scbox{display:none}
+.reduced .upd.fin .tail .logbox{visibility:hidden}
+/* the countdown's number still changes every second, and the ring steps down with it (launcher.js) */
