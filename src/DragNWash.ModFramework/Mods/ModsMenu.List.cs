@@ -720,11 +720,34 @@ namespace DragNWash.ModFramework.Mods
                 image.raycastTarget = false;
                 return;
             }
-            string name = ShortName(entry.DisplayName);
+            string name = DropPublisher(ShortName(entry.DisplayName));
             ModsLook.Shape(icon.gameObject, ModsLook.Rounded, InitialsColors[StableHash(entry.Guid ?? name) % InitialsColors.Length], side * 0.25f).raycastTarget = false;
             TMP_Text letters = ModsLook.Text(icon, "Initials", Escape(Initials(name)), side * 0.4f, ModsLook.Inset, FontStyles.Bold, false);
             letters.alignment = TextAlignmentOptions.Center;
             letters.overflowMode = TextOverflowModes.Overflow;
+        }
+
+        // A leading "Drag'n Wash" (either apostrophe, any case) is the publisher's own
+        // name, not the mod's: "Drag'n Wash Localization" is known by "Localization"
+        // here, the same as a library already is by ShortName's colon. Kept whole when
+        // nothing is left after it ("Drag'n Wash" alone is DW, not just a stray D).
+        private static string DropPublisher(string name)
+        {
+            const string prefix1 = "drag'n wash";
+            const string prefix2 = "drag’n wash";
+            string lower = name.ToLowerInvariant();
+            bool has = lower.StartsWith(prefix1, StringComparison.Ordinal) || lower.StartsWith(prefix2, StringComparison.Ordinal);
+            if (!has || name.Length <= prefix1.Length)
+            {
+                return name;
+            }
+            char after = name[prefix1.Length];
+            if (after != ' ' && after != ':' && after != '-')
+            {
+                return name;
+            }
+            string rest = name.Substring(prefix1.Length + 1).TrimStart(' ', ':', '-');
+            return rest.Length > 0 ? rest : name;
         }
 
         // "Drag'n Wash ModFramework: Inspector" is known by "Inspector".
