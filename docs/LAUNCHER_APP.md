@@ -1,0 +1,113 @@
+# Launcher: the program that runs before the game
+
+[日本語](LAUNCHER_APP.ja.md)
+
+> **Built**: `Launcher.exe` itself, with its window. The installer doesn't put it in the game folder or set the launch option yet, and the game's Update button doesn't use it yet; those come next. What the game writes for it (`updates.json`) is described in `docs/LAUNCHER.md`.
+
+When the game's update check found a new version of a mod last time you played, the launcher shows it before the game starts: what changed, and a button to install it and play. You no longer have to open GitHub, download the zip and run Install.exe again. The game isn't running yet at that point, so no file is in use.
+
+## Where it is and how it starts
+
+`<game>\BepInEx\DragNWash.Installer\Launcher.exe`, with the three WebView2 files next to it (`Microsoft.Web.WebView2.Core.dll`, `Microsoft.Web.WebView2.WinForms.dll`, `WebView2Loader.dll`). The framework's zip has them at that path.
+
+Steam's launch option:
+
+```
+"<game>\BepInEx\DragNWash.Installer\Launcher.exe" %command%
+```
+
+Steam replaces `%command%` with the game's exe and its arguments. The launcher starts exactly that, stays running as the game's parent until the game exits (so Steam keeps counting play time), and sets `DNW_LAUNCHER=1` for the game so the game knows the launcher is waiting.
+
+The other way in is for a game that was started without the launcher:
+
+```
+Launcher.exe --update-after-exit --wait-pid <pid> [--mods <guid>,<guid>]
+```
+
+It waits for that process to exit, installs the updates, and asks Steam to start the game again (`steam://rungameid/4739660`). Without `--mods`, the mods come from `update-request.json`.
+
+## What happens
+
+**Before the game starts**
+
+1. It reads `BepInEx/cache/DragNWash.ModFramework/updates.json`. This is a file read only: the launcher doesn't go online to look for updates. The game does that, once a day.
+2. When there's nothing to show (no newer version, the file isn't there yet, the game's update check is off, or every update is one you skipped), the game starts straight away and the logo plays while it loads. The window closes once the game's window is up.
+3. Otherwise the logo moves up and the list of updates comes in: each mod with its version now and the new one, the size, and its release notes. Tick the ones you want. **Update and play** installs them and starts the game; **Play without updating** just starts it. **Skip this version** stops that version of that mod from bringing the window up again; the next version will.
+4. The list only offers a checkbox for mods the installer put in (their folder has `mod-install.json`). Other mods get **Open release page** instead.
+
+A version already installed since the game looked (the mod's `mod-install.json` says so) isn't shown.
+
+**After an update asked for in the game**
+
+The game writes `BepInEx/cache/DragNWash.ModFramework/update-request.json` and quits. When the game exits, the launcher finds the file (only one written after this launch counts; it's deleted once read), shows the update screen, installs, counts down 3 seconds and starts the game again with the same command. **Don't start it now** closes the window instead.
+
+**Without WebView2**
+
+No window at all. The game starts as usual (or, after `--update-after-exit`, Steam is asked to start it without updating), and the log says why. The Mods screen still links to each release page.
+
+**If anything goes wrong**
+
+The game still starts. A failure while updating shows what happened and what became of the game folder. Before the game, you can try again or play without updating. After an update asked for in the game, the game starts again unchanged after the countdown.
+
+## Installing
+
+The launcher goes online only after you press **Update and play** (or Update in the game), and only to github.com and release-assets.githubusercontent.com.
+
+- **Which file.** The release's zip: the only `.zip`, or, when there are several, the one with the version in its name (like `DragNWash.ModFramework-1.5.1.zip`). A release where neither is true gets only the release page.
+- **Which address.** Built from the repository and the tag in `updates.json`: `https://github.com/<owner>/<repo>/releases/download/<tag>/<file>`. The address in the file has to be exactly that, or the zip isn't used. The release page opened by **Open release page** has to be on github.com under the same repository.
+- **Checks.** The download has to be the size GitHub gave, and have the SHA-256 GitHub gave. Files uploaded before GitHub started giving a SHA-256 are checked by size only, and the log says so. Then the zip has to hold `mod-install.json` next to a `BepInEx` folder, for the mod's own folder under `plugins`. A zip that fails a check is not used, and nothing in the game folder has changed.
+- **Installing.** With Install.exe's own code (the files in `installer/` are compiled into both), the same way `Install.exe --install` does it: the mod's choices keep what the config file says, a pinned ModFramework is fetched when needed, and a framework part is never replaced by an older one. The files it replaces are backed up to `BepInEx\DragNWash.Installer\backup\<date_time>` first, and if copying fails, everything is put back.
+- **Several mods** are downloaded and checked first, then installed one after another. Each install is complete on its own, so if the second one fails, the first stays updated (the failure screen says so). As with Install.exe, only the last install's backup is kept.
+- **Cancel** works until the checks are done. Until then nothing is written to the game folder.
+
+## Settings
+
+The launcher reads `[Launcher]` in `BepInEx\config\com.tomxv.dragnwash.modframework.cfg` (the game registers these, so they show in the Mods screen too). Missing means the default.
+
+| Setting | Values |
+|---|---|
+| `Logo lettering` | `Handwriting` (default), `Typewriter`: how MOD FRAMEWORK comes in on the logo |
+| `Progress bar` | `Bottom edge` (default), `Under text`: where the logo screen's progress bar sits |
+
+The window is in Japanese when Drag'n Wash Localization is set to Japanese (`TargetLocale` in its config), otherwise in English; without Localization's setting it follows Windows' language. Release notes show their `## 日本語` section in Japanese and the rest in English.
+
+## Files
+
+| File | |
+|---|---|
+| `BepInEx/cache/DragNWash.ModFramework/updates.json` | Read. Written by the game. |
+| `BepInEx/cache/DragNWash.ModFramework/update-request.json` | Read and deleted. Written by the game. |
+| `BepInEx/cache/DragNWash.ModFramework/launcher-state.json` | The launcher's own: `{ "schema": 1, "skipped": { "<guid>": "<tag>" } }` |
+| `BepInEx/DragNWash.Installer/launcher.log` | This run's log, in English. The run before is `launcher.prev.log`. |
+| `%LOCALAPPDATA%\DragNWash ModFramework\Launcher\WebView2` | WebView2's own data for the window. |
+
+## The window
+
+A borderless 720 × 440 window with WebView2 (part of Windows 10 and 11). The page (`launcher/web/`) is inside the exe and served from it at `https://launcher.invalid/`: the page can't load anything else, can't go online, and can't open other pages. **Open release page** and **Open the log folder** go through the launcher, which checks the address and opens it in your browser.
+
+The page and the launcher talk in small JSON messages. The page posts `{cmd, ...}` with `chrome.webview.postMessage`, and the launcher calls `window.dnw(event)`:
+
+- **Page to launcher**: `ready`, `introDone`, `update` (the ticked mods), `skip`, `open` (a mod's release page), `proceed`, `cancel`, `retry`, `play`, `close`, `minimize`, `drag`, `openLog`, `copy`.
+- **Launcher to page**: `init` (the mode, language, settings and mods), `step` (`wait`, `dl`, `chk`, `bak`, `ins`), `download` (bytes), `verified` (one zip passed), `checked` (all passed; the launcher writes nothing until the page answers `proceed`, once its check pictures are done), `log`, `done`, `failed`, `cancelled`.
+
+The launcher's work can be far ahead of the pictures, so the page queues the events and shows each step for at least the time it has in the design.
+
+## Building and testing
+
+`tools/pack.ps1` builds it into the framework's zip. By hand:
+
+```
+dotnet build launcher/DragNWash.Launcher.csproj -c Release -warnaserror
+```
+
+A Debug build also reads these environment variables, for trying it without GitHub, Steam or the game; a Release build ignores them:
+
+| Variable | |
+|---|---|
+| `DNW_LAUNCHER_LOCAL_RELEASES=<folder>` | Copies the zips from this folder instead of downloading them. |
+| `DNW_LAUNCHER_FAIL=offline\|busy\|limited\|notfound` | With the above, fails the download that way. |
+| `DNW_LAUNCHER_NO_WEBVIEW2=1` | Behaves as if WebView2 isn't installed. |
+| `DNW_LAUNCHER_NO_STEAM=1` | Doesn't ask Steam to start the game. |
+| `DNW_LAUNCHER_WEB=<launcher/web folder>` | Serves the page from disk, so it can be changed without building again. |
+
+Any exe named `DragNWash.exe` in a folder with `BepInEx\core\BepInEx.dll` will do as the game.
