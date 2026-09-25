@@ -52,7 +52,8 @@ button{font:inherit;color:inherit}
 .lhead.reveal{animation:hofade .5s ease .35s both}
 .hlogo{height:26px;width:auto;flex:0 0 auto;display:block}
 .hlogo.landing{visibility:hidden}
-.app{font-weight:700;font-size:13px;white-space:nowrap}
+/* a long mod name gives way (cut with …) before the window buttons do */
+.app{font-weight:700;font-size:13px;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis;flex-shrink:3}
 .statewrap{display:grid;min-width:0}
 .statewrap > span{grid-area:1/1;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .3s ease}
 .statewrap > span.on{opacity:1}
@@ -105,6 +106,8 @@ button{font:inherit;color:inherit}
 /* the lead names the mods; long names are cut at three lines so the steps keep their room (the names are on
    the line under the bar and in the log too) */
 .upd .col-l .ls{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+/* the heading and the lead keep their lines; a long list below them scrolls instead */
+.upd .col-l > .lh,.upd .col-l > .ls{flex-shrink:0}
 
 /* steps: to do → now → done */
 .steps{list-style:none;margin:2px 0 0;padding:0;display:flex;flex-direction:column;gap:9px}

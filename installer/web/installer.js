@@ -1095,6 +1095,7 @@ function init(e) {
   root.classList.toggle('mf-write', e.lettering !== 'type');
   root.classList.toggle('pb-edge', e.bar !== 'text');
   $('app').textContent = e.mod ? `${e.mod.name} ${e.mod.version}` : "Drag'n Wash Mod Installer";
+  $('app').title = $('app').textContent;
   Head.langs();
   S.mod = e.mod ? { name: e.mod.name, icon: e.mod.icon || '' } : null;
   if (e.failed) {

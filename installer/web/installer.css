@@ -138,7 +138,7 @@
 .scbox .micon{position:absolute;right:-4px;bottom:-4px}
 
 /* done: the steps give way to what was done, the log to the ready card; the logo and the progress card stay */
-.done-b .sumh{font-size:12px;font-weight:600;color:var(--dim);margin:2px 0 6px}
+.done-b .sumh{font-size:12px;font-weight:600;color:var(--dim);margin:2px 0 6px;flex-shrink:0}
 .sum{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(232,239,247,.35) transparent;font-size:12px;user-select:text;cursor:auto}
 .sum .st{line-height:1.45}
 .sum .st .mk{width:16px;height:16px;margin-top:1px}
