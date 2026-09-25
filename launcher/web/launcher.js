@@ -148,6 +148,9 @@ function fmtDay(iso) {
 
 // "Drag'n Wash Localization" → "Localization" where space is short, as the mock does
 const shortName = (name) => String(name || '').replace(/^drag'?n\s*wash\s+/i, '');
+
+// the launcher's long path in the launch options, cut down to "…\DragNWash.Installer\Launcher.exe"
+const shortLauncher = (options) => String(options || '').replace(/"[^"]*[\\/](DragNWash\.Installer[\\/]Launcher\.exe)"/gi, '"…\\$1"');
 const modLabel = (name, version) => `${shortName(name)} ${version || ''}`.trim();
 
 // ---------- state ----------
@@ -160,6 +163,7 @@ const S = {
   skipped: {},     // "Skip this version", per mod
   restart: false,  // update after quitting: the game starts again at the end
   wait: false,     // ... and the first step waits for the game to close
+  option: null,    // 'on' or 'off': the launch option switched from the Mods screen, on the updating board
   board: '',       // intro | list | upd | fail
 };
 
@@ -529,14 +533,16 @@ const PACE = {
   beat: 2.2,                           // the gear (a tooth every 0.2 s) and the scrub (1.1 s) are both at rest every 2.2 s
   countdown: 1.5,                      // from the all-in moment to the countdown starting (the celebration comes first)
   stepIn: .5, stepGap: .15,            // the steps come in one after another
+  steam: 1.8, opt: 1.8,                // the launch option's steps: closing Steam (its window shrinks away), the change
+  failAfter: 2.4,                      // the launch option: a failure shows once its step has been up this long
 };
 
 /* What the bar and the percent show, as in the mock: download 0–45 % (by bytes), check 45–60 % (by ticks),
    backup 60–72 %, install 72–100 %. Nothing runs faster than its step's minimum time. */
 const BAR = { dl: 45, chk: 60, bak: 72 };
 
-const STEP_NAME = { wait: 'stepWait', dl: 'stepDl', chk: 'stepChk', bak: 'stepBak', ins: 'stepIns' };
-const PHASE_NAME = { wait: 'phaseWait', dl: 'phaseDl', chk: 'phaseChk', bak: 'phaseBak', ins: 'phaseIns' };
+const STEP_NAME = { wait: 'stepWait', dl: 'stepDl', chk: 'stepChk', bak: 'stepBak', ins: 'stepIns', steam: 'stepSteam', opt: 'stepOpt' };
+const PHASE_NAME = { wait: 'phaseWait', dl: 'phaseDl', chk: 'phaseChk', bak: 'phaseBak', ins: 'phaseIns', steam: 'phaseSteam', opt: 'phaseOpt' };
 
 const Updating = {
   timers: new Timers(),
@@ -581,9 +587,10 @@ const Updating = {
     cancel.hidden = S.restart;
     cancel.disabled = false;
 
-    this.keys = [...(S.wait ? ['wait'] : []), 'dl', 'chk', 'bak', 'ins', 'go'];
+    this.keys = S.option ? ['wait', 'steam', 'opt', 'go'] : [...(S.wait ? ['wait'] : []), 'dl', 'chk', 'bak', 'ins', 'go'];
     const size = S.chosen.every((m) => m.size > 0) ? fmtSize(S.chosen.reduce((sum, m) => sum + m.size, 0)) : '';
-    const small = { dl: t('smallDl', S.chosen.length, size), chk: t('smallChk'), bak: t('smallBak'), ins: t('smallIns') };
+    const small = S.option ? { steam: t('smallSteam'), opt: t('smallOpt') }
+      : { dl: t('smallDl', S.chosen.length, size), chk: t('smallChk'), bak: t('smallBak'), ins: t('smallIns') };
     const steps = $('steps');
     steps.textContent = '';
     this.keys.forEach((key, i) => {
@@ -669,6 +676,10 @@ const Updating = {
         return this.stepGate(now);
       case 'done':
         return this.cur ? this.stepGate(now) : PACE.firstStep - now;
+      case 'failed':
+        // the launch option's failures can come the moment their step starts; they wait for it to be seen
+        if (!S.option) return 0;
+        return this.cur ? this.curAt + PACE.failAfter - now : PACE.firstStep - now;
       case 'download':
         return this.fileIdx && e.index > this.fileIdx ? this.fileAt + this.fileMin - now : 0;
       case 'verified':
@@ -689,11 +700,12 @@ const Updating = {
   // when the step on screen may give way to the next one
   stepGate(now) {
     if (this.cur === 'chk') return this.chkDoneAt === null ? Infinity : this.chkDoneAt - now;
-    if (this.cur === 'wait') {
-      // the game has closed: its window shrinks away, then the next step starts
+    if (this.cur === 'wait' || this.cur === 'steam') {
+      // the game (or Steam) has closed: its window shrinks away, then the next step starts
+      const key = this.cur;
       if (this.closingAt === null) {
-        this.closingAt = Math.max(now, this.curAt + PACE.wait - PACE.closing);
-        this.timers.after(this.closingAt - now, () => this.picture('wait').classList.add('closing'));
+        this.closingAt = Math.max(now, this.curAt + PACE[key] - PACE.closing);
+        this.timers.after(this.closingAt - now, () => this.picture(key).classList.add('closing'));
       }
       return this.closingAt + PACE.closing - now;
     }
@@ -725,10 +737,13 @@ const Updating = {
       chk: this.chkLine(1),
       bak: t('subBak'),
       ins: this.allNames(),
+      steam: t('subSteam'),
+      opt: t('subOpt'),
     }[key];
     swapText($('psub'), sub);
     this.cur = key;
     this.curAt = now;
+    this.closingAt = null;
     if (key === 'chk') {
       this.sweepIdx = 1;
       this.sweep();
@@ -861,6 +876,7 @@ const Updating = {
   // everything is in: the finale waits for a beat when the gear and the sponge are at rest
   onDone(e, now) {
     this.backup = e.backup || '';
+    this.options = e.options || '';
     let at = now;
     if (!reduced()) at = PACE.land + PACE.beat * Math.ceil((now - PACE.land) / PACE.beat - 1e-6);
     this.T = at;
@@ -876,7 +892,7 @@ const Updating = {
     this.showPicture(null);
     this.cur = 'fin';
     swapText($('plabel'), t('phaseDone'));
-    swapText($('psub'), this.allNames());
+    swapText($('psub'), S.option ? t('subDone', shortLauncher(this.options)) : this.allNames());
     if (S.restart && this.backup) $('upd-net').textContent = t('netRestart', this.backup);
     node.classList.add('fin');
     Countdown.start($('upd-again'), reduced() ? 0 : PACE.countdown);
@@ -886,6 +902,7 @@ const Updating = {
 
   barTarget(now) {
     const since = now - this.curAt;
+    if (S.option) return this.optionBar(now, since);
     switch (this.cur) {
       case 'dl': return BAR.dl * Math.min(this.dlShare, since / PACE.dl);
       case 'chk': return BAR.dl + (BAR.chk - BAR.dl) * this.ticks / Math.max(1, this.zips || S.chosen.length);
@@ -894,6 +911,20 @@ const Updating = {
         // creeps on while installing; once the all-in moment is known it heads for 100 % right then
         if (this.T !== null) return this.insFrom + (100 - this.insFrom) * Math.min(1, (now - this.insFromAt) / Math.max(.1, this.T - this.insFromAt));
         return BAR.bak + (96 - BAR.bak) * Math.min(1, since / 2.1);
+      case 'fin': return 100;
+      default: return 0;
+    }
+  },
+
+  // the launch option: waiting 0–8 %, closing Steam creeps towards 50 %, the change to 90 %, then 100 % at the
+  // all-set moment
+  optionBar(now, since) {
+    switch (this.cur) {
+      case 'wait': return 8 * Math.min(1, since / PACE.wait);
+      case 'steam': return 8 + 42 * (1 - Math.exp(-since / 1.2));
+      case 'opt':
+        if (this.T !== null) return this.insFrom + (100 - this.insFrom) * Math.min(1, (now - this.insFromAt) / Math.max(.1, this.T - this.insFromAt));
+        return 50 + 40 * Math.min(1, since / 1.4);
       case 'fin': return 100;
       default: return 0;
     }
@@ -934,7 +965,7 @@ function onCancelled() {
 
 // ---------- 3: failed ----------
 
-const FAIL_KINDS = ['offline', 'busy', 'limited', 'notfound', 'mismatch', 'install', 'running', 'otherloader', 'other'];
+const FAIL_KINDS = ['offline', 'busy', 'limited', 'notfound', 'mismatch', 'install', 'running', 'otherloader', 'other', 'steamstuck', 'writefail'];
 
 const Fail = {
   details: '',
@@ -959,9 +990,11 @@ const Fail = {
     $('fail-folder-text').textContent = e.changed === 'partly' ? t('folderPartly')
       : e.changed === 'restored' ? t('folderRestored', e.files || 0)
         : t('folderSame');
+    // under it: the updates that were in before this one failed, or the launch option's backup that stays
     const updated = Array.isArray(e.updated) ? e.updated : [];
-    $('fail-updated').hidden = updated.length === 0;
-    $('fail-updated').textContent = updated.length ? t('alreadyUpdated', updated) : '';
+    const under = updated.length ? t('alreadyUpdated', updated) : e.backupKept ? t('backupKept', S.init.backupPath || '') : '';
+    $('fail-updated').hidden = !under;
+    $('fail-updated').textContent = under;
 
     const lines = (Array.isArray(e.detail) ? e.detail : []).map(String);
     const logPath = e.logPath || S.init.logPath;
@@ -1057,6 +1090,12 @@ function init(e) {
   S.init = e;
   lang = e.lang === 'ja' ? 'ja' : 'en';
   root.lang = lang;
+  if (e.mode === 'option') {
+    // a window shows the switch and nothing else, so its words simply take the update's place
+    S.option = e.opt === 'off' ? 'off' : 'on';
+    const words = STRINGS[lang];
+    Object.assign(words, words.launchOption, S.option === 'off' ? words.launchOptionOff : words.launchOptionOn);
+  }
   root.classList.toggle('mf-write', e.lettering !== 'type');
   root.classList.toggle('pb-edge', e.bar !== 'text');
   for (const node of document.querySelectorAll('[data-t]')) node.textContent = t(node.dataset.t);
@@ -1068,7 +1107,7 @@ function init(e) {
   S.restart = !!e.restart;
   S.wait = !!e.wait;
 
-  if (e.mode === 'update') {
+  if (e.mode === 'update' || e.mode === 'option') {
     // straight to updating (B): the mods chosen in the game
     const chosen = S.mods.filter((m) => m.selected);
     S.chosen = chosen.length ? chosen : S.mods;

@@ -415,8 +415,8 @@ button{font:inherit;color:inherit}
 .sc .ink{stroke:var(--ink);stroke-width:2.2}
 .sc .acc{stroke:var(--accent);stroke-width:3}
 .sc .fb{transform-box:fill-box;transform-origin:center}
-/* wait: the game window shrinks away once the game has closed */
-.sc.wait.closing .gw{animation:gclose .9s ease-in -.5s both}
+/* wait (and closing Steam): the window shrinks away once the game (or Steam) has closed */
+.sc:is(.wait,.steam).closing .gw{animation:gclose .9s ease-in -.5s both}
 @keyframes gclose{0%,55%{transform:none;opacity:1}100%{transform:scale(.6);opacity:0}}
 /* download: an arrow drops from a cloud into a tray */
 .sc.dl:is(.on,.leaving) .ar{animation:ardrop .9s ease-in infinite both}
@@ -435,9 +435,9 @@ button{font:inherit;color:inherit}
 @keyframes okpop{0%{transform:scale(0);opacity:1}70%{transform:scale(1.25);opacity:1}100%{transform:none;opacity:1}}
 @keyframes okhide{from{opacity:1}to{opacity:0}}
 @keyframes docswap{0%{transform:none;opacity:1}45%{transform:translateX(-8px);opacity:0}55%{transform:translateX(8px);opacity:0}100%{transform:none;opacity:1}}
-/* backup: a copy of a file flies into a box and the lid hops */
-.sc.bak:is(.on,.leaving) .cp{animation:cpfly 1s ease-in-out infinite both}
-.sc.bak:is(.on,.leaving) .lid{animation:lidhop 1s ease-out infinite both}
+/* backup (and the launch option's change): a copy of a file flies into a box and the lid hops */
+.sc:is(.bak,.opt):is(.on,.leaving) .cp{animation:cpfly 1s ease-in-out infinite both}
+.sc:is(.bak,.opt):is(.on,.leaving) .lid{animation:lidhop 1s ease-out infinite both}
 @keyframes cpfly{0%{transform:none;opacity:0}12%{opacity:1}50%{transform:translate(22px,-14px) rotate(10deg)}84%{transform:translate(45px,12px) scale(.55);opacity:1}100%{transform:translate(45px,18px) scale(.5);opacity:0}}
 @keyframes lidhop{0%,50%{transform:none}62%,80%{transform:translateY(-5px) rotate(-10deg)}94%,100%{transform:none}}
 /* install: files drop into a folder */

@@ -60,6 +60,13 @@
     <Compile Include="..\installer\Strings.cs" Link="Installer\Strings.cs" />
   </ItemGroup>
 
+  <!-- And its Steam side, for the launch option switched from the game's Mods screen:
+       closing Steam, and changing localconfig.vdf with nothing else in it touched. -->
+  <ItemGroup>
+    <Compile Include="..\installer\Steam.cs" Link="Installer\Steam.cs" />
+    <Compile Include="..\installer\SteamConfig.cs" Link="Installer\SteamConfig.cs" />
+  </ItemGroup>
+
   <!-- The page, served to WebView2 from the exe itself: nothing is read from disk. -->
   <ItemGroup>
     <EmbeddedResource Include="web\*" LogicalName="web/%(Filename)%(Extension)" />

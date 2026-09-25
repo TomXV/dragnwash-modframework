@@ -14,7 +14,8 @@ namespace DragNWash.Launcher
     // One showing of the window, from its init to the answer "start the game" (true)
     // or "don't" (false). It runs the updates the page asks for and tells the page
     // how they go. Everything here runs on the window's thread, except the engine.
-    internal sealed class Session : IUpdateEvents
+    // The launch option switched from the Mods screen is in Session.LaunchOption.cs.
+    internal sealed partial class Session : IUpdateEvents
     {
         // Without an answer by then after the update is done, the game starts anyway.
         private static readonly TimeSpan AnswerWait = TimeSpan.FromSeconds(60);
@@ -426,7 +427,8 @@ namespace DragNWash.Launcher
                 "mods", mods,
                 "checkedUtc", checkedUtc,
                 "logPath", Log.Path ?? "",
-                "backupPath", @"BepInEx\" + Installer.Paths.InstallerFolder + @"\backup");
+                "opt", _option,
+                "backupPath", _option != null ? ShownBackup : @"BepInEx\" + Installer.Paths.InstallerFolder + @"\backup");
         }
 
         private static void Shell(string target)

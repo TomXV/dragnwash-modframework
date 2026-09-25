@@ -7,7 +7,8 @@
 </head>
 <body>
 <!-- The page is the launcher's whole window (borderless, 720×440). One header, then one board at a time:
-     the logo intro (0), the updates list (1), updating (2, and B after an in-game update) and failed (3).
+     the logo intro (0), the updates list (1), updating (2, and B after an in-game update or for the launch option
+     switched on the Mods screen) and failed (3).
      launcher.js switches them as events come in from the launcher. -->
 <div class="lw" id="win">
 
@@ -80,6 +81,10 @@
             <svg class="sc chk" viewBox="0 0 84 72"><g class="doc"><path class="ink" d="M25 8H46L56 18V60A3 3 0 0 1 53 63H25A3 3 0 0 1 22 60V11A3 3 0 0 1 25 8Z" style="fill:rgba(255,255,255,.04)"/><path class="ink" d="M46 8V18H56"/><g style="fill:var(--ink);opacity:.75"><rect x="35" y="11" width="4" height="3"/><rect x="39" y="15" width="4" height="3"/><rect x="35" y="19" width="4" height="3"/><rect x="39" y="23" width="4" height="3"/><rect x="35" y="27" width="4" height="3"/></g><rect class="ink" x="35" y="32" width="8" height="9" rx="1.5" style="stroke-width:1.8"/></g><g class="lens"><circle class="acc" r="9" style="fill:rgba(82,199,184,.14)"/><path class="acc" d="M6.5 6.5L14 14" style="stroke-width:4"/><path d="M-5 -2.5A6 6 0 0 1 -1.5 -6" style="stroke:#fff;stroke-width:1.5;opacity:.7"/></g><g class="ok fb"><circle cx="56" cy="58" r="8" style="fill:var(--accent)"/><path d="M52.5 58L55 60.5L59.5 55.5" style="stroke:var(--on-accent);stroke-width:2.2"/></g></svg>
             <svg class="sc bak" viewBox="0 0 84 72"><path class="ink" d="M10 18H20L25 23V42A2 2 0 0 1 23 44H10A2 2 0 0 1 8 42V20A2 2 0 0 1 10 18Z"/><path class="acc fb cp" d="M10 18H20L25 23V42A2 2 0 0 1 23 44H10A2 2 0 0 1 8 42V20A2 2 0 0 1 10 18Z" style="stroke-width:2.2;fill:rgba(82,199,184,.18)"/><path class="ink" d="M47 37V58A2 2 0 0 0 49 60H73A2 2 0 0 0 75 58V37" style="fill:#1b252b"/><path class="ink" d="M56 44H66"/><rect class="ink lid" x="44" y="29" width="34" height="8" rx="2" style="fill:#1b252b;transform-box:fill-box;transform-origin:100% 100%"/></svg>
             <svg class="sc ins" viewBox="0 0 84 72"><path class="ink" d="M14 30H32L37 35H70V61A3 3 0 0 1 67 64H17A3 3 0 0 1 14 61Z" style="fill:rgba(255,255,255,.04)"/><path class="acc cd" d="M30 24H39L43 28V39H30Z" style="stroke-width:2;fill:#1d3a38"/><path class="acc cd c2" d="M45 24H54L58 28V39H45Z" style="stroke-width:2;fill:#1d3a38"/><path class="ink ff fb" d="M11 41H73L69 61A3 3 0 0 1 66 64H18A3 3 0 0 1 15 61Z" style="fill:#1b252b"/></svg>
+            <!-- the launch option's steps reuse two of the pictures: Steam's window shrinks away like the game's,
+                 and the file's copy goes into the box like the backup's -->
+            <svg class="sc steam" viewBox="0 0 84 72"><g class="gw fb"><rect class="ink" x="14" y="12" width="56" height="44" rx="4" style="fill:rgba(255,255,255,.04)"/><path class="ink" d="M14 22H70"/><path class="acc" d="M60 15L65 20M65 15L60 20" style="stroke-width:2.2"/><path d="M36 30V48L50 39Z" style="fill:var(--ink);opacity:.6"/></g></svg>
+            <svg class="sc opt" viewBox="0 0 84 72"><path class="ink" d="M10 18H20L25 23V42A2 2 0 0 1 23 44H10A2 2 0 0 1 8 42V20A2 2 0 0 1 10 18Z"/><path class="acc fb cp" d="M10 18H20L25 23V42A2 2 0 0 1 23 44H10A2 2 0 0 1 8 42V20A2 2 0 0 1 10 18Z" style="stroke-width:2.2;fill:rgba(82,199,184,.18)"/><path class="ink" d="M47 37V58A2 2 0 0 0 49 60H73A2 2 0 0 0 75 58V37" style="fill:#1b252b"/><path class="ink" d="M56 44H66"/><rect class="ink lid" x="44" y="29" width="34" height="8" rx="2" style="fill:#1b252b;transform-box:fill-box;transform-origin:100% 100%"/></svg>
           </div>
         </div>
         <div class="pcard">

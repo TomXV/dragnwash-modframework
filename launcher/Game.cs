@@ -121,6 +121,44 @@ namespace DragNWash.Launcher
             }
         }
 
+        // A launcher that started the game (Steam's launch option) ends right after it. Steam
+        // counts the game as running until that launcher has gone too, so wait for it, for
+        // ten seconds at most.
+        internal static async Task WaitForOtherLaunchers()
+        {
+            for (int i = 0; i < 50 && OtherLauncherRunning(); i++)
+            {
+                await Task.Delay(200);
+            }
+        }
+
+        private static bool OtherLauncherRunning()
+        {
+            string exe;
+            int self;
+            using (Process me = Process.GetCurrentProcess())
+            {
+                exe = me.MainModule.FileName;
+                self = me.Id;
+            }
+            bool found = false;
+            foreach (Process process in Process.GetProcessesByName(System.IO.Path.GetFileNameWithoutExtension(exe)))
+            {
+                using (process)
+                {
+                    try
+                    {
+                        found |= process.Id != self && string.Equals(process.MainModule.FileName, exe, StringComparison.OrdinalIgnoreCase);
+                    }
+                    catch (Exception)
+                    {
+                        // One that can't be asked isn't ours.
+                    }
+                }
+            }
+            return found;
+        }
+
         // For a game that was not started through the launcher: Steam starts it, so it
         // runs with Steam's overlay and play time as usual.
         internal static void StartThroughSteam()

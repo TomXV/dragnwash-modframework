@@ -211,6 +211,22 @@ namespace DragNWash.Installer
 
         internal const string BackupSuffix = ".dnw-backup";
 
+        // Each account's localconfig.vdf that can be read, for saying whether a backup was left.
+        internal static List<string> ConfigFiles()
+        {
+            return Load(_ => { }).Select(a => a.File).ToList();
+        }
+
+        // The game's launch options as the file has them now, in the account that signed in
+        // last (or the first that has played the game); null when there is none to read.
+        internal static string Options()
+        {
+            List<Account> accounts = Load(_ => { });
+            List<string> targets = Targets(accounts, true);
+            Account account = accounts.FirstOrDefault(a => targets.Contains(a.Id));
+            return account == null ? null : LocalConfig.Options(account.Vdf, Paths.SteamAppId);
+        }
+
         private static string Shown(string options) => options.Length == 0 ? "(none)" : "[" + options + "]";
 
         private sealed class Account
