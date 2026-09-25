@@ -57,6 +57,8 @@ namespace DragNWash.Installer
 
         // The game's launch options in Steam, read when the game folder is chosen.
         private Steam.LaunchState _steam = new Steam.LaunchState();
+        // The game folder the launch option box was last set up for.
+        private string _launchDefaultFor;
         private bool _busy;
         private CancellationTokenSource _cancel;
         private bool _closeWhenDone;
@@ -423,6 +425,14 @@ namespace DragNWash.Installer
                 _modeInstall.Checked = true;
             }
             _steam = found ? Steam.State(game) : new Steam.LaunchState();
+            // A launcher already in the game folder but in no launch option was left out on
+            // purpose last time, so the box starts unticked for that folder; otherwise ticked.
+            // Only when the folder changes, so it never undoes the player's own click.
+            if (found && !string.Equals(_launchDefaultFor, game, StringComparison.OrdinalIgnoreCase))
+            {
+                _launchDefaultFor = game;
+                _launchOption.Checked = _steam.AnyHas || !System.IO.File.Exists(Paths.Launcher(game));
+            }
             // The box does something only with a Steam account to set it in and a launcher to start.
             _launchOption.Enabled = !_busy && found && _steam.Accounts > 0 && _core.LauncherAfterInstall(game);
             if (!found)
