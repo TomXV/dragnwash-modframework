@@ -108,6 +108,13 @@ namespace DragNWash.Launcher
         // the game closing; true: start the game again.
         internal static async Task<bool> Restart(GameFiles files, List<ModUpdate> mods, Task waitFor)
         {
+            // The window comes once the game has gone, not over a game still closing. One
+            // that takes longer than ten seconds gets it anyway, so a game stuck on its way
+            // out doesn't leave the player with nothing on the screen.
+            if (await Task.WhenAny(waitFor, Task.Delay(TimeSpan.FromSeconds(10))) != waitFor)
+            {
+                Log.Line("Launcher: the game is still closing after 10 s; the window shows now");
+            }
             var session = new Session(files, null, mods, true);
             Task<bool> shown = session.Show("update", true);
             if (session._window != null && await session._window.Ready)

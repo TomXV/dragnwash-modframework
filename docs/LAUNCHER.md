@@ -116,7 +116,7 @@ Going ahead, the game writes `BepInEx/cache/DragNWash.ModFramework/update-reques
 `gamePid` is the game's process id, and `mods` holds that one mod's GUID. Then:
 
 - **Started by the launcher**: the game just quits, the way its own Quit button does. The launcher is waiting for it, finds the request, updates the mod and starts the game again. The launcher sets `DNW_LAUNCHER=1` for the game it starts; a game without it still counts as started by the launcher when its parent process is `BepInEx/DragNWash.Installer/Launcher.exe`.
-- **Started any other way** (from Steam without the launch option, or from the exe): the game starts `Launcher.exe --update-after-exit --wait-pid <pid> --mods "<guid>"` without a window and then quits. The launcher waits for the game to close, updates the mod and starts the game again through Steam.
+- **Started any other way** (from Steam without the launch option, or from the exe): the game starts `Launcher.exe --update-after-exit --wait-pid <pid> --mods "<guid>"` without a window and then quits. The launcher waits for the game to close before its window shows (or after ten seconds, if the game is slow to close), updates the mod and starts the game again through Steam.
 
 If `Launcher.exe` isn't there, the game writes nothing and doesn't quit. The note says the launcher isn't installed and that running the installer again adds it; **Open release page** stays. If anything else goes wrong, `BepInEx/LogOutput.log` says what, and the page button still works.
 
