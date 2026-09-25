@@ -39,13 +39,3 @@
 .list.reveal{animation:hofade .5s ease .35s both}
 .list.play .mod{animation:fadeup .45s ease var(--t,0s) both}
 .list.play .nhead,.list.play .ncant,.list.play .notes{animation:fadeup .5s ease .35s both}
-/* "Update and play": the button gives a little press, then the list rewinds, each part playing its entrance
-   backwards, last in first out (notes, rows from the bottom up, heading, footer); then the layer goes.
-   --r is a row's place counted from the bottom, --x the extra time for more than two rows */
-.list.rewind{animation:xgone .25s ease calc(.9s + var(--x)) both}
-.list.rewind .nhead,.list.rewind .ncant,.list.rewind .notes{animation:fadeup .3s ease .3s reverse both}
-.list.rewind .mod{animation:fadeup .3s ease calc(.42s + var(--r) * .1s) reverse both}
-.list.rewind .lh,.list.rewind .ls,.list.rewind .total{animation:fadeup .3s ease calc(.62s + var(--x)) reverse both}
-.list.rewind .lfoot > *{animation:fadeup .3s ease calc(.7s + var(--x)) reverse both}
-.list.rewind .lfoot > .lb.pri{animation:press .25s ease .05s both,fadeup .3s ease calc(.7s + var(--x)) reverse both}
-@keyframes press{0%,100%{transform:none}45%{transform:scale(.95)}}
