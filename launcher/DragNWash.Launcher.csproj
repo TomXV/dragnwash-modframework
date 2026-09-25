@@ -68,6 +68,11 @@
     <Compile Include="..\installer\SteamConfig.cs" Link="Installer\SteamConfig.cs" />
   </ItemGroup>
 
+  <!-- The borderless window's frame and the page's lock-down, shared with Install.exe's window. -->
+  <ItemGroup>
+    <Compile Include="..\installer\Chrome.cs" Link="Installer\Chrome.cs" />
+  </ItemGroup>
+
   <!-- The page, served to WebView2 from the exe itself: nothing is read from disk. The parts Install.exe's page
        shares with it (webui/) sit next to its own files, so their names must not clash. -->
   <ItemGroup>
