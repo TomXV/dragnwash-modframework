@@ -31,9 +31,9 @@
 @keyframes okpop{0%{transform:scale(0);opacity:1}70%{transform:scale(1.25);opacity:1}100%{transform:none;opacity:1}}
 @keyframes okhide{from{opacity:1}to{opacity:0}}
 @keyframes docswap{0%{transform:none;opacity:1}45%{transform:translateX(-8px);opacity:0}55%{transform:translateX(8px);opacity:0}100%{transform:none;opacity:1}}
-/* backup (and the launch option's change): a copy of a file flies into a box and the lid hops */
-.sc:is(.bak,.opt):is(.on,.leaving) .cp{animation:cpfly 1s ease-in-out infinite both}
-.sc:is(.bak,.opt):is(.on,.leaving) .lid{animation:lidhop 1s ease-out infinite both}
+/* backup: a copy of a file flies into a box and the lid hops */
+.sc.bak:is(.on,.leaving) .cp{animation:cpfly 1s ease-in-out infinite both}
+.sc.bak:is(.on,.leaving) .lid{animation:lidhop 1s ease-out infinite both}
 @keyframes cpfly{0%{transform:none;opacity:0}12%{opacity:1}50%{transform:translate(22px,-14px) rotate(10deg)}84%{transform:translate(45px,12px) scale(.55);opacity:1}100%{transform:translate(45px,18px) scale(.5);opacity:0}}
 @keyframes lidhop{0%,50%{transform:none}62%,80%{transform:translateY(-5px) rotate(-10deg)}94%,100%{transform:none}}
 /* install: files drop into a folder */
@@ -58,3 +58,211 @@
 @keyframes ghin{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:none}}
 @keyframes ghtry{0%{opacity:.9;transform:scale(.9)}100%{opacity:0;transform:scale(1.35)}}
 @keyframes ghx{from{opacity:0;transform:scale(0)}to{opacity:1;transform:none}}
+
+/* ===== the newer step pictures. Same rules as the first five: viewBox 84×72 in the 96×82 .scbox, .ink 2.2 /
+   .acc 3, loops of about 1–3 s, and the motion runs only while the picture is .on (or .leaving). Each picture's
+   plain, unmoving state is its "done" look, which is what reduced motion shows ===== */
+.sc .slot{fill:none;stroke:var(--ink);stroke-width:1.6;stroke-dasharray:3 3;opacity:.4}
+
+/* steam: the store app (a window with a side list and a power symbol) is asked to quit; the ring goes out
+   while it waits, and it shrinks away like the game window once it has closed */
+.sc.steam .rip{opacity:0}
+.sc.steam:is(.on,.leaving) .rip{animation:pwring 1.2s ease-out infinite}
+.sc.steam:is(.on,.leaving) .pwr{animation:pwbeat 1.2s ease-in-out infinite}
+.sc.steam.closing .rip{animation:none;opacity:0}
+@keyframes pwring{0%{transform:scale(.8);opacity:.8}100%{transform:scale(1.6);opacity:0}}
+@keyframes pwbeat{0%,100%{transform:none}15%{transform:scale(.88)}35%{transform:none}}
+
+/* launch option on: the launcher's chip drops into the empty place in front of the other options */
+.sc.opt:is(.on,.leaving) .chip{animation:chipin 1.8s ease-in-out infinite both}
+.sc.opt:is(.on,.leaving) .fl{animation:fieldlit 1.8s ease-out infinite both}
+.sc.opt .fl{opacity:0}
+@keyframes chipin{0%{transform:translateY(-22px);opacity:0}14%{transform:translateY(-22px);opacity:1}40%{transform:none}47%{transform:translateY(-2.5px)}54%,86%{transform:none;opacity:1}100%{transform:none;opacity:0}}
+@keyframes fieldlit{0%,38%{opacity:0}46%{opacity:.9}80%,100%{opacity:0}}
+/* launch option off: the chip lifts out and its place is left empty */
+.sc.optx:is(.on,.leaving) .chip{animation:chipout 1.8s ease-in-out infinite both}
+@keyframes chipout{0%{transform:none;opacity:0}12%,30%{transform:none;opacity:1}36%{transform:translateY(1.5px)}70%{transform:translateY(-22px);opacity:1}84%,100%{transform:translateY(-24px);opacity:0}}
+.reduced .sc.optx .chip{transform:translateY(-15px);opacity:.6}
+
+/* find the game folder: the lens hops over three folders; at the third the lens steps away, the folder lights
+   and the tick pops (the same tick as the check picture) */
+.sc.find .lz{transform:translate(67px,30px)}
+.sc.find:is(.on,.leaving) .lz{animation:fhunt 2.6s ease-in-out infinite both}
+.sc.find:is(.on,.leaving) .hit{animation:fhit 2.6s linear infinite both}
+.sc.find:is(.on,.leaving) .ok{animation:fok 2.6s linear infinite both}
+@keyframes fhunt{0%{transform:translate(17px,30px);opacity:0}8%,20%{transform:translate(17px,30px);opacity:1}28%{transform:translate(29.5px,23px)}36%,46%{transform:translate(42px,30px)}54%{transform:translate(54.5px,23px)}62%,68%{transform:translate(67px,30px);opacity:1}76%,100%{transform:translate(74px,18px);opacity:0}}
+@keyframes fhit{0%,64%{opacity:0}72%,92%{opacity:1}100%{opacity:0}}
+@keyframes fok{0%,68%{transform:scale(0);opacity:1}75%{transform:scale(1.25)}80%,92%{transform:none;opacity:1}100%{transform:none;opacity:0}}
+.reduced .sc.find .lz{opacity:0}
+
+/* check what's installed: a light band goes down the list and each line gets its tick */
+.sc.scan .band{opacity:0}
+.sc.scan:is(.on,.leaving) .band{animation:scband 2.4s ease-in-out infinite both}
+.sc.scan:is(.on,.leaving) .t1{animation:sct1 2.4s linear infinite both}
+.sc.scan:is(.on,.leaving) .t2{animation:sct2 2.4s linear infinite both}
+.sc.scan:is(.on,.leaving) .t3{animation:sct3 2.4s linear infinite both}
+@keyframes scband{0%{transform:none;opacity:0}8%,22%{transform:none;opacity:1}32%,46%{transform:translateY(13px)}56%,70%{transform:translateY(26px);opacity:1}78%,100%{transform:translateY(26px);opacity:0}}
+@keyframes sct1{0%,18%{transform:scale(0);opacity:1}23%{transform:scale(1.25)}27%,88%{transform:none;opacity:1}100%{transform:none;opacity:0}}
+@keyframes sct2{0%,42%{transform:scale(0);opacity:1}47%{transform:scale(1.25)}51%,88%{transform:none;opacity:1}100%{transform:none;opacity:0}}
+@keyframes sct3{0%,66%{transform:scale(0);opacity:1}71%{transform:scale(1.25)}75%,88%{transform:none;opacity:1}100%{transform:none;opacity:0}}
+
+/* the mod loader goes in: a plug rises into the game window's socket, a spark, and the play mark lights */
+.sc.loader .spk2{opacity:0}
+.sc.loader:is(.on,.leaving) .plug{animation:plugin 1.5s ease-in-out infinite both}
+.sc.loader:is(.on,.leaving) .lit{animation:plit 1.5s linear infinite both}
+.sc.loader:is(.on,.leaving) .spk2{animation:plspk 1.5s ease-out infinite both}
+@keyframes plugin{0%{transform:translateY(9px);opacity:0}14%{transform:translateY(9px);opacity:1}42%{transform:none}48%{transform:translateY(1.5px)}54%,86%{transform:none;opacity:1}100%{transform:none;opacity:0}}
+@keyframes plit{0%,42%{opacity:0}50%,86%{opacity:1}100%{opacity:0}}
+@keyframes plspk{0%,42%{opacity:0}46%{opacity:1}64%,100%{opacity:0}}
+
+/* a setting (Language, or any choice): the list opens, the pick moves to the chosen line and gets a tick,
+   the list closes and the box shows the new value */
+.sc.set .dd{transform-box:fill-box;transform-origin:50% 0}
+.sc.set:is(.on,.leaving) .dd{animation:ddopen 2.6s ease-in-out infinite both}
+.sc.set:is(.on,.leaving) .hl{animation:ddhl 2.6s ease-in-out infinite both}
+.sc.set:is(.on,.leaving) .pk{animation:ddpk 2.6s ease-out infinite both}
+.sc.set:is(.on,.leaving) .val{animation:ddval 2.6s linear infinite both}
+.sc.set:is(.on,.leaving) .chev{animation:ddchev 2.6s ease-in-out infinite both}
+@keyframes ddopen{0%,6%{transform:scaleY(0);opacity:0}16%,66%{transform:none;opacity:1}76%,100%{transform:scaleY(0);opacity:0}}
+@keyframes ddhl{0%,26%{transform:translateY(-12px)}38%,100%{transform:none}}
+@keyframes ddpk{0%,44%{transform:scale(.3);opacity:0}50%{transform:scale(1.2);opacity:1}54%,66%{transform:none;opacity:1}72%,100%{opacity:0}}
+@keyframes ddval{0%,70%{opacity:0}78%,90%{opacity:1}100%{opacity:0}}
+@keyframes ddchev{0%,6%{transform:none}16%,66%{transform:rotate(180deg)}76%,100%{transform:none}}
+
+/* unzip: the zip's pull runs down and two files pop out beside it */
+.sc.unz:is(.on,.leaving) .tab{animation:uztab 1.8s ease-in-out infinite both}
+.sc.unz:is(.on,.leaving) .ua{animation:uzA 1.8s cubic-bezier(.34,1.3,.64,1) infinite both}
+.sc.unz:is(.on,.leaving) .ub{animation:uzB 1.8s cubic-bezier(.34,1.3,.64,1) infinite both}
+.sc.unz .tab{transform:translateY(16px)}
+@keyframes uztab{0%,6%{transform:none}34%,88%{transform:translateY(16px)}100%{transform:none}}
+@keyframes uzA{0%,30%{transform:translate(-28px,20px) scale(.4);opacity:0}36%{opacity:1}54%,88%{transform:none;opacity:1}100%{transform:none;opacity:0}}
+@keyframes uzB{0%,40%{transform:translate(-30px,-2px) scale(.4);opacity:0}46%{opacity:1}64%,88%{transform:none;opacity:1}100%{transform:none;opacity:0}}
+
+/* ----- taking things out. One look for all of them: files and the chip lift out; a whole thing gets the
+   "−" badge (the check picture's tick badge with a minus) and then shrinks away like the game window ----- */
+/* the mod's files rise out of the folder; the grey one (your data) stays */
+.sc.out:is(.on,.leaving) .up{animation:cup 1.2s ease-out infinite both}
+.sc.out:is(.on,.leaving) .up.u2{animation-delay:.6s}
+.sc.out:is(.on,.leaving) .ff{animation:ffup .6s ease-out infinite both}
+@keyframes cup{0%{transform:translateY(14px);opacity:0}15%{opacity:1}62%{transform:translateY(-16px);opacity:1}80%,100%{transform:translateY(-22px);opacity:0}}
+@keyframes ffup{0%{transform:none}15%{transform:translateY(-1.2px)}40%,100%{transform:none}}
+.reduced .sc.out .up{transform:translateY(-12px)}
+.reduced .sc.out .up.u2{transform:translateY(-5px)}
+
+/* shared: the thing goes, and the "−" badge */
+.sc .obj{transform-box:fill-box;transform-origin:center}
+.sc:is(.cfgx,.fwx,.lnx):is(.on,.leaving) .obj{animation:rmgo 2.4s ease-in-out infinite both}
+.sc:is(.cfgx,.fwx,.lnx):is(.on,.leaving) .rm{animation:rmpop 2.4s linear infinite both}
+@keyframes rmgo{0%{transform:scale(.92);opacity:0}8%,60%{transform:none;opacity:1}78%,100%{transform:scale(.6);opacity:0}}
+@keyframes rmpop{0%,40%{transform:scale(0)}46%{transform:scale(1.25)}51%,100%{transform:none}}
+
+/* the settings file: its switches turn off one by one, then it goes */
+.sc.cfgx .kn{fill:var(--ink);transform:translateX(-5px)}
+.sc.cfgx:is(.on,.leaving) .k1{animation:cfk1 2.4s ease-in-out infinite both}
+.sc.cfgx:is(.on,.leaving) .k2{animation:cfk2 2.4s ease-in-out infinite both}
+@keyframes cfk1{0%,14%{transform:none;fill:var(--accent)}22%,88%{transform:translateX(-5px);fill:var(--ink)}90%,100%{transform:none;fill:var(--accent)}}
+@keyframes cfk2{0%,26%{transform:none;fill:var(--accent)}34%,88%{transform:translateX(-5px);fill:var(--ink)}90%,100%{transform:none;fill:var(--accent)}}
+
+/* ModFramework: a gear, turning at the logo gear's pace (2.4 s a turn), then it goes */
+.sc.fwx:is(.on,.leaving) .gr{animation:gspin 2.4s linear infinite}
+
+/* the update launcher: a small window with the update arrows; the arrows go round once, then it goes */
+.sc.lnx .rf{transform-origin:0 0}
+.sc.lnx:is(.on,.leaving) .rf{animation:rfturn 2.4s ease-in-out infinite both}
+@keyframes rfturn{0%,8%{rotate:0deg}40%,100%{rotate:360deg}}
+
+/* the installer's backup: the box opens, a copy rises out and fades, the lid shuts, then the box goes */
+.sc.bakx:is(.on,.leaving) .obj{animation:bxgo 2.6s ease-in-out infinite both}
+.sc.bakx:is(.on,.leaving) .rm{animation:bxrm 2.6s linear infinite both}
+.sc.bakx:is(.on,.leaving) .lid{animation:bxlid 2.6s ease-out infinite both}
+.sc.bakx:is(.on,.leaving) .bc{animation:bxcard 2.6s ease-out infinite both}
+.sc.bakx .bc{opacity:0}
+@keyframes bxgo{0%{transform:scale(.92);opacity:0}6%,64%{transform:none;opacity:1}82%,100%{transform:scale(.6);opacity:0}}
+@keyframes bxrm{0%,46%{transform:scale(0)}52%{transform:scale(1.25)}57%,100%{transform:none}}
+@keyframes bxlid{0%,4%{transform:none}14%,34%{transform:translateY(-5px) rotate(-14deg)}42%,100%{transform:none}}
+@keyframes bxcard{0%,10%{transform:none;opacity:0}14%{opacity:1}32%{transform:translateY(-24px);opacity:1}42%,100%{transform:translateY(-30px);opacity:0}}
+
+/* put back (rollback): the copy flies out of the box back to its empty place: the backup picture played in reverse */
+.sc.rb:is(.on,.leaving) .cb{animation:cpback 1.4s ease-in-out infinite both}
+.sc.rb:is(.on,.leaving) .lid{animation:lidopen 1.4s ease-out infinite both}
+@keyframes cpback{0%{transform:translate(45px,18px) scale(.5);opacity:0}16%{transform:translate(45px,12px) scale(.55);opacity:1}50%{transform:translate(22px,-14px) rotate(-10deg)}84%,92%{transform:none;opacity:1}100%{transform:none;opacity:0}}
+@keyframes lidopen{0%{transform:none}6%,18%{transform:translateY(-5px) rotate(-10deg)}30%,100%{transform:none}}
+
+/* ----- the mod's own icon (ModInfo.IconPath), or the Mods screen's letter tile when it has none ----- */
+/* in: the icon drops into the game folder, the folder dips and two stars twinkle */
+.sc.modin .tw{opacity:0}
+.sc.modin:is(.on,.leaving) .mi{animation:midrop 1.4s ease-in-out infinite both}
+.sc.modin:is(.on,.leaving) .ff{animation:ffdip2 1.4s ease-out infinite both}
+.sc.modin:is(.on,.leaving) .tw{animation:mitw 1.4s ease-out infinite both}
+.sc.modin:is(.on,.leaving) .tw.t2{animation-delay:.08s}
+@keyframes midrop{0%{transform:translateY(-20px);opacity:0}14%{transform:translateY(-20px);opacity:1}42%{transform:translateY(2px)}50%{transform:translateY(-1.5px)}56%,86%{transform:none;opacity:1}100%{transform:none;opacity:0}}
+@keyframes ffdip2{0%,40%{transform:none}48%{transform:translateY(1.5px) scaleY(.96)}60%,100%{transform:none}}
+@keyframes mitw{0%,44%{opacity:0;transform:scale(0) rotate(0)}58%{opacity:1;transform:scale(1) rotate(45deg)}76%,100%{opacity:0;transform:scale(.3) rotate(90deg)}}
+/* out: the "−" badge pops on the icon, then it lifts out of the folder and fades */
+.sc.modout:is(.on,.leaving) .mi{animation:miup 1.8s ease-in-out infinite both}
+.sc.modout:is(.on,.leaving) .rm{animation:mirm 1.8s linear infinite both}
+.sc.modout:is(.on,.leaving) .ff{animation:ffup2 1.8s ease-out infinite both}
+@keyframes miup{0%{transform:none;opacity:0}10%,30%{transform:none;opacity:1}36%{transform:translateY(1.5px)}74%{transform:translateY(-20px);opacity:.9}86%,100%{transform:translateY(-24px);opacity:0}}
+@keyframes mirm{0%,12%{transform:scale(0)}18%{transform:scale(1.25)}22%,100%{transform:none}}
+@keyframes ffup2{0%,34%{transform:none}42%{transform:translateY(-1.2px)}56%,100%{transform:none}}
+.reduced .sc.modout .mi{transform:translateY(-12px)}
+/* update: the update arrows go round the icon, the dim old icon turns over into the new one and the
+   "↑" badge pops */
+.sc.modup .ar2{transform-origin:0 0}
+.sc.modup .flip{transform-box:fill-box;transform-origin:center}
+.sc.modup .old{opacity:.42}
+.sc.modup:is(.on,.leaving) .ar2{animation:gspin 2.4s linear infinite}
+.sc.modup:is(.on,.leaving) .flip{animation:muflip 2.4s ease-in-out infinite both}
+.sc.modup:is(.on,.leaving) .nw{animation:munew 2.4s linear infinite both}
+.sc.modup:is(.on,.leaving) .upb{animation:muup 2.4s linear infinite both}
+@keyframes muflip{0%,28%{transform:none}37%{transform:scaleX(0)}46%,100%{transform:none}}
+@keyframes munew{0%,36%{opacity:0}37%,92%{opacity:1}100%{opacity:0}}
+@keyframes muup{0%,48%{transform:scale(0);opacity:1}54%{transform:scale(1.25)}59%,90%{transform:none;opacity:1}100%{transform:none;opacity:0}}
+
+/* ===== the other failure marks: the failed board's 42 px mark. Drawn like the step pictures (ink lines, accent for the
+   thing itself) with the offline mark's red badge: the drawing comes in, "tries" twice, then the badge pops,
+   on the same clock as the GitHub mark (.1 s in, tries from .35 s, badge at 2.1 s) ===== */
+.fmk{position:relative;width:42px;height:42px;flex:0 0 auto;margin-top:2px}
+.fmk svg{display:block;width:100%;height:100%;overflow:visible;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.fmk .ink{stroke:var(--ink);stroke-width:2}
+.fmk .acc{stroke:var(--accent);stroke-width:2.4}
+.fmk .fb{transform-box:fill-box;transform-origin:center}
+.fmk .fx{position:absolute;right:-7px;bottom:-5px;width:18px;height:18px;border-radius:50%;background:var(--err);color:#2b100d;font-size:12px;font-weight:700;line-height:1;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
+.fmk .fx.w{background:var(--warn);color:#2e2210}
+.fail.play .fmk svg{animation:ghin .45s ease-out .1s both}
+.fail.play .fmk .fx{animation:ghx .4s cubic-bezier(.3,1.5,.5,1) 2.1s both}
+/* each one's "try" */
+.fail.play .fmk .try{animation-duration:.9s;animation-delay:.35s;animation-iteration-count:2;animation-fill-mode:both}
+.fail.play .fmk.busy .try{animation-name:fbusy;animation-timing-function:ease-in}
+@keyframes fbusy{0%{transform:translateY(-6px);opacity:0}25%{opacity:1}65%{transform:translateY(1px);opacity:1}100%{transform:none;opacity:1}}
+.fmk.limited .st1{transform-box:fill-box;transform-origin:50% 100%;transform:scaleY(.35)}
+.fmk.limited .sb1{transform-box:fill-box;transform-origin:50% 100%}
+.fail.play .fmk.limited .st1{animation:fsand1 1.8s linear .35s both}
+.fail.play .fmk.limited .sb1{animation:fsand2 1.8s linear .35s both}
+.fail.play .fmk.limited .stream{animation:fstream .3s linear .35s 6}
+@keyframes fsand1{from{transform:none}to{transform:scaleY(.35)}}
+@keyframes fsand2{from{transform:scaleY(.3)}to{transform:none}}
+@keyframes fstream{from{stroke-dashoffset:0}to{stroke-dashoffset:-4}}
+.fail.play .fmk.notfound .try{animation-name:fq;animation-timing-function:ease-in-out}
+@keyframes fq{0%,100%{transform:none}30%{transform:translateY(-3px) rotate(-10deg)}60%{transform:translateY(0) rotate(7deg)}}
+.fmk.mismatch .lz{transform:translate(24px,22px)}
+.fail.play .fmk.mismatch .lz{animation:fmlz 1.8s ease-in-out .35s both}
+@keyframes fmlz{0%{transform:translate(34px,4px);opacity:0}12%{transform:translate(16px,12px);opacity:1}36%{transform:translate(26px,15px)}60%{transform:translate(16px,26px)}84%,100%{transform:translate(24px,22px);opacity:1}}
+.fmk:is(.rolled,.partly) .rw{transform-origin:0 0}
+.fail.play .fmk.rolled .rw{animation:frw .9s ease-in-out .35s 2 both}
+.fail.play .fmk.partly .rw{animation:frwp 1.8s ease-in-out .35s both}
+@keyframes frw{from{rotate:0deg}to{rotate:360deg}}
+@keyframes frwp{0%{rotate:0deg}70%{rotate:290deg}80%{rotate:270deg}100%{rotate:280deg}}
+.fmk.partly .rw{rotate:280deg}
+.fail.play .fmk.running .try{animation-name:frun;animation-timing-function:ease-in-out}
+@keyframes frun{0%,100%{transform:none;opacity:1}40%{transform:scale(1.22);opacity:.75}}
+.fail.play .fmk.otherloader .try{animation-name:fbump;animation-timing-function:ease-in-out}
+@keyframes fbump{0%,100%{transform:none}40%{transform:translateX(-3.5px)}55%{transform:translateX(1px)}70%{transform:none}}
+.fmk.lock .try{transform-box:fill-box;transform-origin:50% 0}
+.fail.play .fmk.lock .try{animation-name:fshake;animation-timing-function:ease-in-out}
+@keyframes fshake{0%,100%{transform:none}20%{transform:rotate(-12deg)}45%{transform:rotate(10deg)}70%{transform:rotate(-5deg)}}
+.fmk.broken .pc{transform:translate(1px,2px) rotate(6deg)}
+.fail.play .fmk.broken .try{animation-name:fpiece;animation-timing-function:ease-in-out}
+@keyframes fpiece{0%{transform:none}50%{transform:translate(1.5px,3px) rotate(9deg)}100%{transform:translate(1px,2px) rotate(6deg)}}
+.fail.play .fmk.steamstuck .try{animation-name:fpwr;animation-timing-function:ease-in-out}
+@keyframes fpwr{0%,100%{transform:none}30%{transform:scale(.82)}55%{transform:none}}
