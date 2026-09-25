@@ -147,7 +147,7 @@ Drag'n Wash Localization が日本語になっているとき（その設定の 
 ページとランチャーは小さな JSON でやりとりします。ページは `chrome.webview.postMessage` で `{cmd, ...}` を送り、ランチャーは `window.dnw(event)` を呼びます。
 
 - **ページからランチャーへ**：`ready`、`update`（チェックした Mod）、`skip`、`open`（Mod のリリースページ）、`proceed`、`cancel`、`retry`、`play`（ロゴが終わったときも）、`close`、`minimize`、`drag`、`openLog`、`copy`、`gone`（消え終わった）
-- **ランチャーからページへ**：`init`（どの画面か、言語、設定、Mod）、`step`（`wait`、`dl`、`chk`、`bak`、`ins`。起動オプションの切り替えでは `steam`、`opt`）、`download`（バイト数）、`verified`（zip 1 つが確認を通った）、`checked`（全部通った。ページが確認の絵を見せ終えて `proceed` を返すまで、ランチャーは何も書きません）、`log`、`done`、`failed`、`cancelled`、`bye`（窓を閉じる）
+- **ランチャーからページへ**：`init`（どの画面か、言語、設定、Mod。Mod ごとに `icon` も、データ URL か、絵がなければ `""`）、`step`（`wait`、`dl`、`chk`、`bak`、`ins`。起動オプションの切り替えでは `steam`、`opt`）、`download`（バイト数）、`verified`（zip 1 つが確認を通った）、`installing`（今どの Mod のファイルが入っているところか。`step` の `ins` は全体で 1 回だけですが、こちらは Mod ごとに来ます）、`checked`（全部通った。ページが確認の絵を見せ終えて `proceed` を返すまで、ランチャーは何も書きません）、`log`、`done`、`failed`、`cancelled`、`bye`（窓を閉じる）
 
 閉じ方はどの画面でも同じです。ランチャーが `bye` を送ると、ページが消えていき（0.25 秒）、`gone` を返します。ランチャーは窓そのものを消して（0.16 秒）隠し、それからゲームを起動します。「アニメーションを減らす」がオンなら、窓はそのまま消えます。
 

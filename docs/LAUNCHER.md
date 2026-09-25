@@ -37,6 +37,7 @@ When **Check for updates** is off, the file is still written, with `"checking": 
       "installManifest": false,
       "manifestName": "",
       "manifestVersion": "",
+      "icon": "BepInEx/cache/DragNWash.ModFramework/icons/com.tomxv.dragnwash.modframework.png",
       "latest": {
         "tag": "v1.5.0",
         "version": "1.5.0",
@@ -73,6 +74,7 @@ One entry per installed mod that names its GitHub repository (`ModInfo.UpdateRep
 | `pluginFolder` | The mod's folder directly under `BepInEx/plugins`, or `""` when its DLL sits in `plugins` itself. |
 | `installManifest` | True when that folder holds `mod-install.json`, which our installer writes there. Only then can the launcher update the mod itself; otherwise it can only open the release page. |
 | `manifestName`, `manifestVersion` | `name` and `version` from that `mod-install.json`, or `""` when there's none or it doesn't read. |
+| `icon` | The picture the Mods screen shows for the mod, a path relative to the game folder; missing when it has none. The mod's own `IconPath` file when it gave one, otherwise its `Icon` texture encoded to `BepInEx/cache/DragNWash.ModFramework/icons/<guid>.png` when the texture can be read back. |
 | `latest` | The latest release, or `null` when the repository hasn't been checked yet or has no release. |
 | `latest.tag` | The release's tag. |
 | `latest.version` | The tag as a version (`v1.2` is `1.2.0`), or `null` when the tag isn't a version number. |
