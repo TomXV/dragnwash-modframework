@@ -594,7 +594,7 @@ const Work = {
   pumpTimer: 0,
   nowAt: 0,       // when the running line last changed
   now: -2,        // which line runs
-  startAt: 0,
+  startAt: 0,     // when the board has come in (the logo has landed): the run's lines wait for it
 
   // the minimum time a running line stays up, so a fast run can still be followed
   get dwell() { return reduced() ? .15 : .6; },
@@ -663,7 +663,7 @@ const Work = {
     if (fromSheet) Sheet.close();
     this.now = -2;
     this.nowAt = 0;
-    this.startAt = performance.now() + (reduced() ? 0 : 1300);
+    this.startAt = Infinity;
     // its own build-up (the logo flight, the card, the bar) stays; the words come in from the right
     Board.change(fromSheet || Board.node ? 'fwd' : 'none', n, (moving) => {
       Motion.show(n);
@@ -677,6 +677,10 @@ const Work = {
       Motion.fly($('fly'), $('hlogo'), n.querySelector('.mlogo'));
       Head.logoAway();
       replay($('fly'), 'go');
+      // nothing ticks while the logo is still on its way down (1.3 s into the board's build-up), however fast
+      // the run is
+      this.startAt = performance.now() + (reduced() ? 150 : 1300);
+      this.pump();
     });
   },
 
@@ -698,10 +702,10 @@ const Work = {
       const item = this.queue[0];
       const at = performance.now();
       let wait = 0;
-      if (item.line === 'end') wait = Math.max(this.startAt - at, this.nowAt + this.dwell * 1000 - at);
-      else if (item.line != null && item.line !== this.now) wait = this.nowAt + this.dwell * 1000 - at;
+      if (item.line === 'end' || (item.line != null && item.line !== this.now)) wait = Math.max(this.startAt - at, this.nowAt + this.dwell * 1000 - at);
       if (wait > 0) {
-        this.pumpTimer = setTimeout(() => this.pump(), wait);
+        // (until the board has come in, its entrance calls pump itself)
+        if (wait !== Infinity) this.pumpTimer = setTimeout(() => this.pump(), wait);
         return;
       }
       this.queue.shift();
