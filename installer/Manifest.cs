@@ -41,6 +41,11 @@ namespace DragNWash.Installer
         // the zip does not bundle the framework. Null in schema 1.
         [DataMember(Name = "framework", EmitDefaultValue = false)] public FrameworkPin Framework;
 
+        // A picture for the mod, shown instead of its initials on the Mods screen and in
+        // the launcher: a relative path inside the payload (from the zip's top, next to
+        // BepInEx\), .png/.jpg/.jpeg. Optional; null when the mod has none.
+        [DataMember(Name = "icon", EmitDefaultValue = false)] public string Icon;
+
         // The newest schema this installer reads.
         internal const int NewestSchema = 2;
 
@@ -109,6 +114,10 @@ namespace DragNWash.Installer
                 }
             }
             Keep = (Keep ?? new string[0]).Select(NormalizeKeep).ToArray();
+            if (!string.IsNullOrEmpty(Icon))
+            {
+                Icon = NormalizeIcon(Icon);
+            }
             ConfigFiles = (ConfigFiles ?? new string[0]).Where(f => !string.IsNullOrWhiteSpace(f)).ToArray();
             foreach (string file in ConfigFiles)
             {
@@ -149,6 +158,22 @@ namespace DragNWash.Installer
             if (parts.Length < 2 || parts.Any(s => s.Length == 0 || s == "." || s == "..") || !Plugins.Contains(parts[0], StringComparer.OrdinalIgnoreCase))
             {
                 throw new InvalidDataException($"{FileName}: keep path \"{path}\" must be inside one of the mod's plugin folders.");
+            }
+            return p;
+        }
+
+        private static readonly Regex IconExtension = new Regex(@"\.(png|jpe?g)$", RegexOptions.IgnoreCase);
+
+        // Same shape of check as NormalizeKeep: a relative path, no "." or "..", every
+        // segment non-empty; an icon isn't tied to a plugin folder, so unlike keep it
+        // may sit anywhere under the payload.
+        private static string NormalizeIcon(string path)
+        {
+            string p = path.Replace('\\', '/').Trim('/');
+            string[] parts = p.Split('/');
+            if (parts.Any(s => s.Length == 0 || s == "." || s == "..") || !IconExtension.IsMatch(p))
+            {
+                throw new InvalidDataException($"{FileName}: \"icon\" must be a relative path inside the payload, ending in .png, .jpg or .jpeg.");
             }
             return p;
         }
