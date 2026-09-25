@@ -1046,6 +1046,12 @@ $('fail-copy').addEventListener('click', (e) => {
 $('btn-min').addEventListener('click', () => send('minimize'));
 $('btn-close').addEventListener('click', () => send('close'));
 
+// when the window comes up, WebView2 puts the focus on the page's first button (minimise): it would show its
+// ring and take Enter from the board's default button, so it only stays once a key or the mouse has been used
+let touched = false;
+for (const type of ['keydown', 'pointerdown']) document.addEventListener(type, () => { touched = true; }, true);
+$('btn-min').addEventListener('focus', (e) => { if (!touched) e.currentTarget.blur(); });
+
 // the header moves the window (outside its buttons)
 $('head').addEventListener('mousedown', (e) => {
   if (e.button === 0 && !e.target.closest('button')) send('drag');
