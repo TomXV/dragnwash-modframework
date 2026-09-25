@@ -135,11 +135,17 @@ const Board = {
   },
 };
 
-// the board's default button, focused for the keyboard once it's there
-function focusLater(node, ms = 450) {
+// the board's default button, focused for the keyboard once it's there (a board still waiting for the old one
+// to leave is hidden, so it waits for that too)
+function focusLater(node, ms = 450, tries = 30) {
   setTimeout(() => {
-    if (node && node.isConnected && !node.disabled && !document.activeElement?.closest('.sheet')) node.focus({ preventScroll: true });
-  }, reduced() ? 0 : ms);
+    if (!node || !node.isConnected || node.disabled || document.activeElement?.closest('.sheet')) return;
+    if (node.closest('[hidden], [inert]')) {
+      if (tries > 0) focusLater(node, 50, tries - 1);
+      return;
+    }
+    node.focus({ preventScroll: true });
+  }, reduced() ? Math.min(ms, 50) : ms);
 }
 
 // ---------- the step pictures ----------
@@ -501,6 +507,8 @@ const Sheet = {
     if (!veil) return;
     for (const n of veil.querySelectorAll('[id]')) n.removeAttribute('id');
     Motion.sheetClose(veil, Board.node);
+    // back on the setup board (the question was turned down): the keyboard is back on its button
+    if (S.board === 'setup') focusLater($('su-run'), 250);
   },
 
   steam(e) {
@@ -1005,8 +1013,9 @@ $('head').addEventListener('mousedown', (e) => {
   if (e.button === 0 && !e.target.closest('button, select')) send('drag');
 });
 
+// (not on a board that is still coming in or already leaving)
 function press(node) {
-  if (node && !node.disabled && node.isConnected) node.click();
+  if (node && !node.disabled && node.isConnected && !node.closest('[hidden], [inert]')) node.click();
 }
 
 // any key skips the intro; Enter presses the default button, Esc the way out (on a sheet: × or Cancel)
