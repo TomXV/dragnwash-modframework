@@ -93,7 +93,8 @@ namespace DragNWash.Installer
             internal Mark? Shown;
         }
 
-        internal MainForm(ModManifest manifest, string payload)
+        // note: a first line for the log (why the WebView2 window isn't the one showing).
+        internal MainForm(ModManifest manifest, string payload, string note = null)
         {
             _manifest = manifest;
             _core = new InstallerCore(manifest, payload, AppendLog);
@@ -251,6 +252,10 @@ namespace DragNWash.Installer
 
             _game.Text = InstallerCore.FindGame() ?? "";
             UpdateTexts();
+            if (note != null)
+            {
+                AppendLog(note);
+            }
         }
 
         private static void AddRow(TableLayoutPanel layout, params object[] cells)
@@ -431,10 +436,9 @@ namespace DragNWash.Installer
             if (found && !string.Equals(_launchDefaultFor, game, StringComparison.OrdinalIgnoreCase))
             {
                 _launchDefaultFor = game;
-                _launchOption.Checked = _steam.AnyHas || !System.IO.File.Exists(Paths.Launcher(game));
+                _launchOption.Checked = InstallRun.LaunchDefault(_steam, game);
             }
-            // The box does something only with a Steam account to set it in and a launcher to start.
-            _launchOption.Enabled = !_busy && found && _steam.Accounts > 0 && _core.LauncherAfterInstall(game);
+            _launchOption.Enabled = !_busy && InstallRun.LaunchUsable(_core, _steam, found, game);
             if (!found)
             {
                 _status.Text = Strings.Get(Strings.Key.NotFound);
@@ -498,26 +502,10 @@ namespace DragNWash.Installer
             FillSteps(install ? _installSteps : _uninstallSteps, steps ?? new List<(Mark, string)>());
         }
 
-        // What Install or Uninstall is to do with the game's launch options in Steam.
-        // Ticked: put the launcher in, unless it is there already. Unticked: take it out
-        // if it is there. Uninstall takes it out when the framework (and so the launcher)
-        // goes. When the launcher won't be there after Install, a launch option that
-        // starts it is taken out too: the game would not start from Steam otherwise.
+        // What Install or Uninstall is to do with the game's launch options in Steam (InstallRun.LaunchChange).
         private LaunchOptionChange LaunchChange(bool install, string game)
         {
-            if (_steam.Accounts == 0)
-            {
-                return LaunchOptionChange.None;
-            }
-            if (!install)
-            {
-                return _steam.AnyHas && _core.RemovesFramework(game) ? LaunchOptionChange.Remove : LaunchOptionChange.None;
-            }
-            if (_launchOption.Checked && _launchOption.Enabled)
-            {
-                return _steam.AllSet ? LaunchOptionChange.AlreadySet : LaunchOptionChange.Add;
-            }
-            return _steam.AnyHas ? LaunchOptionChange.Remove : LaunchOptionChange.None;
+            return InstallRun.LaunchChange(_core, _steam, install, game, _launchOption.Checked && _launchOption.Enabled);
         }
 
         private Dictionary<string, string> SelectedChoices()
@@ -588,57 +576,12 @@ namespace DragNWash.Installer
             }
             ShowProgress(InstallProgress.At(install ? InstallStage.Check : InstallStage.Backup));
             _log.Clear();
-            Task.Run(() =>
+            var request = new InstallRun.Request
             {
-                // .NET's own messages in the log and the error details stay English too.
-                Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
-                try
-                {
-                    InstallResult result = null;
-                    if (install)
-                    {
-                        result = _core.Install(game, choices, options, progress, cancel);
-                        // Once the files are in place, so the launcher is there to be started.
-                        result.LaunchOption = skipped ? LaunchOptionOutcome.Skipped
-                            : launch == LaunchOptionChange.Add ? Steam.Apply(game, true, AppendLog)
-                            : launch == LaunchOptionChange.Remove ? Steam.Apply(game, false, AppendLog)
-                            : LaunchOptionOutcome.None;
-                    }
-                    else
-                    {
-                        // Out of the launch options before the launcher goes, and the launcher
-                        // stays while they still start it.
-                        InstallerCore.CheckReady(game);
-                        if (launch == LaunchOptionChange.Remove)
-                        {
-                            Steam.Apply(game, false, AppendLog);
-                        }
-                        bool keepLauncher = _core.RemovesFramework(game) && Steam.State(game).AnyHas;
-                        _core.Uninstall(game, keepData, alsoBepInEx, keepLauncher);
-                    }
-                    // Steam, if the installer closed it, is started again once all went well.
-                    if (closedSteam != null)
-                    {
-                        Steam.Start(closedSteam, AppendLog);
-                    }
-                    return (Cancelled: false, Error: (Exception)null, Details: (string)null, Result: result);
-                }
-                catch (OperationCanceledException) when (cancel.IsCancellationRequested)
-                {
-                    AppendLog("Cancelled; the game folder was not changed");
-                    return (Cancelled: true, Error: null, Details: null, Result: null);
-                }
-                catch (InstallerException ex)
-                {
-                    AppendLog("ERROR: " + (ex.LogText ?? ex.Message));
-                    return (Cancelled: false, Error: ex, Details: ErrorDialog.Details(ex), Result: null);
-                }
-                catch (Exception ex)
-                {
-                    AppendLog("ERROR: " + ex);
-                    return (Cancelled: false, Error: ex, Details: ErrorDialog.Details(ex), Result: null);
-                }
-            }).ContinueWith(t =>
+                Install = install, Game = game, Choices = choices, Options = options, Launch = launch,
+                Skipped = skipped, ClosedSteam = closedSteam, KeepData = keepData, AlsoBepInEx = alsoBepInEx,
+            };
+            Task.Run(() => InstallRun.Execute(_core, request, progress, cancel, AppendLog)).ContinueWith(t =>
             {
                 SetBusy(false);
                 _stepRows.Clear();
@@ -672,7 +615,7 @@ namespace DragNWash.Installer
                     return;
                 }
                 _progressText.Text = Strings.Get(Strings.Key.Stopped);
-                using (var dialog = new ErrorDialog(Text, t.Result.Error, t.Result.Details + Environment.NewLine + AboutThisRun()))
+                using (var dialog = new ErrorDialog(Text, t.Result.Error, t.Result.Details + Environment.NewLine + InstallRun.AboutThisRun(_manifest)))
                 {
                     switch (dialog.ShowDialog(this))
                     {
@@ -755,13 +698,6 @@ namespace DragNWash.Installer
             {
                 _stepRows.Add(new StepRow { Stage = steps[i].Stage, Mark = rows[i].Mark, Text = rows[i].Text, BaseText = steps[i].Text, Shown = Mark.Todo });
             }
-        }
-
-        // The last lines of "Copy details": enough to reproduce a report.
-        private string AboutThisRun()
-        {
-            return $"{_manifest.Name} {_manifest.Version}, Install.exe {typeof(MainForm).Assembly.GetName().Version.ToString(3)}" + Environment.NewLine +
-                   $"Installer language: {Strings.Current}   Windows {Environment.OSVersion.Version}   {RuntimeInformation.FrameworkDescription}";
         }
 
         private void ShowProgress(InstallProgress progress)
