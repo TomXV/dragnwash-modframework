@@ -26,6 +26,14 @@ Launcher.exe --update-after-exit --wait-pid <pid> [--mods <guid>,<guid>]
 
 It waits for that process to exit, installs the updates, and asks Steam to start the game again (`steam://rungameid/4739660`). Without `--mods`, the mods come from `update-request.json`.
 
+The third is the Mods screen's launch option switch ([LAUNCHER.md](LAUNCHER.md#switching-the-launch-option-from-the-mods-screen)):
+
+```
+Launcher.exe --launch-option on|off --wait-pid <pid>
+```
+
+It waits for that process to exit, closes Steam, puts itself into the game's launch options (`on`) or takes itself out (`off`), and starts Steam and the game again.
+
 ## What happens
 
 **Before the game starts**
@@ -40,6 +48,18 @@ A version already installed since the game looked (the mod's `mod-install.json` 
 **After an update asked for in the game**
 
 The game writes `BepInEx/cache/DragNWash.ModFramework/update-request.json` and quits. When the game exits, the launcher finds the file (only one written after this launch counts; it's deleted once read), shows the update screen, installs, counts down 10 seconds, closes the window and starts the game again with the same command. **Start now** starts it right away instead of waiting, and **Don't start it now** closes the window without starting it.
+
+**Switching the launch option from the game**
+
+The window comes once the game has closed (or after ten seconds, if the game is slow to close). It's the same board as an update's, with steps of its own: wait for the game to close, close Steam, change the launch option, start Steam and the game.
+
+1. **Close Steam.** Steam writes over `localconfig.vdf` while it runs, so the launcher asks it to exit (`steam.exe -shutdown`, what its own Exit does) and waits up to 90 seconds. When Steam isn't running, this step just passes. A launcher that started the game is waited for too, since Steam counts the game as running until it has gone.
+2. **Change the launch option.** With Install.exe's own code (`installer/Steam.cs` and `SteamConfig.cs` are compiled into both): the same accounts and the same rules as the checkbox below, `localconfig.vdf.dnw-backup` first, and nothing else in the file changes.
+3. **Done.** The same 10-second countdown as after an update, then Steam and the game start together (`steam://rungameid/4739660`). With the option on, the game comes through the launcher again, so the logo shows first. **Start now** skips the wait.
+
+When Steam hasn't closed after 90 seconds, nothing is changed: **Try again** starts again from closing Steam, and **Just start the game** starts it through Steam as it is. When the file can't be written, nothing is changed either, and the backup stays. There's no Try again for that: after the countdown, Steam and the game start as they were.
+
+✕ and **Don't start them now** never start the game here either. If the launcher already closed Steam, it starts Steam again on its own, so you're not left without it. While the file is being written, the window waits for that to finish first. Nothing goes online, and the log has every step.
 
 **The window's ✕**
 
@@ -127,7 +147,7 @@ A borderless 720 × 440 window with WebView2 (part of Windows 10 and 11). The pa
 The page and the launcher talk in small JSON messages. The page posts `{cmd, ...}` with `chrome.webview.postMessage`, and the launcher calls `window.dnw(event)`:
 
 - **Page to launcher**: `ready`, `update` (the ticked mods), `skip`, `open` (a mod's release page), `proceed`, `cancel`, `retry`, `play` (also the end of the logo), `close`, `minimize`, `drag`, `openLog`, `copy`, `gone` (faded out).
-- **Launcher to page**: `init` (the mode, language, settings and mods), `step` (`wait`, `dl`, `chk`, `bak`, `ins`), `download` (bytes), `verified` (one zip passed), `checked` (all passed; the launcher writes nothing until the page answers `proceed`, once its check pictures are done), `log`, `done`, `failed`, `cancelled`, `bye` (the window is closing).
+- **Launcher to page**: `init` (the mode, language, settings and mods), `step` (`wait`, `dl`, `chk`, `bak`, `ins`, and `steam`, `opt` for the launch option), `download` (bytes), `verified` (one zip passed), `checked` (all passed; the launcher writes nothing until the page answers `proceed`, once its check pictures are done), `log`, `done`, `failed`, `cancelled`, `bye` (the window is closing).
 
 Closing goes the same way on every screen: the launcher sends `bye`, the page fades out (0.25 s) and answers `gone`, the launcher fades the window itself away (0.16 s) and hides it, and only then starts the game. With reduce-animations on, the window just goes.
 
@@ -159,3 +179,5 @@ Install.exe's part: `dotnet run --project installer/tests -c Release` checks the
 |---|---|
 | `DNW_INSTALLER_STEAM=<folder>` | Takes this folder for Steam's (`steamapps`, `userdata`, `config\loginusers.vdf`, `steam.exe`), and only a `steam.exe` started from it counts as Steam running. For trying the launch option without the real Steam. |
 | `DNW_INSTALLER_STEAM_WAIT=<seconds>` | How long **Close Steam for me** waits before saying Steam hasn't closed (otherwise 90). |
+
+A Debug build of the launcher reads these two as well, so `--launch-option` can be tried against a made-up Steam folder with a stand-in `steam.exe` that exits when it's run again with `-shutdown`.

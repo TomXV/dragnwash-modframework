@@ -26,6 +26,14 @@ Launcher.exe --update-after-exit --wait-pid <pid> [--mods <guid>,<guid>]
 
 そのプロセスが終わるのを待ち、更新を入れ、Steam にゲームをもう一度起動してもらいます（`steam://rungameid/4739660`）。`--mods` がなければ、`update-request.json` に書かれた Mod を入れます。
 
+3 つめは、Mods 画面の起動オプションのスイッチから来るものです（[LAUNCHER.ja.md](LAUNCHER.ja.md#mods-画面から起動オプションを切り替える)）：
+
+```
+Launcher.exe --launch-option on|off --wait-pid <pid>
+```
+
+そのプロセスが終わるのを待ち、Steam を閉じて、ゲームの起動オプションに自分を入れるか（`on`）外すか（`off`）してから、Steam とゲームをもう一度起動してもらいます。
+
 ## 何が起きるか
 
 **ゲームの前**
@@ -40,6 +48,18 @@ Launcher.exe --update-after-exit --wait-pid <pid> [--mods <guid>,<guid>]
 **ゲームの中から頼まれた更新のあと**
 
 ゲームは `BepInEx/cache/DragNWash.ModFramework/update-request.json` を書いて終了します。ゲームが終わると、ランチャーがそのファイルを見つけ（今回の起動のあとに書かれたものだけを使い、読んだら消します）、更新の画面を出して入れ、10 秒数えたら窓を閉じて、同じコマンドでゲームをもう一度起動します。「今すぐ起動」を押すと待たずにすぐ起動し、「今は起動しない」を押すと、起動せずに窓を閉じます。
+
+**ゲームの中から起動オプションを切り替えたあと**
+
+窓はゲームが閉じてから出ます（閉じるのに 10 秒以上かかるときは、そこで出します）。更新のときと同じ画面で、手順だけがこの切り替え用です。ゲームが閉じるのを待つ、Steam を閉じる、起動オプションを書き換える、Steam とゲームを起動、の 4 つです。
+
+1. **Steam を閉じる。** Steam は開いている間 `localconfig.vdf` を上書きしてしまうので、終了を頼み（`steam.exe -shutdown`。Steam の「終了」と同じです）、最大 90 秒待ちます。Steam が起動していなければ、この手順はそのまま通ります。ゲームを起動したランチャーがいれば、それが終わるのも待ちます。それが残っている間は、Steam からはゲームがまだ動いているように見えるからです。
+2. **起動オプションを書き換える。** Install.exe と同じコードです（`installer/Steam.cs` と `SteamConfig.cs` を両方に入れています）。下のチェックボックスと同じアカウントに同じ決まりで書き、先に `localconfig.vdf.dnw-backup` を取ります。ファイルのほかの部分は変えません。
+3. **終わり。** 更新のあとと同じ 10 秒のカウントダウンのあと、Steam とゲームをいっしょに起動します（`steam://rungameid/4739660`）。オンにしたなら、ゲームはまたランチャーを通るので、先にロゴが出ます。「今すぐ起動」で待たずに起動します。
+
+Steam が 90 秒たっても閉じないときは、何も変えません。「もう一度」で Steam を閉じるところからやり直し、「このまま起動」で今のまま Steam から起動します。ファイルに書き込めなかったときも何も変えず、控えは残します。このときは「もう一度」はなく、カウントダウンのあと、Steam とゲームを元のまま起動し直します。
+
+ここでも ✕ と「今は起動しない」でゲームは起動しません。ランチャーがもう Steam を閉じていたときは、Steam だけを起動し直すので、Steam がないままにはなりません。ファイルを書いている間に押したときは、書き終わるのを待ってから閉じます。ネットにはつながず、ログには手順をすべて書きます。
 
 **窓の ✕**
 
@@ -127,7 +147,7 @@ Drag'n Wash Localization が日本語になっているとき（その設定の 
 ページとランチャーは小さな JSON でやりとりします。ページは `chrome.webview.postMessage` で `{cmd, ...}` を送り、ランチャーは `window.dnw(event)` を呼びます。
 
 - **ページからランチャーへ**：`ready`、`update`（チェックした Mod）、`skip`、`open`（Mod のリリースページ）、`proceed`、`cancel`、`retry`、`play`（ロゴが終わったときも）、`close`、`minimize`、`drag`、`openLog`、`copy`、`gone`（消え終わった）
-- **ランチャーからページへ**：`init`（どの画面か、言語、設定、Mod）、`step`（`wait`、`dl`、`chk`、`bak`、`ins`）、`download`（バイト数）、`verified`（zip 1 つが確認を通った）、`checked`（全部通った。ページが確認の絵を見せ終えて `proceed` を返すまで、ランチャーは何も書きません）、`log`、`done`、`failed`、`cancelled`、`bye`（窓を閉じる）
+- **ランチャーからページへ**：`init`（どの画面か、言語、設定、Mod）、`step`（`wait`、`dl`、`chk`、`bak`、`ins`。起動オプションの切り替えでは `steam`、`opt`）、`download`（バイト数）、`verified`（zip 1 つが確認を通った）、`checked`（全部通った。ページが確認の絵を見せ終えて `proceed` を返すまで、ランチャーは何も書きません）、`log`、`done`、`failed`、`cancelled`、`bye`（窓を閉じる）
 
 閉じ方はどの画面でも同じです。ランチャーが `bye` を送ると、ページが消えていき（0.25 秒）、`gone` を返します。ランチャーは窓そのものを消して（0.16 秒）隠し、それからゲームを起動します。「アニメーションを減らす」がオンなら、窓はそのまま消えます。
 
@@ -159,3 +179,5 @@ Install.exe の受け持ち：`dotnet run --project installer/tests -c Release` 
 |---|---|
 | `DNW_INSTALLER_STEAM=<フォルダー>` | このフォルダーを Steam のフォルダーとして使う（`steamapps`、`userdata`、`config\loginusers.vdf`、`steam.exe`）。Steam が起動しているかどうかも、ここから起動した `steam.exe` だけで見る。本物の Steam に触らずに起動オプションを試すため。 |
 | `DNW_INSTALLER_STEAM_WAIT=<秒>` | 「Steam を閉じる」が、閉じないと言うまでに待つ時間（ふだんは 90）。 |
+
+ランチャーの Debug ビルドもこの 2 つを読みます。作りものの Steam のフォルダーと、`-shutdown` を付けてもう一度起動されたら終わるだけの代わりの `steam.exe` を用意すれば、`--launch-option` を試せます。

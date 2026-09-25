@@ -124,12 +124,22 @@ GitHub のリポジトリを指定している（`ModInfo.UpdateRepository`）�
 
 ### ランチャーの設定
 
-ランチャーは起動するときに `BepInEx/config/com.tomxv.dragnwash.modframework.cfg` の `[Launcher]` を読みます。ファイルや行がなければ既定値を使います。この項目はゲームが足すので、Mods 画面のフレームワークの設定にも出ます。
+ランチャーは起動するときに `BepInEx/config/com.tomxv.dragnwash.modframework.cfg` の `[Launcher]` を読みます。ファイルや行がなければ既定値を使います。この項目はゲームが足すので、Mods 画面のフレームワークの設定にも出ます。その上にある起動オプションのスイッチは、このファイルには入っていません（次の節）。
 
 | キー | 値 | 既定値 |
 |---|---|---|
 | `Logo lettering` | `Handwriting`（ひと筆ずつ書く）か `Typewriter`（1 文字ずつ打つ） | `Handwriting` |
 | `Progress bar` | `Bottom edge`（窓のいちばん下）か `Under text`（文字の下） | `Bottom edge` |
+
+## Mods 画面から起動オプションを切り替える
+
+フレームワークの設定の `[Launcher]` のいちばん上に、もう 1 行あります。「起動時に更新を確認する（Steam の起動オプション）」です。Install.exe のチェックボックスと同じもので、Steam の起動オプションの `%command%` の前にランチャーを入れます。設定ファイルには入っていません。スイッチは、今遊んでいる Steam アカウントの起動オプションに、今ランチャーが入っているかどうかをそのまま映します（Mods 画面を開いたときに、そのアカウントの `localconfig.vdf` を読みます）。なので、変えたしるしの点も、初期値に戻すボタンもありません。
+
+この行が出るのは Windows だけで、`BepInEx/DragNWash.Installer/Launcher.exe` があり、WebView2 ランタイムが入っているときだけです。ランチャーは Windows でしか動かないので、Steam Deck（と Proton）では出ません。
+
+Steam は設定をメモリに持っていて、終了するときにファイルへ書き戻します。なのでゲームが自分で書き換えることはできません。スイッチを押すと、「更新する」と同じように、まず確認します。詳細のいちばん上に黄色い帯で「ゲームを終了して、Steam とゲームを起動し直すこと」を出し、スイッチは「キャンセル」と「再起動して切り替え」に変わります。フォーカスは「再起動して切り替え」に移るので、パッドなら A を 2 回です。ほかの Mod やタブを選ぶ、画面を出る、戻る（B）で取り消しです。まだ何も変わっていないので、「保存しました」は出しません。
+
+「再起動して切り替え」を押すと、ゲームは `Launcher.exe --launch-option on|off --wait-pid <pid>` を窓なしで起動し、ゲームの「終了」ボタンと同じように終了します。ゲームが閉じたら、ランチャーが Steam を閉じ、起動オプションを書き換えて、Steam とゲームを起動し直します（[LAUNCHER_APP.ja.md](LAUNCHER_APP.ja.md)）。ランチャーを起動できなかったときは、ゲームは終了せず、帯でそう伝えます。理由は `BepInEx/LogOutput.log` に出ます。
 
 ## 1.5.0 からの更新
 

@@ -124,12 +124,22 @@ The game itself still downloads nothing. The launcher only goes online after the
 
 ### The launcher's settings
 
-The launcher reads the `[Launcher]` section of `BepInEx/config/com.tomxv.dragnwash.modframework.cfg` when it starts, and uses the defaults when the file or a line is missing. The game adds the section, so it's also on the Mods screen, under the framework's Settings.
+The launcher reads the `[Launcher]` section of `BepInEx/config/com.tomxv.dragnwash.modframework.cfg` when it starts, and uses the defaults when the file or a line is missing. The game adds the section, so it's also on the Mods screen, under the framework's Settings. The launch option switch above these two isn't in the file (see the next section).
 
 | Key | Values | Default |
 |---|---|---|
 | `Logo lettering` | `Handwriting` (drawn stroke by stroke) or `Typewriter` (typed letter by letter) | `Handwriting` |
 | `Progress bar` | `Bottom edge` (along the window's bottom edge) or `Under text` | `Bottom edge` |
+
+## Switching the launch option from the Mods screen
+
+The `[Launcher]` section on the framework's Settings tab starts with one more row: **Check for mod updates when the game starts (Steam launch option)**. It's the same thing as Install.exe's checkbox, the launcher in front of `%command%` in Steam. It isn't in the config file. The switch shows whether the launcher is in the game's launch options right now, for the Steam account you're playing on (read from that account's `localconfig.vdf` when the Mods screen opens), so it has no dot for a changed value and no reset button.
+
+The row is only there on Windows, with `BepInEx/DragNWash.Installer/Launcher.exe` in place and the WebView2 runtime installed. The launcher only runs on Windows, so the Steam Deck (and Proton) don't get it.
+
+Steam keeps its settings in memory and writes that file again when it exits, so the game can't change it itself. Pressing the switch asks first, like **Update now**: a yellow note at the top of the details says the game will quit and Steam and the game will start again, and the switch turns into **Cancel** and **Restart and apply**, with the focus on **Restart and apply** (A twice on a pad). Picking another mod or another tab, leaving the screen or Back (B) cancels. Nothing says "Saved", because nothing has changed yet.
+
+**Restart and apply** starts `Launcher.exe --launch-option on|off --wait-pid <pid>` without a window, and the game quits the way its own Quit button does. Once the game has closed, the launcher closes Steam, changes the launch option and starts Steam and the game again ([LAUNCHER_APP.md](LAUNCHER_APP.md)). If the launcher can't be started, the game doesn't quit, and a note says so; `BepInEx/LogOutput.log` says why.
 
 ## Updating from 1.5.0
 
