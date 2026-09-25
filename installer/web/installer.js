@@ -656,8 +656,8 @@ const Work = {
       if (pic) box.append(pic);
     }
     const cancel = q('w-cancel');
+    // (uninstall can't be stopped: its Cancel stays greyed)
     cancel.textContent = e.cancel || t('CancelPlain');
-    cancel.hidden = kind === 'uninstall';
     cancel.disabled = true;
     cancel.addEventListener('click', () => {
       if (cancel.disabled) return;
@@ -965,7 +965,7 @@ const Fail = {
     } else {
       if (f.fw) foot.append(button('lb gho', t('ChooseZip'), () => send('zip')));
       foot.append(button('lb gho', t('WebBack'), () => send('back')));
-      primary = button('lb pri', t('Retry'), () => {
+      primary = button('lb pri', t('WebRetry'), () => {
         send('retry');
         primary.classList.add('pressed');
       });

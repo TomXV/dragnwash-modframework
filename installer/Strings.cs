@@ -281,6 +281,9 @@ namespace DragNWash.Installer
             WebDetails,
             WebCopied,
             WebBack,
+            WebRetry,
+            WebNoPayloadHead,
+            WebNoPayloadHelp,
         }
 
         private static readonly Dictionary<string, Dictionary<Key, string>> All = new Dictionary<string, Dictionary<Key, string>>
@@ -492,7 +495,7 @@ namespace DragNWash.Installer
                 [Key.WebNetLines] = "Only the lines marked “online” use the internet.",
                 [Key.WebNetNone] = "Doesn't use the internet.",
                 [Key.WebOtherTitle] = "Another mod loader is in this folder",
-                [Key.WebOtherText] = "There's another mod loader here. A game folder can only have one loader, so it can't be installed to this folder.",
+                [Key.WebOtherText] = "A game folder can only have one loader, so it can't be installed to this folder.",
                 [Key.WebOtherTextNamed] = "{0} is here. A game folder can only have one loader, so it can't be installed to this folder.",
                 [Key.WebOtherFoot] = "Another mod loader is here, so it can't be installed.",
                 [Key.WebSheetStop] = "Stop (nothing is changed)",
@@ -555,6 +558,9 @@ namespace DragNWash.Installer
                 [Key.WebDetails] = "Details",
                 [Key.WebCopied] = "Copied",
                 [Key.WebBack] = "Back",
+                [Key.WebRetry] = "Try again",
+                [Key.WebNoPayloadHead] = "The mod's files aren't next to the installer",
+                [Key.WebNoPayloadHelp] = "Extract the whole zip first, then run Install.exe from the extracted folder.",
             },
             ["ja"] = new Dictionary<Key, string>
             {
@@ -763,7 +769,7 @@ namespace DragNWash.Installer
                 [Key.WebNetLines] = "「ネット」の付いた行だけインターネットにつなぎます。",
                 [Key.WebNetNone] = "インターネットにはつなぎません。",
                 [Key.WebOtherTitle] = "別の Mod ローダーが入っています",
-                [Key.WebOtherText] = "別の Mod ローダーが入っています。ローダーは 1 つのゲームフォルダーに 1 つしか入れられないので、このフォルダーにはインストールできません。",
+                [Key.WebOtherText] = "ローダーは 1 つのゲームフォルダーに 1 つしか入れられないので、このフォルダーにはインストールできません。",
                 [Key.WebOtherTextNamed] = "{0} が入っています。ローダーは 1 つのゲームフォルダーに 1 つしか入れられないので、このフォルダーにはインストールできません。",
                 [Key.WebOtherFoot] = "別の Mod ローダーが入っているので、インストールできません。",
                 [Key.WebSheetStop] = "やめる（何も変えません）",
@@ -826,6 +832,9 @@ namespace DragNWash.Installer
                 [Key.WebDetails] = "詳細",
                 [Key.WebCopied] = "コピーしました",
                 [Key.WebBack] = "戻る",
+                [Key.WebRetry] = "もう一度",
+                [Key.WebNoPayloadHead] = "Mod のファイルが隣にありません",
+                [Key.WebNoPayloadHelp] = "先に zip を丸ごと展開して、展開したフォルダーの Install.exe を起動してください。",
             },
             ["zh"] = new Dictionary<Key, string>
             {
@@ -1034,7 +1043,7 @@ namespace DragNWash.Installer
                 [Key.WebNetLines] = "只有标着“联网”的行会用到网络。",
                 [Key.WebNetNone] = "不会用到网络。",
                 [Key.WebOtherTitle] = "这个文件夹里有别的模组加载器",
-                [Key.WebOtherText] = "这里已经有另一个模组加载器了。一个游戏文件夹只能装一个加载器，所以没法安装到这个文件夹。",
+                [Key.WebOtherText] = "一个游戏文件夹只能装一个加载器，所以没法安装到这个文件夹。",
                 [Key.WebOtherTextNamed] = "这里已经有 {0} 了。一个游戏文件夹只能装一个加载器，所以没法安装到这个文件夹。",
                 [Key.WebOtherFoot] = "这里有别的模组加载器，所以没法安装。",
                 [Key.WebSheetStop] = "不做了（什么都不改）",
@@ -1097,6 +1106,9 @@ namespace DragNWash.Installer
                 [Key.WebDetails] = "详情",
                 [Key.WebCopied] = "已复制",
                 [Key.WebBack] = "返回",
+                [Key.WebRetry] = "再试一次",
+                [Key.WebNoPayloadHead] = "安装器旁边没有模组文件",
+                [Key.WebNoPayloadHelp] = "请先把 zip 整个解压，再运行解压出来的文件夹里的 Install.exe。",
             },
         };
 

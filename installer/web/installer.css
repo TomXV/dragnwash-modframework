@@ -142,7 +142,7 @@
 .sum{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(232,239,247,.35) transparent;font-size:12px;user-select:text;cursor:auto}
 .sum .st{line-height:1.45}
 .sum .st .mk{width:16px;height:16px;margin-top:1px}
-.okcard{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:10px;background:rgba(82,199,184,.10);border:1px solid rgba(82,199,184,.45);align-self:stretch;line-height:1.5;flex:0 0 auto}
+.okcard{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:10px;background:rgba(82,199,184,.10);border:1px solid rgba(82,199,184,.45);align-self:flex-start;max-width:100%;box-sizing:border-box;line-height:1.5;flex:0 0 auto}
 .okcard .mk{width:30px;height:30px;background:var(--accent)}
 .okcard .mk::after{content:"";width:12px;height:6px;border-left:2.5px solid var(--on-accent);border-bottom:2.5px solid var(--on-accent);transform:translate(0,-2px) rotate(-45deg)}
 .okcard b{display:block}

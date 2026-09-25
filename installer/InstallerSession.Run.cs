@@ -708,6 +708,12 @@ namespace DragNWash.Installer
             var (headline, help) = ErrorDialog.Describe(error);
             var known = error as InstallerException;
             Strings.Key? key = known?.Key;
+            if (key == Strings.Key.NoPayload)
+            {
+                // One sentence for the heading, what to do under it.
+                headline = Strings.Get(Strings.Key.WebNoPayloadHead);
+                help = Strings.Get(Strings.Key.WebNoPayloadHelp);
+            }
             string pill = null, pillKind = null;
             if (key == Strings.Key.RolledBack)
             {
