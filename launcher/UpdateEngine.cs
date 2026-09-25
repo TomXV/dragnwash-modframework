@@ -21,6 +21,11 @@ namespace DragNWash.Launcher
 
         // Every zip passed. The engine then waits for Proceed before it writes anything.
         void Checked();
+
+        // Which mod's files are starting to go in, once per mod, while Step keeps
+        // saying "ins" only the once for the whole run (see Run): the page shows that
+        // mod's icon for as long as this one is going in.
+        void Installing(int index, int count, ModUpdate mod);
     }
 
     // Why an update stopped, in the terms the failure screen explains.
@@ -117,22 +122,36 @@ namespace DragNWash.Launcher
                 // backup and roll-back, exactly as Install.exe --install does it.
                 step = "bak";
                 bool backupShown = false, installShown = false;
-                var progress = new Progress(stage =>
-                {
-                    if (stage == InstallStage.Backup && !backupShown)
-                    {
-                        backupShown = true;
-                        _events.Step("bak");
-                    }
-                    else if ((stage == InstallStage.Put || stage == InstallStage.Settings) && !installShown)
-                    {
-                        installShown = true;
-                        _events.Step("ins");
-                    }
-                });
                 for (int i = 0; i < mods.Count; i++)
                 {
                     current = mods[i];
+                    ModUpdate mod = current;
+                    int index = i + 1;
+                    bool installingShown = false;
+                    var progress = new Progress(stage =>
+                    {
+                        if (stage == InstallStage.Backup && !backupShown)
+                        {
+                            backupShown = true;
+                            _events.Step("bak");
+                        }
+                        else if (stage == InstallStage.Put || stage == InstallStage.Settings)
+                        {
+                            if (!installShown)
+                            {
+                                installShown = true;
+                                _events.Step("ins");
+                            }
+                            // Which mod is going in now, every time (Step("ins") above only
+                            // says so once for the whole run): the page shows this mod's
+                            // icon for as long as its files are being put in place.
+                            if (!installingShown)
+                            {
+                                installingShown = true;
+                                _events.Installing(index, mods.Count, mod);
+                            }
+                        }
+                    });
                     var (manifest, folder) = payloads[i];
                     var core = new InstallerCore(manifest, folder, Log.Line);
                     var choices = new Dictionary<string, string>();

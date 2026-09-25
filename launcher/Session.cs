@@ -400,6 +400,9 @@ namespace DragNWash.Launcher
 
         public void Checked() => _window?.Send(Json.Object("type", "checked"));
 
+        public void Installing(int index, int count, ModUpdate mod) =>
+            _window?.Send(Json.Object("type", "installing", "index", index, "count", count, "guid", mod.Guid));
+
         // ---- the page's init ----
 
         private string Init(string mode, bool wait)
@@ -415,7 +418,8 @@ namespace DragNWash.Launcher
                 "size", m.Zip?.Size ?? 0L,
                 "installable", m.Zip != null,
                 "notes", Json.Raw(Json.Object("body", m.Latest?.Body ?? "", "truncated", m.Latest?.BodyTruncated ?? false, "publishedAt", m.Latest?.PublishedAt ?? "")),
-                "selected", m.Zip != null))).ToList();
+                "selected", m.Zip != null,
+                "icon", IconUrl(m)))).ToList();
             return Json.Object(
                 "type", "init",
                 "mode", mode,
@@ -429,6 +433,31 @@ namespace DragNWash.Launcher
                 "logPath", Log.Path ?? "",
                 "opt", _option,
                 "backupPath", _option != null ? ShownBackup : @"BepInEx\" + Installer.Paths.InstallerFolder + @"\backup");
+        }
+
+        // The mod's icon (updates.json's "icon", a path relative to the game folder)
+        // as a data URL, or "" when it has none, isn't there, or reaches outside the
+        // game folder (only a path inside it is ever read).
+        private string IconUrl(ModUpdate mod)
+        {
+            if (string.IsNullOrWhiteSpace(mod.Icon))
+            {
+                return "";
+            }
+            try
+            {
+                string root = Path.GetFullPath(_files.Game).TrimEnd('\\') + "\\";
+                string full = Path.GetFullPath(Path.Combine(_files.Game, mod.Icon.Replace('/', '\\')));
+                if (!full.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+                {
+                    return "";
+                }
+                return Installer.ModIcon.DataUrl(full) ?? "";
+            }
+            catch (Exception)
+            {
+                return "";
+            }
         }
 
         private static void Shell(string target)

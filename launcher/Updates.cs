@@ -35,6 +35,10 @@ namespace DragNWash.Launcher
         [DataMember(Name = "latest")] public Release Latest;
         [DataMember(Name = "newer")] public bool Newer;
 
+        // The icon the Mods screen shows for the mod, a path relative to the game
+        // folder (docs/LAUNCHER.md); "" or missing when it has none.
+        [DataMember(Name = "icon")] public string Icon;
+
         // Worked out by the launcher, not read from the file.
         internal ReleaseAsset Zip;
         internal string ShownName => string.IsNullOrWhiteSpace(Name) ? Guid : Name;

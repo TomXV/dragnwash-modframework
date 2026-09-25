@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using BepInEx;
 using BepInEx.Bootstrap;
@@ -142,7 +143,7 @@ namespace DragNWash.ModFramework.Updates
             }
 
             Releases.TryGetValue(info.UpdateRepository, out Release release);
-            return new Dictionary<string, object>
+            var entry = new Dictionary<string, object>
             {
                 ["guid"] = info.Guid,
                 ["name"] = ModFramework.NameOf(info.Guid) ?? info.Guid,
@@ -155,6 +156,110 @@ namespace DragNWash.ModFramework.Updates
                 ["latest"] = release == null || release.Tag.Length == 0 ? null : LauncherRelease(release),
                 ["newer"] = IsNewer(release, version),
             };
+            string icon = IconOf(info);
+            if (icon != null)
+            {
+                entry["icon"] = icon;
+            }
+            return entry;
+        }
+
+        // The picture the Mods screen shows for this mod (ModsMenu.List.cs's ModIcon),
+        // as a path a launcher started before the game can read: the IconPath file
+        // itself when there is one, else info.Icon (already loaded from IconPath when
+        // the mod gave one, or set directly) encoded to a cache file when it can be
+        // read. Null for neither, same as no icon at all.
+        private static string IconOf(ModInfo info)
+        {
+            if (!string.IsNullOrEmpty(info.IconPath))
+            {
+                try
+                {
+                    if (File.Exists(info.IconPath))
+                    {
+                        return RelativeToGame(info.IconPath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ModFramework.Log.LogDebug($"Update check: could not read the icon path of {info.Guid}: {ex.Message}");
+                }
+            }
+            byte[] png = EncodePng(info.Icon);
+            if (png == null)
+            {
+                return null;
+            }
+            try
+            {
+                string folder = Path.Combine(LauncherCacheFolder, "icons");
+                Directory.CreateDirectory(folder);
+                string file = Path.Combine(folder, SafeIconFileName(info.Guid) + ".png");
+                File.WriteAllBytes(file, png);
+                return RelativeToGame(file);
+            }
+            catch (Exception ex)
+            {
+                ModFramework.Log.LogDebug($"Update check: could not write the mod icon cache file for {info.Guid}: {ex.Message}");
+                return null;
+            }
+        }
+
+        private static MethodInfo _encodeToPng;
+
+        // UnityEngine.ImageConversion.EncodeToPNG, by reflection: its reference
+        // assembly targets netstandard 2.1, which this net472 plugin cannot compile
+        // against (IconLoader.cs has the same reach for LoadImage, the other way).
+        // Null when the texture is missing, cannot be read back (isReadable false, as
+        // a texture the game itself loaded usually is), or the game build lacks it.
+        private static byte[] EncodePng(UnityEngine.Texture2D texture)
+        {
+            try
+            {
+                if (texture == null || !texture.isReadable)
+                {
+                    return null;
+                }
+                if (_encodeToPng == null)
+                {
+                    Type type = Type.GetType("UnityEngine.ImageConversion, UnityEngine.ImageConversionModule");
+                    _encodeToPng = type?.GetMethod("EncodeToPNG", new[] { typeof(UnityEngine.Texture2D) });
+                    if (_encodeToPng == null)
+                    {
+                        ModFramework.Log.LogDebug("Update check: mod icons cannot be encoded on this game build.");
+                    }
+                }
+                return _encodeToPng?.Invoke(null, new object[] { texture }) as byte[];
+            }
+            catch (Exception ex)
+            {
+                ModFramework.Log.LogDebug($"Update check: could not encode a mod icon: {ex.Message}");
+                return null;
+            }
+        }
+
+        // Only letters, digits, '.', '-' and '_' from the guid; anything else (there
+        // shouldn't be any in a BepInEx guid, but the file name must stay safe either way).
+        private static string SafeIconFileName(string guid)
+        {
+            var sb = new StringBuilder(guid?.Length ?? 3);
+            foreach (char c in guid ?? "mod")
+            {
+                sb.Append(char.IsLetterOrDigit(c) || c == '.' || c == '-' || c == '_' ? c : '_');
+            }
+            return sb.Length > 0 ? sb.ToString() : "mod";
+        }
+
+        // Relative to the game folder (forward slashes, as the launcher's other file
+        // paths read), when it is inside it; the full path otherwise (a mod's IconPath
+        // is free to point anywhere, though the launcher then can't read it - Session.cs
+        // only reads a path that stays inside the game folder).
+        private static string RelativeToGame(string path)
+        {
+            string full = Path.GetFullPath(path);
+            string root = Path.GetFullPath(Paths.GameRootPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            string rel = full.StartsWith(root, StringComparison.OrdinalIgnoreCase) ? full.Substring(root.Length) : full;
+            return rel.Replace('\\', '/');
         }
 
         private static Dictionary<string, object> LauncherRelease(Release release)

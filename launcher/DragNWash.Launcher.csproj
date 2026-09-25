@@ -57,6 +57,7 @@
     <Compile Include="..\installer\Download.cs" Link="Installer\Download.cs" />
     <Compile Include="..\installer\InstallJournal.cs" Link="Installer\InstallJournal.cs" />
     <Compile Include="..\installer\Manifest.cs" Link="Installer\Manifest.cs" />
+    <Compile Include="..\installer\ModIcon.cs" Link="Installer\ModIcon.cs" />
     <Compile Include="..\installer\Strings.cs" Link="Installer\Strings.cs" />
   </ItemGroup>
 

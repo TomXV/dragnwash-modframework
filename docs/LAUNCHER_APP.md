@@ -147,7 +147,7 @@ A borderless 720 × 440 window with WebView2 (part of Windows 10 and 11). The pa
 The page and the launcher talk in small JSON messages. The page posts `{cmd, ...}` with `chrome.webview.postMessage`, and the launcher calls `window.dnw(event)`:
 
 - **Page to launcher**: `ready`, `update` (the ticked mods), `skip`, `open` (a mod's release page), `proceed`, `cancel`, `retry`, `play` (also the end of the logo), `close`, `minimize`, `drag`, `openLog`, `copy`, `gone` (faded out).
-- **Launcher to page**: `init` (the mode, language, settings and mods), `step` (`wait`, `dl`, `chk`, `bak`, `ins`, and `steam`, `opt` for the launch option), `download` (bytes), `verified` (one zip passed), `checked` (all passed; the launcher writes nothing until the page answers `proceed`, once its check pictures are done), `log`, `done`, `failed`, `cancelled`, `bye` (the window is closing).
+- **Launcher to page**: `init` (the mode, language, settings and mods, each with `icon`: a data URL, or `""` for a mod with none), `step` (`wait`, `dl`, `chk`, `bak`, `ins`, and `steam`, `opt` for the launch option), `download` (bytes), `verified` (one zip passed), `installing` (which mod's files are going in now, every mod in turn, while `step` only says `ins` once for the whole run), `checked` (all passed; the launcher writes nothing until the page answers `proceed`, once its check pictures are done), `log`, `done`, `failed`, `cancelled`, `bye` (the window is closing).
 
 Closing goes the same way on every screen: the launcher sends `bye`, the page fades out (0.25 s) and answers `gone`, the launcher fades the window itself away (0.16 s) and hides it, and only then starts the game. With reduce-animations on, the window just goes.
 

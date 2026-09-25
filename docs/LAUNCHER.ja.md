@@ -37,6 +37,7 @@
       "installManifest": false,
       "manifestName": "",
       "manifestVersion": "",
+      "icon": "BepInEx/cache/DragNWash.ModFramework/icons/com.tomxv.dragnwash.modframework.png",
       "latest": {
         "tag": "v1.5.0",
         "version": "1.5.0",
@@ -73,6 +74,7 @@ GitHub のリポジトリを指定している（`ModInfo.UpdateRepository`）�
 | `pluginFolder` | `BepInEx/plugins` の直下にある Mod のフォルダー。DLL が `plugins` にじかに置いてあるときは `""`。 |
 | `installManifest` | そのフォルダーに、インストーラーが書く `mod-install.json` があれば true。このときだけランチャーが自分で Mod を更新できます。なければ、リリースページを開くことしかできません。 |
 | `manifestName`、`manifestVersion` | その `mod-install.json` の `name` と `version`。ないときや読めないときは `""`。 |
+| `icon` | Mods 画面がその Mod に出す絵。ゲームのフォルダーからの相対パス。ないときは項目ごとありません。Mod が `IconPath` を渡していればそのファイル、そうでなければ `Icon` のテクスチャーを、読み出せるときに限って `BepInEx/cache/DragNWash.ModFramework/icons/<guid>.png` へ書き出したものです。 |
 | `latest` | 最新のリリース。まだ確認していないときや、リリースがないときは `null`。 |
 | `latest.tag` | リリースのタグ。 |
 | `latest.version` | タグをバージョンにしたもの（`v1.2` なら `1.2.0`）。タグがバージョン番号でなければ `null`。 |

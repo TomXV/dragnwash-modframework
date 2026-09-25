@@ -1047,21 +1047,49 @@ namespace DragNWash.Installer
                 }
             }
 
+            // The framework goes before the installer folder below (which the launcher is
+            // part of): RemovesFramework/the launch options the caller worked out from
+            // still describe this game folder either way, since neither block reads what
+            // the other changes; keeping the two in the checklist's order (UninstallSteps)
+            // just makes the window's progress match what it showed beforehand.
+            bool othersLeft = OtherMods(game).Any();
+            if (othersLeft)
+            {
+                _log($"ModFramework: kept, other mods are installed ({string.Join(", ", OtherMods(game))})");
+            }
+            else
+            {
+                bool frameworkThere = Directory.Exists(plugins) && Directory.EnumerateDirectories(plugins, Paths.FrameworkPrefix + "*").Any();
+                bool historyThere = Directory.Exists(Path.Combine(game, "BepInEx", "SaveHistory"));
+                if (frameworkThere || (!keepData && historyThere))
+                {
+                    progress?.Report(UninstallStage.Framework);
+                }
+                RemoveFramework(game, keepData);
+            }
+
             // The staging folder and the backup of the last install go with any mod's
             // uninstall; the launcher goes with the framework.
-            bool othersLeft = OtherMods(game).Any();
             string installer = Path.Combine(game, "BepInEx", Paths.InstallerFolder);
             if (Directory.Exists(installer))
             {
+                bool hasBackupOrStaging = Directory.Exists(Path.Combine(installer, "backup")) || Directory.Exists(Path.Combine(installer, "staging"));
                 if (!othersLeft && !keepLauncher)
                 {
+                    // One DeleteTree does both (the launcher's own files and the backup
+                    // and staging folders together), but UninstallSteps lists them as the
+                    // separate things they are to the player, so both are reported here.
                     progress?.Report(UninstallStage.Launcher);
+                    if (hasBackupOrStaging)
+                    {
+                        progress?.Report(UninstallStage.InstallerBackup);
+                    }
                     InstallJournal.DeleteTree(installer);
                     _log($"BepInEx\\{Paths.InstallerFolder}: removed");
                 }
                 else
                 {
-                    if (Directory.Exists(Path.Combine(installer, "backup")) || Directory.Exists(Path.Combine(installer, "staging")))
+                    if (hasBackupOrStaging)
                     {
                         progress?.Report(UninstallStage.InstallerBackup);
                     }
@@ -1077,21 +1105,6 @@ namespace DragNWash.Installer
                         _log($"BepInEx\\{Paths.InstallerFolder}: removed");
                     }
                 }
-            }
-
-            if (othersLeft)
-            {
-                _log($"ModFramework: kept, other mods are installed ({string.Join(", ", OtherMods(game))})");
-            }
-            else
-            {
-                bool frameworkThere = Directory.Exists(plugins) && Directory.EnumerateDirectories(plugins, Paths.FrameworkPrefix + "*").Any();
-                bool historyThere = Directory.Exists(Path.Combine(game, "BepInEx", "SaveHistory"));
-                if (frameworkThere || (!keepData && historyThere))
-                {
-                    progress?.Report(UninstallStage.Framework);
-                }
-                RemoveFramework(game, keepData);
             }
 
             if (removeBepInEx && HasBepInEx(game))
