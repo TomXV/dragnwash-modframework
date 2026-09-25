@@ -39,7 +39,7 @@ A version already installed since the game looked (the mod's `mod-install.json` 
 
 **After an update asked for in the game**
 
-The game writes `BepInEx/cache/DragNWash.ModFramework/update-request.json` and quits. When the game exits, the launcher finds the file (only one written after this launch counts; it's deleted once read), shows the update screen, installs, counts down 3 seconds, closes the window and starts the game again with the same command. **Don't start it now** closes the window instead.
+The game writes `BepInEx/cache/DragNWash.ModFramework/update-request.json` and quits. When the game exits, the launcher finds the file (only one written after this launch counts; it's deleted once read), shows the update screen, installs, counts down 10 seconds, closes the window and starts the game again with the same command. **Start now** starts it right away instead of waiting, and **Don't start it now** closes the window without starting it.
 
 **The window's ✕**
 
