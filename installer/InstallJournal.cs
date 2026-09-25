@@ -105,6 +105,58 @@ namespace DragNWash.Installer
             File.Copy(from, to, true);
         }
 
+        // For a file that may be running: the launcher and its DLLs, when the launcher
+        // itself installs an update. Windows lets a running file be renamed but not
+        // written, so it is moved to <name>.old first; the old copy is deleted by the
+        // next install (DeleteMovedAside), once it is no longer running.
+        internal void CopyFileInUse(string from, string to)
+        {
+            Change(to);
+            try
+            {
+                File.Copy(from, to, true);
+            }
+            catch (Exception ex) when ((ex is IOException || ex is UnauthorizedAccessException) && File.Exists(to))
+            {
+                string aside = to + MovedAside;
+                for (int n = 2; File.Exists(aside); n++)
+                {
+                    try
+                    {
+                        File.Delete(aside);
+                    }
+                    catch (Exception)
+                    {
+                        aside = to + "." + n + MovedAside;
+                    }
+                }
+                File.Move(to, aside);
+                File.Copy(from, to, true);
+            }
+        }
+
+        internal const string MovedAside = ".old";
+
+        // The copies CopyFileInUse moved aside in dir; one still running stays for next time.
+        internal static void DeleteMovedAside(string dir)
+        {
+            if (!Directory.Exists(dir))
+            {
+                return;
+            }
+            foreach (string file in Directory.GetFiles(dir, "*" + MovedAside))
+            {
+                try
+                {
+                    File.SetAttributes(file, FileAttributes.Normal);
+                    File.Delete(file);
+                }
+                catch (Exception)
+                {
+                }
+            }
+        }
+
         // Copied over what is there: files the target has and the source does not stay.
         internal void CopyTree(string from, string to)
         {
@@ -269,7 +321,8 @@ namespace DragNWash.Installer
             return path.StartsWith(_game + "\\", StringComparison.OrdinalIgnoreCase) ? path.Substring(_game.Length + 1) : path;
         }
 
-        private static bool SameBytes(string a, string b)
+        // Whether two files hold the same bytes; false when either is missing.
+        internal static bool SameBytes(string a, string b)
         {
             if (!File.Exists(a) || !File.Exists(b))
             {
