@@ -6,8 +6,9 @@ namespace DragNWash.Installer.Tests
 {
     // Checks of installer/SteamConfig.cs: what the installer writes into Steam's
     // localconfig.vdf, on made-up files. Each check prints one line; any failure makes
-    // the exit code 1.
-    internal static class Program
+    // the exit code 1. Uninstall's progress (UninstallTests.cs) and the mod icon
+    // (IconTests.cs) are checked here too, on made-up game folders.
+    internal static partial class Program
     {
         private const string App = "4739660";
         private const string L = @"D:\SteamLibrary\steamapps\common\Drag'n Wash\BepInEx\DragNWash.Installer\Launcher.exe";
@@ -21,6 +22,10 @@ namespace DragNWash.Installer.Tests
             Options();
             Files();
             Accounts();
+            UninstallSteps();
+            UninstallProgressOrder();
+            ModIconManifest();
+            ModIconDataUrl();
             Console.WriteLine();
             Console.WriteLine(_failed == 0 ? $"All {_passed} checks passed." : $"{_failed} of {_passed + _failed} checks FAILED.");
             return _failed == 0 ? 0 : 1;
