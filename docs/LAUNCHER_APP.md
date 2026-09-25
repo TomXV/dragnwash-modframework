@@ -16,7 +16,7 @@ Steam's launch option:
 "<game>\BepInEx\DragNWash.Installer\Launcher.exe" %command%
 ```
 
-Steam replaces `%command%` with the game's exe and its arguments. The launcher starts exactly that, stays running as the game's parent until the game exits (so Steam keeps counting play time), and sets `DNW_LAUNCHER=1` for the game so the game knows the launcher is waiting.
+Steam replaces `%command%` with the game's exe and its arguments. The launcher starts exactly that, once its own window has closed, so the two never show at once. It stays running as the game's parent until the game exits, with no window (so Steam keeps counting play time), and sets `DNW_LAUNCHER=1` for the game so the game knows the launcher is waiting.
 
 The other way in is for a game that was started without the launcher:
 
@@ -31,15 +31,19 @@ It waits for that process to exit, installs the updates, and asks Steam to start
 **Before the game starts**
 
 1. It reads `BepInEx/cache/DragNWash.ModFramework/updates.json`. This is a file read only: the launcher doesn't go online to look for updates. The game does that, once a day.
-2. When there's nothing to show (no newer version, the file isn't there yet, the game's update check is off, or every update is one you skipped), the game starts straight away and the logo plays while it loads. The window closes once the game's window is up.
-3. Otherwise the logo moves up and the list of updates comes in: each mod with its version now and the new one, the size, and its release notes. Tick the ones you want. **Update and play** installs them and starts the game; **Play without updating** just starts it. **Skip this version** stops that version of that mod from bringing the window up again; the next version will.
+2. When there's nothing to show (no newer version, the file isn't there yet, the game's update check is off, or every update is one you skipped), the logo plays for about four seconds: "Checking for updates", "No updates", then "Starting the game" while the bar fills up. Then the window fades out and closes, and the game starts. A click or any key shortens it. This window doesn't take the focus from other apps.
+3. Otherwise the logo moves up and the list of updates comes in: each mod with its version now and the new one, the size, and its release notes. Tick the ones you want. **Update and play** installs them and starts the game; **Play without updating** just starts it. Either way, the window closes first. **Skip this version** stops that version of that mod from bringing the window up again; the next version will.
 4. The list only offers a checkbox for mods the installer put in (their folder has `mod-install.json`). Other mods get **Open release page** instead.
 
 A version already installed since the game looked (the mod's `mod-install.json` says so) isn't shown.
 
 **After an update asked for in the game**
 
-The game writes `BepInEx/cache/DragNWash.ModFramework/update-request.json` and quits. When the game exits, the launcher finds the file (only one written after this launch counts; it's deleted once read), shows the update screen, installs, counts down 3 seconds and starts the game again with the same command. **Don't start it now** closes the window instead.
+The game writes `BepInEx/cache/DragNWash.ModFramework/update-request.json` and quits. When the game exits, the launcher finds the file (only one written after this launch counts; it's deleted once read), shows the update screen, installs, counts down 3 seconds, closes the window and starts the game again with the same command. **Don't start it now** closes the window instead.
+
+**The window's ✕**
+
+✕ (or Alt+F4) closes the launcher without starting the game, on every screen: the logo, the list, the failure screen and the countdown. Before the checks are done, it cancels the download first, so the game folder stays as it was; while files are being written, it does nothing. The launcher then exits, so Steam sees the game as stopped. To play without the update, press **Play without updating**.
 
 **Without WebView2**
 
@@ -47,7 +51,7 @@ No window at all. The game starts as usual (or, after `--update-after-exit`, Ste
 
 **If anything goes wrong**
 
-The game still starts. A failure while updating shows what happened and what became of the game folder. Before the game, you can try again or play without updating. After an update asked for in the game, the game starts again unchanged after the countdown.
+The game still starts (unless you closed the window with ✕). A failure while updating shows what happened and what became of the game folder. Before the game, you can try again or play without updating. After an update asked for in the game, the game starts again unchanged after the countdown. When the page doesn't come up (6 seconds for the logo, 15 for the other screens) or the window doesn't close within 2.5 seconds, the window is hidden and the game starts anyway.
 
 ## Installing
 
@@ -122,8 +126,10 @@ A borderless 720 × 440 window with WebView2 (part of Windows 10 and 11). The pa
 
 The page and the launcher talk in small JSON messages. The page posts `{cmd, ...}` with `chrome.webview.postMessage`, and the launcher calls `window.dnw(event)`:
 
-- **Page to launcher**: `ready`, `introDone`, `update` (the ticked mods), `skip`, `open` (a mod's release page), `proceed`, `cancel`, `retry`, `play`, `close`, `minimize`, `drag`, `openLog`, `copy`.
-- **Launcher to page**: `init` (the mode, language, settings and mods), `step` (`wait`, `dl`, `chk`, `bak`, `ins`), `download` (bytes), `verified` (one zip passed), `checked` (all passed; the launcher writes nothing until the page answers `proceed`, once its check pictures are done), `log`, `done`, `failed`, `cancelled`.
+- **Page to launcher**: `ready`, `update` (the ticked mods), `skip`, `open` (a mod's release page), `proceed`, `cancel`, `retry`, `play` (also the end of the logo), `close`, `minimize`, `drag`, `openLog`, `copy`, `gone` (faded out).
+- **Launcher to page**: `init` (the mode, language, settings and mods), `step` (`wait`, `dl`, `chk`, `bak`, `ins`), `download` (bytes), `verified` (one zip passed), `checked` (all passed; the launcher writes nothing until the page answers `proceed`, once its check pictures are done), `log`, `done`, `failed`, `cancelled`, `bye` (the window is closing).
+
+Closing goes the same way on every screen: the launcher sends `bye`, the page fades out (0.25 s) and answers `gone`, the launcher fades the window itself away (0.16 s) and hides it, and only then starts the game. With reduce-animations on, the window just goes.
 
 The launcher's work can be far ahead of the pictures, so the page queues the events and shows each step for at least the time it has in the design.
 
