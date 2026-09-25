@@ -367,7 +367,8 @@ const List = {
     const version = el('span', 'mv');
     version.append(`${m.from} `, el('b', null, '→'), ` ${m.to}`);
     const extra = m.installable ? fmtSize(m.size) : t('cantHere');
-    if (extra) version.append(`  ·  ${extra}`);
+    // as in the mock: a wide gap before the size, a plain one before "can't be installed from here"
+    if (extra) version.append(m.installable ? `  ·  ${extra}` : ` · ${extra}`);
     pick.append(el('span', 'mn', m.name), version);
     text.append(pick);
     // a mod without an installer manifest: never installed from here, only its release page

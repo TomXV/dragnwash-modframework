@@ -14,7 +14,15 @@
   --m-body:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1200 624%22 preserveAspectRatio=%22none%22%3E%3Cdefs%3E%3Cmask id=%22m%22 maskUnits=%22userSpaceOnUse%22 x=%220%22 y=%220%22 width=%221200%22 height=%22624%22%3E%3Crect width=%221200%22 height=%22624%22 fill=%22%23fff%22/%3E%3Cpolygon points=%221061.0,292.5 1039.0,292.5 1024.0,289.5 1002.0,280.5 984.0,268.5 969.5,254.0 960.5,241.0 952.6,224.0 945.5,199.0 932.0,189.5 918.5,177.0 907.4,160.0 906.5,144.0 908.5,139.0 908.5,132.0 896.5,118.0 897.5,106.0 901.4,92.0 913.4,68.0 930.5,46.0 945.0,33.5 957.0,27.5 970.0,23.5 992.0,20.5 993.0,19.5 1018.0,19.5 1033.0,23.5 1044.0,29.5 1045.4,31.0 1045.4,36.0 1059.5,49.0 1064.5,56.0 1072.6,73.0 1078.6,95.0 1083.5,108.0 1086.0,110.5 1103.0,118.5 1113.0,125.5 1128.5,142.0 1135.4,153.0 1140.5,165.0 1143.5,177.0 1143.5,185.0 1148.5,194.0 1148.5,200.0 1147.4,201.0 1147.4,210.0 1146.5,211.0 1145.5,221.0 1141.4,233.0 1135.4,245.0 1122.0,261.5 1099.0,279.5 1080.0,288.5 1061.0,292.5%22 fill=%22%23000%22/%3E%3Cpolygon points=%221164.0,200.5 1158.0,200.5 1147.4,193.0 1146.5,189.0 1143.5,185.0 1143.5,177.0 1138.6,160.0 1132.6,148.0 1124.5,137.0 1109.0,122.5 1086.0,110.5 1083.5,108.0 1078.6,95.0 1072.6,73.0 1064.5,56.0 1059.5,49.0 1045.4,36.0 1045.4,30.0 1047.5,24.0 1044.5,9.0 1046.5,4.0 1051.0,-0.5 1071.0,-0.5 1073.5,2.0 1079.5,16.0 1083.0,19.5 1086.0,20.5 1093.0,19.5 1096.6,16.0 1101.5,3.0 1105.0,-0.5 1125.0,-0.5 1128.5,3.0 1130.5,8.0 1129.4,29.0 1131.0,31.5 1135.0,33.5 1142.0,33.5 1155.0,23.5 1163.0,21.5 1168.0,23.5 1176.5,33.0 1177.4,40.0 1174.6,46.0 1165.4,57.0 1165.4,64.0 1170.0,69.5 1173.0,70.5 1191.0,68.5 1196.0,70.5 1199.5,74.0 1199.5,95.0 1188.0,101.5 1184.0,102.5 1179.5,107.0 1179.5,115.0 1181.0,117.5 1183.0,119.5 1192.0,122.5 1199.5,127.0 1199.5,149.0 1193.0,153.5 1171.0,152.5 1166.5,156.0 1165.4,159.0 1166.5,167.0 1174.6,177.0 1177.4,183.0 1177.4,188.0 1171.0,196.5 1164.0,200.5%22 fill=%22%23000%22/%3E%3C/mask%3E%3C/defs%3E%3Crect width=%221200%22 height=%22624%22 fill=%22%23fff%22 mask=%22url%28%23m%29%22/%3E%3C/svg%3E");
   --m-nogear:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1200 624%22 preserveAspectRatio=%22none%22%3E%3Cdefs%3E%3Cmask id=%22m%22 maskUnits=%22userSpaceOnUse%22 x=%220%22 y=%220%22 width=%221200%22 height=%22624%22%3E%3Crect width=%221200%22 height=%22624%22 fill=%22%23fff%22/%3E%3Cpolygon points=%221164.0,200.5 1158.0,200.5 1147.4,193.0 1146.5,189.0 1143.5,185.0 1143.5,177.0 1138.6,160.0 1132.6,148.0 1124.5,137.0 1109.0,122.5 1086.0,110.5 1083.5,108.0 1078.6,95.0 1072.6,73.0 1064.5,56.0 1059.5,49.0 1045.4,36.0 1045.4,30.0 1047.5,24.0 1044.5,9.0 1046.5,4.0 1051.0,-0.5 1071.0,-0.5 1073.5,2.0 1079.5,16.0 1083.0,19.5 1086.0,20.5 1093.0,19.5 1096.6,16.0 1101.5,3.0 1105.0,-0.5 1125.0,-0.5 1128.5,3.0 1130.5,8.0 1129.4,29.0 1131.0,31.5 1135.0,33.5 1142.0,33.5 1155.0,23.5 1163.0,21.5 1168.0,23.5 1176.5,33.0 1177.4,40.0 1174.6,46.0 1165.4,57.0 1165.4,64.0 1170.0,69.5 1173.0,70.5 1191.0,68.5 1196.0,70.5 1199.5,74.0 1199.5,95.0 1188.0,101.5 1184.0,102.5 1179.5,107.0 1179.5,115.0 1181.0,117.5 1183.0,119.5 1192.0,122.5 1199.5,127.0 1199.5,149.0 1193.0,153.5 1171.0,152.5 1166.5,156.0 1165.4,159.0 1166.5,167.0 1174.6,177.0 1177.4,183.0 1177.4,188.0 1171.0,196.5 1164.0,200.5%22 fill=%22%23000%22/%3E%3C/mask%3E%3C/defs%3E%3Crect width=%221200%22 height=%22624%22 fill=%22%23fff%22 mask=%22url%28%23m%29%22/%3E%3C/svg%3E");
 }
-:root:lang(ja){--ui:"Yu Gothic UI","Segoe UI",system-ui,sans-serif}
+:root:lang(ja){--ui:"DNW Backslash","Yu Gothic UI","Segoe UI",system-ui,sans-serif}
+/* Japanese fonts draw "\" as a yen sign, which turns folder paths into BepInEx¥config. Take just that one
+   character from Segoe UI (a font on the PC, nothing is loaded) */
+@font-face{font-family:"DNW Backslash";src:local("Segoe UI");unicode-range:U+5C;font-weight:400}
+@font-face{font-family:"DNW Backslash";src:local("Segoe UI Semibold");unicode-range:U+5C;font-weight:600}
+@font-face{font-family:"DNW Backslash";src:local("Segoe UI Bold");unicode-range:U+5C;font-weight:700}
+/* Japanese lines break between phrases, not inside words (Chromium's phrase breaking; plain breaking elsewhere),
+   and never before small kana or closing marks */
+:root:lang(ja) .lw{word-break:auto-phrase;line-break:strict}
 
 /* ===== the window ===== */
 html,body{margin:0;height:100%;overflow:hidden;background:var(--bg2)}
@@ -51,10 +59,10 @@ button{font:inherit;color:inherit}
 .layer{position:absolute;left:0;right:0;top:46px;bottom:0;display:flex;flex-direction:column;z-index:1}
 .layer.leave{animation:xgone .25s ease both}
 .lbody{flex:1 1 auto;min-height:0;display:flex;gap:16px;padding:6px 20px 14px}
-.col-l{flex:0 0 290px;display:flex;flex-direction:column;min-height:0}
+.col-l{flex:0 0 290px;display:flex;flex-direction:column;min-height:0;min-width:0}
 .col-r{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;min-height:0}
-.lh{font-size:17px;font-weight:700;margin:0 0 4px;line-height:1.35}
-.ls{color:var(--dim);line-height:1.55;margin:0 0 12px;font-size:12px}
+.lh{font-size:17px;font-weight:700;margin:0 0 4px;line-height:1.35;overflow-wrap:anywhere}
+.ls{color:var(--dim);line-height:1.55;margin:0 0 12px;font-size:12px;overflow-wrap:anywhere}
 .lfoot{flex:0 0 auto;height:64px;box-sizing:border-box;display:flex;align-items:center;gap:10px;padding:0 20px;border-top:1px solid var(--line);background:rgba(0,0,0,.22)}
 .net{flex:1 1 auto;min-width:0;color:var(--dim);font-size:11.5px;line-height:1.5;margin:0}
 .lb{height:36px;padding:0 18px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-weight:600;white-space:nowrap;flex:0 0 auto;box-sizing:border-box;border:0;background:none;cursor:pointer;transition:opacity .3s ease,background-color .15s ease}
@@ -241,11 +249,12 @@ button{font:inherit;color:inherit}
 .mods{display:flex;flex-direction:column;gap:6px;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(232,239,247,.35) transparent}
 .mod{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:8px;background:var(--card);border:1px solid var(--line);cursor:pointer}
 .mod.sel{background:rgba(82,199,184,.11);border-color:rgba(82,199,184,.7)}
-.ext{width:16px;flex:0 0 auto;color:var(--dim);text-align:center;line-height:18px}
+/* the arrow from Segoe UI: Yu Gothic UI draws it as a bare slash */
+.ext{width:16px;flex:0 0 auto;color:var(--dim);text-align:center;line-height:18px;font-family:"Segoe UI",var(--ui)}
 .mt{min-width:0;flex:1 1 auto}
 .pick{display:block;width:100%;text-align:left;background:none;border:0;padding:0;cursor:pointer;border-radius:4px}
-.mn{display:block;font-weight:600;line-height:1.35}
-.mv{display:block;color:var(--dim);font-size:11.5px;margin-top:2px;line-height:1.45}
+.mn{display:block;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
+.mv{display:block;color:var(--dim);font-size:11.5px;margin-top:2px;line-height:1.45;overflow-wrap:anywhere}
 .mv b{color:var(--accent);font-weight:600}
 .total{margin-top:auto;color:var(--dim);font-size:11.5px;padding-top:8px}
 .nhead{display:flex;align-items:center;gap:10px;margin:2px 0 8px;min-height:24px}
@@ -289,6 +298,9 @@ button{font:inherit;color:inherit}
    1.3 s, where the gear and the sponge start working; the card, the bar and the log come in after it.
    The steps and pictures change with the launcher's events; .fin is added at the moment everything is in */
 .upd.enter{animation:xcome .3s ease .3s both}
+/* the lead names the mods; long names are cut at three lines so the steps keep their room (the names are on
+   the line under the bar and in the log too) */
+.upd .col-l .ls{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
 .upd.enter .lh{animation:fadeup .4s ease .4s both}
 .upd.enter .ls{animation:fadeup .4s ease .5s both}
 .upd.enter .lfoot > *{animation:fadeup .4s ease .6s backwards}  /* backwards: Cancel greys out later */
@@ -497,6 +509,9 @@ button{font:inherit;color:inherit}
 .already{margin:8px 0 0;color:var(--dim);font-size:11.5px;line-height:1.5}
 .fail .again{margin-top:12px}
 .fail.play .again{animation:fadeup .45s ease .6s both}
+/* the rest follows the pill, so nothing shows before the heading */
+.fail.play .already{animation:fadeup .45s ease .55s both}
+.fail.play details.det{animation:fadeup .45s ease .7s both}
 details.det{margin-top:14px;flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
 details.det summary{cursor:pointer;color:var(--accent);width:max-content;list-style:none;border-radius:3px}
 details.det summary::before{content:"\25B8";display:inline-block;margin-right:6px;transition:transform .2s}
