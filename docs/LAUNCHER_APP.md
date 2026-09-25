@@ -153,6 +153,21 @@ Closing goes the same way on every screen: the launcher sends `bye`, the page fa
 
 The launcher's work can be far ahead of the pictures, so the page queues the events and shows each step for at least the time it has in the design.
 
+## Install.exe's window
+
+Install.exe's window looks like the launcher's now: a borderless 720 × 540 window with WebView2, the same header and logo, the logo intro while it looks for the game folder, and one board at a time (setup, working, done, or what went wrong). The Steam question and the download question are sheets over the setup board instead of separate windows. It does everything the old window did, with the same rules and the same words, in English, Japanese or Chinese; the log stays in English. The page (`installer/web/`, plus the parts it shares with the launcher in `webui/`) is inside the exe and served from it at `https://installer.invalid/`, locked down like the launcher's: it can't load anything else, go online or open other pages. The folder and zip pickers are still Windows' own, opened by Install.exe.
+
+**Still one file.** Mods put Install.exe next to their files, and it runs from wherever the zip was extracted, so it can't bring DLLs along. The two WebView2 DLLs are resources in the exe, loaded from memory. `WebView2Loader.dll` (native, one for each of x64, x86 and Arm64) is a resource too: it's written once to `%LOCALAPPDATA%\DragNWash ModFramework\Installer\WebView2Loader\<processor>-<hash>` and its SHA-256 is checked before every use, so a damaged copy is written again. Nothing is written next to the exe. The page's own data goes in `%LOCALAPPDATA%\DragNWash ModFramework\Installer\WebView2`. That makes Install.exe about 1.7 MB instead of 180 KB, and it's still built byte for byte the same from the same sources.
+
+**The old window is still there.** Without the WebView2 runtime, when the loader can't be put in place, or when the page hasn't come up after 12 seconds, the WinForms window opens as before, and the first line of its log says why. `DNW_INSTALLER_CLASSIC=1` opens it on purpose (in any build). The command line is unchanged and never shows a window.
+
+The page and Install.exe talk the way the launcher's do: the page posts `{cmd, ...}`, and Install.exe calls `window.dnw(event)` with the words already in the right language.
+
+- **Page to Install.exe**: `ready`, `lang`, `browse`, `mode`, `choice`, `launch`, `keepData`, `alsoBep`, `run`, `steam` (the Steam sheet's answer), `consent` (the download sheet's answer), `cancel`, `retry`, `zip`, `keep`, `back`, `start` (Start the game), `open`, `copy`, `close`, `minimize`, `drag`, `gone`.
+- **Install.exe to page**: `init` (the mod, its icon, the languages and every text), `texts` (after a language change), `setup`, `sheet`, `steamWait`, `sheetClose`, `start` (the working board's rows), `progress`, `log`, `rollback`, `stopping`, `done`, `failed`, `copied`, `bye`.
+
+A Debug build of Install.exe also reads `DNW_INSTALLER_WEB=<installer/web folder>` and serves the page from disk (the shared parts from `webui/` and the logo from `images/` in the same repo), so it can be changed without building again.
+
 ## Building and testing
 
 `tools/pack.ps1` builds it into the framework's zip. By hand:
