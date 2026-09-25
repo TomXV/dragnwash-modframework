@@ -94,20 +94,8 @@
 /* a change on the board (another folder, mode or choice): only the plan's lines come in again */
 .setup .plan.swap li{animation:fadeup .3s ease calc(var(--i) * .03s) both}
 
-/* ===== question sheets over the board (the old separate dialogs): the board dims, the sheet rises ===== */
-.layer.under{transform:scale(.985);filter:brightness(.8);transition:transform .32s cubic-bezier(.4,0,.2,1),filter .32s ease}
-.layer.back{transition:transform .32s cubic-bezier(.4,0,.2,1),filter .32s ease}
-.veil{position:absolute;left:0;right:0;top:46px;bottom:0;z-index:5;background:rgba(8,12,15,.66);display:flex;align-items:center;justify-content:center;animation:xcome .2s ease both}
-.veil.out{animation:xgone .2s ease .06s both}
-.sheet{position:relative;width:560px;max-height:calc(100% - 28px);box-sizing:border-box;display:flex;flex-direction:column;background:linear-gradient(180deg,#1f2b30,#182226);border:1px solid rgba(255,255,255,.13);border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.55);animation:sheetin .38s cubic-bezier(.2,.8,.3,1) .05s both}
+/* ===== question sheets over the board: the veil, the sheet and its swaps are shared (webui/motion.css) ===== */
 .sheet.wide{width:660px}
-.sheet.swap-in{animation:swapin .34s cubic-bezier(.2,.7,.3,1) .12s both}
-.sheet.swap-out{position:absolute;animation:swapout .22s cubic-bezier(.5,0,.75,.4) both;pointer-events:none}
-.veil.out .sheet{animation:sheetout .2s cubic-bezier(.5,0,.75,.4) both}
-@keyframes sheetin{from{opacity:0;transform:translateY(16px) scale(.985)}to{opacity:1;transform:none}}
-@keyframes sheetout{to{opacity:0;transform:translateY(10px) scale(.99)}}
-@keyframes swapin{from{opacity:0;transform:translateX(14px)}}
-@keyframes swapout{to{opacity:0;transform:translateX(-14px)}}
 .sbody{display:flex;gap:14px;padding:18px 22px 14px;overflow-y:auto;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(232,239,247,.35) transparent}
 .stext{flex:1 1 auto;min-width:0}
 .stext h2{font-size:15.5px;margin:1px 0 6px;line-height:1.4;padding-right:24px}
@@ -134,7 +122,7 @@
 .slow .gearwait{animation:none;opacity:.5}
 
 /* ===== working boards: the launcher's board 2 with the installer's own checklist ===== */
-.upd .steps{gap:7px;overflow-y:auto;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(232,239,247,.35) transparent;padding-right:2px}
+.upd .steps{gap:7px;overflow-y:auto;overflow-x:hidden;min-height:0;padding-left:4px;margin-left:-4px;scrollbar-width:thin;scrollbar-color:rgba(232,239,247,.35) transparent;padding-right:2px}
 .upd .st small{font-size:11px}
 .inst .col-l{flex-basis:300px}
 .inst .ls{margin-bottom:10px}
@@ -144,6 +132,7 @@
 .st.kept .mk::after{content:"";width:7px;height:1.5px;background:rgba(232,239,247,.6)}
 .st.kept{color:var(--dim)}
 .upd .lfoot .net{display:grid}
+.upd .lfoot .net > .llink{justify-self:start}
 .upd .lfoot .net .ph{white-space:normal}
 /* the mod's own icon beside the picture while its files go in or out */
 .scbox .micon{position:absolute;right:-4px;bottom:-4px}
@@ -179,31 +168,9 @@
 .fwway .llink{display:block;margin-top:3px;text-align:left}
 .fail.play .fwway{animation:fadeup .45s ease .6s both}
 .fail .errtext .ls + .ls{margin-top:4px}
-.fail details.det .logbox{white-space:pre}
+.fail details.det .logbox{max-height:210px}
+.fail details.det .logbox > div{white-space:pre-wrap;overflow-wrap:anywhere}
 .fail .errrow > .sc{width:42px;height:42px;flex:0 0 auto}
 
-/* ===== boards coming and going (the shared Motion part takes this over once it's there) =====
-   .bout-KIND: the board leaving; .bin-KIND: the one coming in. fwd goes left, back right, up lifts, fail sinks */
-.bout-fwd{animation:bout .26s cubic-bezier(.5,0,.75,.4) both;--ox:-14px;pointer-events:none}
-.bout-back{animation:bout .26s cubic-bezier(.5,0,.75,.4) both;--ox:14px;pointer-events:none}
-.bout-up{animation:bout .26s cubic-bezier(.5,0,.75,.4) both;--oy:-8px;pointer-events:none}
-.bout-fail{animation:bout .3s cubic-bezier(.35,0,.25,1) both;--oy:5px;pointer-events:none}
-.bin-fwd .lbody,.bin-fwd .lfoot{animation:bin .4s cubic-bezier(.2,.7,.3,1) both;--ix:14px}
-.bin-back .lbody,.bin-back .lfoot{animation:bin .4s cubic-bezier(.2,.7,.3,1) both;--ix:-14px}
-.bin-fail .lbody,.bin-fail .lfoot{animation:bin .45s cubic-bezier(.35,0,.25,1) both;--iy:-4px}
-.bin-up .col-l,.bin-up .tail2,.bin-up .lfoot{animation:bin .45s cubic-bezier(.22,1.25,.36,1) both;--iy:10px}
-.bin-up .tail2{animation-delay:.12s}
-.bin-up .lfoot{animation-delay:.18s}
-@keyframes bout{to{opacity:0;transform:translate(var(--ox,0px),var(--oy,0px))}}
-@keyframes bin{from{opacity:0;transform:translate(var(--ix,0px),var(--iy,0px))}}
-/* closing: the whole page fades out, then Install.exe fades the window itself away */
-.lw.bye{animation:byeout .25s ease forwards}
-
-/* ===== reduced motion: short fades instead of movement ===== */
-.reduced .lw .bout-fwd,.reduced .lw .bout-back,.reduced .lw .bout-up,.reduced .lw .bout-fail{animation:fadeonly .12s linear both !important}
-.reduced .lw [class*="bin-"]{animation:fadein .15s linear .12s both !important}
-.reduced .lw .veil{animation:fadein .15s linear both !important}
-.reduced .lw .veil.out{animation:fadeonly .12s linear both !important}
-.reduced .layer.under{transform:none;filter:brightness(.8)}
-@keyframes fadeonly{to{opacity:0}}
-@keyframes fadein{from{opacity:0}}
+/* boards coming and going, sheets and closing: webui/motion.css (Motion). The done board is built on the
+   working board, so its parts come in by the up kind like any board. */

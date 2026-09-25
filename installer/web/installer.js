@@ -50,10 +50,18 @@ const Head = {
     if (animate && !reduced()) replay(head, 'reveal');
     head.classList.add('shimmer');
   },
-  state(text) { swapText($('state'), text || ''); },
+  // the header's state: a text from Install.exe, or a key of the texts (said again when the language changes)
+  state(text) {
+    this.key = '';
+    swapText($('state'), text || '');
+  },
+  stateKey(key) {
+    this.key = key;
+    swapText($('state'), t(key));
+  },
   logoAway() {
     const logo = $('hlogo');
-    logo.classList.remove('back', 'landing');
+    logo.classList.remove('back', 'landing', 'land');
     replay(logo, 'away');
   },
   logoBack() {
@@ -91,36 +99,39 @@ $('hsel').addEventListener('change', (e) => send('lang', { value: e.target.value
 
 // ---------- boards coming and going ----------
 
-// One board at a time. The old one leaves (it keeps no ids, so the new one's can be looked up at once) and the
-// new one comes in a moment before it has quite gone. kind: fwd, back, up, fail, or none (at once).
+// One board at a time, each with data-b naming it for Motion (setup, upd, done, fail). The old one leaves by one
+// of Motion's kinds (fwd, back, up, fail; none: at once) and is removed once gone; it gives up its ids at once, so
+// the new board's can be looked up straight away. enter(moving): the new board's own entrance (else Motion's, by
+// kind). opts go to Motion.change (parts: which of the old board's parts leave).
 const Board = {
   node: null,
   timers: new Timers(),
 
-  change(kind, node, onEnter) {
+  change(kind, node, enter, opts = {}) {
     const old = this.node;
     this.node = node;
     this.timers.clear();
+    node.hidden = true;
+    $('win').append(node);
+    const moving = !!old && old !== node && old.isConnected && !old.hidden && kind !== 'none';
+    const start = () => {
+      if (enter) enter(moving);
+      else if (moving) Motion.enterBoard(node, kind);
+      else Motion.show(node);
+    };
     if (old && old !== node) {
       old.inert = true;
       for (const n of old.querySelectorAll('[id]')) n.removeAttribute('id');
       old.removeAttribute('id');
-      if (kind === 'none') old.remove();
-      else {
-        old.classList.add('bout-' + kind);
-        setTimeout(() => old.remove(), (reduced() ? .15 : .4) * 1000);
-      }
     }
-    const exit = !old || kind === 'none' ? 0 : reduced() ? .12 : kind === 'fail' ? .34 : .18;
-    node.hidden = exit > 0;
-    $('win').append(node);
-    const show = () => {
-      node.hidden = false;
-      if (old && kind !== 'none') node.classList.add('bin-' + kind);
-      if (onEnter) onEnter();
-    };
-    if (exit > 0) this.timers.after(exit, show);
-    else show();
+    if (!moving) {
+      if (old && old !== node) old.remove();
+      start();
+      return 0;
+    }
+    const at = Motion.change(old, kind, start, { ...opts, timers: this.timers });
+    setTimeout(() => old.remove(), (at + 1) * 1000);
+    return at;
   },
 };
 
@@ -220,7 +231,7 @@ const Intro = {
     this.timers.clear();
     const node = $('intro');
     const logo = $('hlogo');
-    Head.state(t('WebStateSetup'));
+    Head.stateKey('WebStateSetup');
     if (reduced()) {
       node.hidden = true;
       Head.reveal(false);
@@ -248,6 +259,7 @@ const Setup = {
   build() {
     const n = el('section', 'layer setup');
     n.id = 'setup';
+    n.dataset.b = 'setup';
     n.innerHTML = `<div class="lbody">
   <div class="col-l">
     <div class="seg" role="radiogroup"><button type="button" role="radio" id="su-install"></button><button type="button" role="radio" id="su-uninstall"></button></div>
@@ -304,10 +316,11 @@ const Setup = {
     const b = $('su-run');
     if (!b || b.disabled || S.board !== 'setup' || S.sheet) return;
     send('run');
+    b.classList.add('pressed');
   },
 
-  // the board comes in: after the intro (reveal), or from another board (kind)
-  show(reveal, kind) {
+  // the board comes in: after the intro (reveal), or from another board (kind; opts for Motion.change)
+  show(reveal, kind, opts) {
     S.board = 'setup';
     Head.lock();
     const n = this.build();
@@ -318,7 +331,7 @@ const Setup = {
       replay(n, 'play');
       if (reduced()) n.classList.remove('play');
     } else {
-      Board.change(kind || 'none', n);
+      Board.change(kind || 'none', n, null, opts);
     }
     focusLater($('su-run'), reveal ? 900 : 450);
   },
@@ -470,27 +483,17 @@ const Sheet = {
   node: null,
   keys: null,   // {enter, esc}: what the keys press on this sheet
 
-  // a new sheet: over the board, or in place of the one that's up (the veil stays)
+  // a new sheet: over the board, or in place of the one that's up (the veil stays, so nothing flickers)
   put(node, keys) {
     this.keys = keys;
-    if (this.veil && !this.veil.classList.contains('out')) {
-      const old = this.node;
-      old.inert = true;
-      for (const n of old.querySelectorAll('[id]')) n.removeAttribute('id');
-      old.classList.add('swap-out');
-      setTimeout(() => old.remove(), 260);
-      node.classList.add('swap-in');
-      this.veil.append(node);
+    if (this.veil && !this.veil.classList.contains('x-out')) {
+      if (this.node) for (const n of this.node.querySelectorAll('[id]')) n.removeAttribute('id');
+      Motion.sheetSwap(this.veil, node);
     } else {
       const veil = el('div', 'veil');
       veil.append(node);
-      $('win').append(veil);
+      Motion.sheetOpen(Board.node, veil);
       this.veil = veil;
-      if (Board.node) {
-        Board.node.classList.remove('back');
-        Board.node.classList.add('under');
-        Board.node.inert = true;
-      }
     }
     this.node = node;
     Head.lock();
@@ -505,16 +508,9 @@ const Sheet = {
     this.node = null;
     this.keys = null;
     Head.lock();
-    if (Board.node) {
-      Board.node.classList.remove('under');
-      Board.node.classList.add('back');
-      Board.node.inert = false;
-    }
     if (!veil) return;
-    veil.inert = true;
     for (const n of veil.querySelectorAll('[id]')) n.removeAttribute('id');
-    veil.classList.add('out');
-    setTimeout(() => veil.remove(), 320);
+    Motion.sheetClose(veil, Board.node);
   },
 
   steam(e) {
@@ -622,6 +618,7 @@ const Work = {
     const kind = e.kind || 'install';
     const n = el('section', 'layer upd inst');
     n.id = 'work';
+    n.dataset.b = 'upd';
     n.dataset.kind = kind;
     n.innerHTML = `<div class="lbody">
   <div class="col-l"><h1 class="lh" id="w-title"></h1><p class="ls" id="w-lead"></p><ol class="steps" id="steps"></ol></div>
@@ -644,7 +641,7 @@ const Work = {
     const steps = q('steps');
     (e.steps || []).forEach((s, i) => {
       const li = el('li', 'st todo');
-      li.style.setProperty('--t', sec(.5 + .12 * i));
+      li.style.setProperty('--t', sec(.17 + .06 * i));  // it always comes in forwards (from setup or Try again)
       const text = el('div');
       text.append(el('span', null, s.text));
       if (s.small) text.append(el('small', null, s.small));
@@ -667,6 +664,7 @@ const Work = {
       if (cancel.disabled) return;
       cancel.disabled = true;
       send('cancel');
+      cancel.classList.add('pressed');
     });
 
     Head.state(e.state);
@@ -675,10 +673,17 @@ const Work = {
     this.now = -2;
     this.nowAt = 0;
     this.startAt = performance.now() + (reduced() ? 0 : 1300);
-    Board.change(fromSheet || Board.node ? 'fwd' : 'none', n, () => {
+    // its own build-up (the logo flight, the card, the bar) stays; the words come in from the right
+    Board.change(fromSheet || Board.node ? 'fwd' : 'none', n, (moving) => {
+      Motion.show(n);
+      if (moving) {
+        n.classList.add('enter');
+        Motion.setKind(n, 'fwd');
+      }
       replay(n, 'play');
-      if (reduced()) return;
-      this.aimFly();
+      // with motion reduced the board's own build-up doesn't run: its parts just fade in
+      if (moving && reduced()) Motion.enterBoard(n, 'fwd');
+      Motion.fly($('fly'), $('hlogo'), n.querySelector('.mlogo'));
       Head.logoAway();
       replay($('fly'), 'go');
     });
@@ -688,22 +693,6 @@ const Work = {
     this.timers.clear();
     clearTimeout(this.pumpTimer);
     this.queue = [];
-  },
-
-  // the header logo's copy flies from the header logo's box to the working logo's box
-  aimFly() {
-    const logo = $('hlogo');
-    logo.classList.remove('away', 'back');
-    const from = boxOf(logo);
-    const to = boxOf($('w-stage').querySelector('.mlogo'));
-    const w = from.w || 50;
-    const style = $('fly').style;
-    style.setProperty('--fl', from.x + 'px');
-    style.setProperty('--ft', from.y + 'px');
-    style.setProperty('--fw', w + 'px');
-    style.setProperty('--dx', to.x - from.x + 'px');
-    style.setProperty('--dy', to.y - from.y + 'px');
-    style.setProperty('--k', to.w / w);
   },
 
   // every event of the run waits its turn: a line that starts running stays up a moment before the next one
@@ -828,6 +817,7 @@ const Done = {
     if (fresh) {
       // (a new language) or no working board to build on
       n = el('section', 'layer upd inst');
+      n.dataset.b = 'done';
       n.innerHTML = `<div class="lbody"><div class="col-l"></div><div class="col-r"><div class="mstage wsc" aria-hidden="true"></div>
 <div class="pcard"><div class="prow"><div class="pl" id="plabel"></div><div class="pp"><span class="pn" id="pct">100%</span></div></div>
 <div class="pbar" id="pbar"><div class="f full" id="pfill"></div></div><div class="psub" id="psub"></div></div></div></div><div class="lfoot"></div>`;
@@ -874,7 +864,7 @@ const Done = {
       } else {
         foot.append(button('lb pri', t('Close'), () => send('close')));
       }
-      n.classList.remove('play', 'fin', 'bin-fwd', 'bin-up');
+      n.classList.remove('play', 'fin', 'enter');
       n.classList.add('done-b');
       Head.state(e.state);
     };
@@ -888,14 +878,15 @@ const Done = {
       if (!relang) focusLater(foot.querySelector('.lb.pri'), 0);
       return;
     }
-    // what changes lifts away, then the done parts come up in its place
-    const parts = [colL, colR.querySelector('.tail'), foot].filter(Boolean);
-    for (const p of parts) p.classList.add('bout-up');
-    Work.timers.after(.24, () => {
-      for (const p of parts) p.classList.remove('bout-up');
+    // what changes lifts away (the logo and the progress card stay where they are), then the done parts come up
+    // in its place, settling with a hint of overshoot
+    const gone = Motion.exitBoard(n, 'up', {
+      l: [...colL.children], r: [...colR.querySelectorAll('.tail')], f: [...foot.children],
+    });
+    Work.timers.after(gone, () => {
       build();
-      n.classList.remove('bin-up');
-      replay(n, 'bin-up');
+      n.dataset.b = 'done';
+      Motion.enterBoard(n, 'up', (p) => { p.r = p.r.filter((x) => !x.matches('.mstage, .pcard')); });
       focusLater(foot.querySelector('.lb.pri'), 500);
     });
   },
@@ -917,6 +908,7 @@ const Fail = {
     Head.lock();
     const n = el('section', 'layer fail');
     n.id = 'fail';
+    n.dataset.b = 'fail';
     const body = el('div', 'lbody one');
     const row = el('div', 'errrow');
     const mark = Pics.mark(MARKS[f.mark] || f.mark);
@@ -961,7 +953,10 @@ const Fail = {
     } else {
       if (f.fw) foot.append(button('lb gho', t('ChooseZip'), () => send('zip')));
       foot.append(button('lb gho', t('WebBack'), () => send('back')));
-      primary = button('lb pri', t('Retry'), () => send('retry'));
+      primary = button('lb pri', t('Retry'), () => {
+        send('retry');
+        primary.classList.add('pressed');
+      });
       foot.append(primary);
     }
     primary.dataset.primary = '1';
@@ -972,8 +967,12 @@ const Fail = {
     Head.reveal(false);
     Head.logoBack();
     Head.state(f.state);
-    Board.change(relang ? 'none' : Board.node ? 'fail' : 'none', n, () => {
-      if (!relang) replay(n, 'play');
+    // the board on screen leaves calmly downwards and this one comes in once it has gone; the mark keeps its bounce
+    Board.change(relang ? 'none' : 'fail', n, (moving) => {
+      Motion.show(n);
+      if (relang) return;
+      replay(n, 'play');
+      if (moving) Motion.enterBoard(n, 'fail');
     });
     if (!relang) focusLater(primary, 700);
   },
@@ -1043,21 +1042,28 @@ document.addEventListener('keydown', (e) => {
 
 // ---------- closing ----------
 
-// Install.exe is closing the window: everything stops and fades out, then it fades the window away
+// Install.exe is closing the window: everything stops, the board's parts leave, the header and the page fade,
+// then Install.exe fades the window itself away. With motion reduced the window just closes
 function bye() {
   if (S.board === 'bye') return;
   S.board = 'bye';
   Intro.timers.clear();
   Intro.live = false;
   Work.stop();
+  Board.timers.clear();
+  Motion.timers.clear();
   const win = $('win');
   win.inert = true;
   if (reduced()) {
     send('gone', { on: false });
     return;
   }
-  win.classList.add('bye');
-  setTimeout(() => send('gone', { on: true }), 250);
+  // the board's parts leave first (a question sheet with them), then the header and the page fade
+  const board = Board.node;
+  if (board && !board.hidden) Motion.exitBoard(board, 'bye');
+  if (Sheet.veil) Motion.sheetClose(Sheet.veil, null);
+  win.classList.add('x-bye');
+  setTimeout(() => send('gone', { on: true }), 300);
 }
 
 // ---------- events from Install.exe ----------
@@ -1095,22 +1101,32 @@ window.dnw = (e) => {
     case 'texts':
       words(e);
       Head.langs();
+      if (Head.key) Head.stateKey(Head.key);
       return;
     case 'setup':
       if (S.board === 'work') {
         // cancelled: back to setup with the banner, the logo flying back up
         Work.end(() => {
           S.setup = Object.assign({}, e.setup, { banner: e.banner || '' });
-          $('fly').classList.remove('go');
-          Head.logoBack();
-          Head.state(t('WebStateSetup'));
-          Setup.show(false, 'back');
+          const work = $('work');
+          const mlogo = work && work.querySelector('.mlogo');
+          // the working logo flies back up into the header while the board leaves to the right
+          if (reduced() || !mlogo) {
+            $('fly').classList.remove('go');
+            $('hlogo').classList.remove('away');
+          } else {
+            Motion.flyBack($('fly'), $('hlogo'), mlogo);
+          }
+          const parts = work ? Motion.partsOf(work) : null;
+          if (parts) parts.r = parts.r.filter((x) => x !== mlogo);
+          Head.stateKey('WebStateSetup');
+          Setup.show(false, 'back', parts ? { parts } : {});
         });
         return;
       }
       if (S.board === 'fail' || S.board === 'done') {
         S.setup = Object.assign({}, e.setup, { banner: e.banner || '' });
-        Head.state(t('WebStateSetup'));
+        Head.stateKey('WebStateSetup');
         Setup.show(false, 'back');
         return;
       }
