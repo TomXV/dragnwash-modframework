@@ -33,7 +33,11 @@ namespace DragNWash.ModFramework.Updates
 
         private static bool _modsRegistered;
 
-        private static string LauncherFilePath => Path.Combine(Path.Combine(Paths.CachePath, LauncherFolderName), LauncherFileName);
+        // BepInEx/cache/DragNWash.ModFramework, where the game and the launcher
+        // leave files for each other.
+        internal static string LauncherCacheFolder => Path.Combine(Paths.CachePath, LauncherFolderName);
+
+        private static string LauncherFilePath => Path.Combine(LauncherCacheFolder, LauncherFileName);
 
         private static void WriteLauncherFile()
         {
@@ -72,40 +76,69 @@ namespace DragNWash.ModFramework.Updates
             }
         }
 
+        // Whether the launcher can update this mod itself: the installer put it
+        // in a folder of its own under plugins and left mod-install.json there.
+        // The same answer as installManifest in updates.json; the Mods screen
+        // shows its Update button only then.
+        internal static bool CanLauncherUpdate(string guid)
+        {
+            try
+            {
+                return guid != null && TryInstalled(guid, out _, out string location) && InstallManifestOf(PluginFolderOf(location)) != null;
+            }
+            catch (Exception ex)
+            {
+                ModFramework.Log.LogDebug($"Update check: could not tell whether the launcher can update {guid}: {ex.Message}");
+                return false;
+            }
+        }
+
+        // The version installed this session and the file it was loaded from,
+        // or false when the mod is registered but not installed as a plugin or
+        // a data mod.
+        private static bool TryInstalled(string guid, out string version, out string location)
+        {
+            if (Chainloader.PluginInfos.TryGetValue(guid, out PluginInfo plugin) && plugin.Metadata != null)
+            {
+                version = plugin.Metadata.Version.ToString();
+                location = plugin.Location;
+                return true;
+            }
+            ModFramework.DataMod data = ModFramework.AllDataMods().FirstOrDefault(d => d.Info.Guid == guid);
+            version = data?.Version;
+            location = data?.ManifestPath;
+            return data != null;
+        }
+
+        // The installer's mod-install.json in that folder under plugins, or
+        // null when there is none (or no folder).
+        private static string InstallManifestOf(string folder)
+        {
+            if (folder.Length == 0)
+            {
+                return null;
+            }
+            string manifest = Path.Combine(Path.Combine(Paths.PluginPath, folder), InstallManifestName);
+            return File.Exists(manifest) ? manifest : null;
+        }
+
         // One installed mod, or null when it is registered but not installed as
         // a plugin or a data mod.
         private static Dictionary<string, object> LauncherEntry(ModInfo info)
         {
-            string version;
-            string location;
-            if (Chainloader.PluginInfos.TryGetValue(info.Guid, out PluginInfo plugin) && plugin.Metadata != null)
+            if (!TryInstalled(info.Guid, out string version, out string location))
             {
-                version = plugin.Metadata.Version.ToString();
-                location = plugin.Location;
-            }
-            else
-            {
-                ModFramework.DataMod data = ModFramework.AllDataMods().FirstOrDefault(d => d.Info.Guid == info.Guid);
-                if (data == null)
-                {
-                    return null;
-                }
-                version = data.Version;
-                location = data.ManifestPath;
+                return null;
             }
 
             string folder = PluginFolderOf(location);
-            bool hasManifest = false;
+            string manifest = InstallManifestOf(folder);
+            bool hasManifest = manifest != null;
             string manifestName = "";
             string manifestVersion = "";
-            if (folder.Length > 0)
+            if (hasManifest)
             {
-                string manifest = Path.Combine(Path.Combine(Paths.PluginPath, folder), InstallManifestName);
-                hasManifest = File.Exists(manifest);
-                if (hasManifest)
-                {
-                    ReadInstallManifest(manifest, out manifestName, out manifestVersion);
-                }
+                ReadInstallManifest(manifest, out manifestName, out manifestVersion);
             }
 
             Releases.TryGetValue(info.UpdateRepository, out Release release);

@@ -41,6 +41,14 @@ namespace DragNWash.ModFramework.Mods
         internal const string TextNotLoadedFile = "What runs now is not the file BepInEx loaded.";
         internal const string TextNewVersion = "New version available:";
         internal const string TextOpenReleasePage = "Open release page";
+        // Not "Update": that English is the list's tag, which packs translate
+        // as a tag.
+        internal const string TextUpdateNow = "Update now";
+        internal const string TextQuitAndUpdate = "Quit and update";
+        internal const string TextCancel = "Cancel";
+        internal const string TextConfirmUpdate = "Quit the game to update? Progress you haven't saved may be lost.";
+        internal const string TextNoLauncher = "The launcher isn't installed, so this mod can't be updated here. Run the installer again to add it, or open the release page.";
+        internal const string TextUpdateFailed = "Couldn't start the update. See BepInEx/LogOutput.log, or get the new version from the release page.";
         internal const string TextUninstall = "Uninstall";
         internal const string TextCancelUninstall = "Cancel uninstall";
         internal const string TextConfirmUninstall = "Press Uninstall again to remove this mod when the game next starts. Your settings for it are removed too.";
@@ -61,6 +69,11 @@ namespace DragNWash.ModFramework.Mods
         private ModCatalog.Entry _selected;
         private ModCatalog.Entry _confirming;
         private ModCatalog.Entry _confirmingUninstall;
+        private ModCatalog.Entry _confirmingUpdate;
+        // Why Update could not go ahead for that mod (TextNoLauncher or
+        // TextUpdateFailed), shown until another mod is selected.
+        private ModCatalog.Entry _updateProblemFor;
+        private string _updateProblem;
 
         // The details wait for the end of the frame after a row is selected,
         // so a pad running down the list builds them once, not once a step.
@@ -80,6 +93,7 @@ namespace DragNWash.ModFramework.Mods
             _builtLook = ModsLook.Revision;
             _confirming = null;
             _confirmingUninstall = null;
+            ForgetUpdate();
             _tab = TabAbout;
             _query = "";
             _settingsQuery = "";
@@ -139,6 +153,7 @@ namespace DragNWash.ModFramework.Mods
             _selected = entry;
             _confirming = null;
             _confirmingUninstall = null;
+            ForgetUpdate();
             _tab = TabAbout;
             _settingsQuery = "";
             MarkShownRow();
@@ -272,6 +287,7 @@ namespace DragNWash.ModFramework.Mods
                 if (!entry.PendingUninstall && _confirmingUninstall != entry)
                 {
                     _confirming = null;
+                    ForgetUpdate();
                     _confirmingUninstall = entry;
                     RebuildDetails(false);
                     Focus("Uninstall");
@@ -289,6 +305,61 @@ namespace DragNWash.ModFramework.Mods
             }
         }
 
+        // Update works like Uninstall: the first press asks (a band at the top
+        // of the notes, and the button becomes Quit and update in the same
+        // place, keeping the focus), the second hands the mod to the launcher
+        // and quits. While it asks, Open release page is Cancel; selecting
+        // another mod, leaving the screen or Back cancels too.
+        private void OnUpdate(ModCatalog.Entry entry)
+        {
+            if (Checking)
+            {
+                return;
+            }
+            try
+            {
+                if (_confirmingUpdate != entry)
+                {
+                    _confirming = null;
+                    _confirmingUninstall = null;
+                    ForgetUpdate();
+                    _confirmingUpdate = entry;
+                    RebuildDetails(false);
+                    Focus(UpdateButton);
+                    return;
+                }
+                _confirmingUpdate = null;
+                Updates.LauncherUpdate.Outcome outcome = Updates.LauncherUpdate.QuitAndUpdate(entry.Guid);
+                if (outcome == Updates.LauncherUpdate.Outcome.Quitting)
+                {
+                    return;
+                }
+                _updateProblemFor = entry;
+                _updateProblem = outcome == Updates.LauncherUpdate.Outcome.NoLauncher ? TextNoLauncher : TextUpdateFailed;
+                RebuildDetails(false);
+                Focus(ReleasePageButton);
+            }
+            catch (Exception ex)
+            {
+                ModFramework.Log.LogError($"Could not update {entry.Name}: {ex}");
+            }
+        }
+
+        // Cancel, while Update asks.
+        private void CancelUpdate()
+        {
+            _confirmingUpdate = null;
+            RebuildDetails(false);
+            Focus(UpdateButton, ReleasePageButton);
+        }
+
+        private void ForgetUpdate()
+        {
+            _confirmingUpdate = null;
+            _updateProblemFor = null;
+            _updateProblem = null;
+        }
+
         private void OnSwitch(ModCatalog.Entry entry)
         {
             if (Checking)
@@ -297,6 +368,8 @@ namespace DragNWash.ModFramework.Mods
             }
             try
             {
+                // Any other press takes back an Update that is asking.
+                ForgetUpdate();
                 if (entry.WantOn)
                 {
                     bool needed = entry.Dependents.Any(g => _entries.Any(x => x.Guid == g && x.WantOn));

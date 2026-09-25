@@ -24,8 +24,10 @@ namespace DragNWash.ModFramework.Updates
     // draft or a pre-release, and compares its tag with the installed version.
     // The request carries nothing about the player or the game. Results are kept
     // in BepInEx/config so a restart does not ask again, and a failed request is
-    // only logged and tried again an hour later. Nothing is downloaded or
-    // changed: the Mods screen shows the new version and opens the release page.
+    // only logged and tried again an hour later. The game downloads and changes
+    // nothing: the Mods screen shows the new version and opens the release page,
+    // and for a mod the installer put in, Update hands it to the launcher, which
+    // updates it after the game has closed (LauncherUpdate.cs).
     //
     // What the answer says about the release (its notes, its files and their
     // hashes) is written to BepInEx/cache for a launcher that starts before the
