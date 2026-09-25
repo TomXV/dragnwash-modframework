@@ -161,7 +161,7 @@ Drag'n Wash Localization が日本語になっているとき（その設定の 
 
 Install.exe の窓もランチャーと同じ見た目になりました。枠なしの 720 × 540 の窓で WebView2 を使い、ヘッダーとロゴも同じです。ゲームのフォルダーを探すあいだはロゴの演出が流れ、そのあとは画面が 1 枚ずつ（設定、作業中、完了、うまくいかなかったとき）出ます。Steam の確認とダウンロードの確認は、別の窓ではなく設定画面の上に重なるシートになりました。できることは前の窓と全部同じで、決まりも言葉も同じです（英語・日本語・中国語）。ログは英語のままです。ページ（`installer/web/` と、ランチャーと共通の部品 `webui/`）は exe の中にあり、exe から `https://installer.invalid/` として出します。ランチャーと同じように閉じてあり、ほかのものを読み込めず、ネットにもつなげず、ほかのページも開けません。フォルダーと zip を選ぶ画面は今までどおり Windows のもので、Install.exe が開きます。
 
-**今も 1 つのファイルです。** Install.exe は Mod のファイルの隣に置かれ、zip を展開した場所から起動されるので、DLL を横に並べて持ち歩けません。そこで WebView2 の DLL 2 つは exe の中に入れて、メモリーから読み込みます。`WebView2Loader.dll`（ネイティブで、x64・x86・Arm64 の 3 つ）も exe の中にあり、初回に `%LOCALAPPDATA%\DragNWash ModFramework\Installer\WebView2Loader\<CPU>-<ハッシュ>` へ書き出します。使う前には毎回 SHA-256 を確かめるので、壊れていれば書き直します。exe の隣には何も書きません。ページが使うデータは `%LOCALAPPDATA%\DragNWash ModFramework\Installer\WebView2` に置きます。このぶん Install.exe は 180 KB から約 1.7 MB になりましたが、同じソースからは今までどおり 1 バイトも違わない exe ができます。
+**今も 1 つのファイルです。** Install.exe は Mod のファイルの隣に置かれ、zip を展開した場所から起動されるので、DLL を横に並べて持ち歩けません。そこで WebView2 の DLL 2 つは exe の中に入れて、メモリーから読み込みます。`WebView2Loader.dll`（ネイティブで、x64・x86・Arm64 の 3 つ）も exe の中にあり、初回に `%LOCALAPPDATA%\DragNWash ModFramework\Installer\WebView2Loader\<CPU>-<ハッシュ>` へ書き出します。使う前には毎回 SHA-256 を確かめるので、壊れていれば書き直します。exe の隣には何も書きません。ページが使うデータは `%LOCALAPPDATA%\DragNWash ModFramework\Installer\WebView2` に置きます。このぶん Install.exe は 180 KB から約 1.8 MB になりましたが、同じソースからは今までどおり 1 バイトも違わない exe ができます。
 
 **前の窓も残っています。** WebView2 のランタイムがないとき、ローダーを置けないとき、12 秒たってもページが出ないときは、前と同じ WinForms の窓が開き、ログの 1 行目にその理由が出ます。`DNW_INSTALLER_CLASSIC=1` を付けるとわざとそちらを開けます（どのビルドでも）。コマンドラインは変わらず、窓も出しません。
 
