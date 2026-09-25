@@ -83,6 +83,7 @@ const STRINGS = {
     cdTitleAgain: 'Starting the game again as it was',
     cdLeft: (n) => `Starting in ${n}`,
     notNow: "Don't start it now",
+    startNow: 'Start now',
 
     // 3: failed
     failTitle: {
@@ -187,6 +188,7 @@ const STRINGS = {
     cdTitleAgain: '元のままゲームをもう一度起動します',
     cdLeft: (n) => `あと ${n} 秒`,
     notNow: '今は起動しない',
+    startNow: '今すぐ起動',
 
     failTitle: {
       offline: () => 'GitHub に接続できませんでした',

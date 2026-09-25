@@ -467,20 +467,16 @@ button{font:inherit;color:inherit}
 .again .cd circle{fill:none;stroke-width:3}
 .again .cd .track{stroke:rgba(232,239,247,.15)}
 .again .cd .run{stroke:var(--accent);stroke-dasharray:126;stroke-dashoffset:0;stroke-linecap:round}
-.again .cd .nums{position:absolute;inset:0;display:grid;place-items:center;font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
-.again .cd .nums span{grid-area:1/1}
-.again .cd .n2,.again .cd .n1{opacity:0}
-/* the ring empties as it counts 3, 2, 1 */
-.again.counting .cd .run{animation:drain 3s linear both}
-.again.counting .cd .n3{animation:k3 3s linear both}
-.again.counting .cd .n2{animation:k2 3s linear both}
-.again.counting .cd .n1{animation:k1 3s linear both}
+.again .cd .num{position:absolute;inset:0;display:grid;place-items:center;font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+/* the ring empties evenly over the whole count (--cd, set by launcher.js); the number (10 to 1, from
+   launcher.js) comes in with a small pop each second */
+.again.counting .cd .run{animation:drain var(--cd,10s) linear both}
+.again .cd .num.tick{animation:tick .3s cubic-bezier(.3,1.4,.5,1) both}
 @keyframes drain{from{stroke-dashoffset:0}to{stroke-dashoffset:126}}
-@keyframes k3{0%,33.3%{opacity:1}33.4%,100%{opacity:0}}
-@keyframes k2{0%,33.3%{opacity:0}33.4%,66.6%{opacity:1}66.7%,100%{opacity:0}}
-@keyframes k1{0%,66.6%{opacity:0}66.7%,100%{opacity:1}}
+@keyframes tick{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
 .again .at{flex:1 1 auto;min-width:0;line-height:1.5}
 .again .at b{display:block}
+.again .start-now{height:32px;padding:0 14px}
 
 /* ===== 3: failed ===== */
 .fail.play{animation:xcome .3s ease both}
@@ -532,5 +528,4 @@ details.det .logbox{margin-top:8px;max-height:120px}
 .reduced .fly,.reduced .hlogo.away{display:none}
 .reduced .upd.fin .scbox{display:none}
 .reduced .upd.fin .tail .logbox{visibility:hidden}
-.reduced .again .cd[data-n="2"] .n3,.reduced .again .cd[data-n="1"] .n3{opacity:0}
-.reduced .again .cd[data-n="2"] .n2,.reduced .again .cd[data-n="1"] .n1{opacity:1}
+/* the countdown's number still changes every second, and the ring steps down with it (launcher.js) */

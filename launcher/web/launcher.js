@@ -472,37 +472,49 @@ $('skip').addEventListener('change', (e) => {
 // ---------- the countdown card ----------
 
 const Countdown = {
+  seconds: 10,
   timers: new Timers(),
 
-  // counts 3, 2, 1 after `delay` seconds, then starts the game
+  // counts 10 down to 1 after `delay` seconds, then starts the game; Start now starts it at once
   start(card, delay) {
     this.stop();
     const clock = card.querySelector('.cd');
-    card.querySelector('.not-now').disabled = false;
+    const now = card.querySelector('.start-now');
+    for (const b of card.querySelectorAll('button')) b.disabled = false;
     card.classList.remove('counting');
-    this.show(clock, 3);
+    card.style.setProperty('--cd', this.seconds + 's');
+    this.show(clock, this.seconds, false);
     this.timers.after(delay, () => {
       replay(card, 'counting');
-      this.timers.after(1, () => this.show(clock, 2));
-      this.timers.after(2, () => this.show(clock, 1));
-      this.timers.after(3, () => sendOnce('play'));
+      now.focus({ preventScroll: true });
+      for (let k = 1; k < this.seconds; k++) this.timers.after(k, () => this.show(clock, this.seconds - k, true));
+      this.timers.after(this.seconds, () => this.go(card, 'play'));
     });
   },
 
-  show(clock, n) {
+  // the number, and the ring when nothing moves; a screen reader hears it at the start and at 3 only
+  show(clock, n, tick) {
     clock.dataset.n = n;
-    clock.querySelector('.cd-text').textContent = t('cdLeft', n);
+    const num = clock.querySelector('.num');
+    num.textContent = n;
+    if (tick) replay(num, 'tick');
+    clock.querySelector('.run').style.strokeDashoffset = reduced() ? 126 * (this.seconds - n) / this.seconds : '';
+    if (n === this.seconds || n === 3) clock.querySelector('.cd-text').textContent = t('cdLeft', n);
+  },
+
+  // Start now, the end of the count, or Don't start it now: the card is done, and the window goes
+  go(card, cmd) {
+    this.stop();
+    for (const b of card.querySelectorAll('button')) b.disabled = true;
+    sendOnce(cmd);
   },
 
   stop() { this.timers.clear(); },
 };
 
-for (const link of document.querySelectorAll('.not-now')) {
-  link.addEventListener('click', () => {
-    Countdown.stop();
-    link.disabled = true;
-    sendOnce('close');
-  });
+for (const card of document.querySelectorAll('.again')) {
+  card.querySelector('.start-now').addEventListener('click', () => Countdown.go(card, 'play'));
+  card.querySelector('.not-now').addEventListener('click', () => Countdown.go(card, 'close'));
 }
 
 // ---------- 2 and B: updating ----------
