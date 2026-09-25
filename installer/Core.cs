@@ -1677,13 +1677,13 @@ namespace DragNWash.Installer
             string full;
             try
             {
-                full = Path.GetFullPath(Path.Combine(root, _manifest.Icon.Replace('/', '\\')));
+                full = Path.GetFullPath(Path.Combine(root, _manifest.Icon.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar)));
             }
             catch (Exception)
             {
                 return null;
             }
-            string prefix = Path.GetFullPath(root).TrimEnd('\\') + "\\";
+            string prefix = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
             return full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && File.Exists(full) ? full : null;
         }
 
