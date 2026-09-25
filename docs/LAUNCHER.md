@@ -2,7 +2,7 @@
 
 [日本語](LAUNCHER.ja.md)
 
-> **Stage 1 is built**: the file below. The launcher itself (a small program that runs before the game from the Steam launch options) comes later.
+> **Built so far**: the file below, and the Mods screen's Update button with the file it leaves for the launcher ([Updating from the Mods screen](#updating-from-the-mods-screen)). The launcher itself (a small program that runs before the game from the Steam launch options) is on its own branch.
 
 The launcher doesn't go online to look for updates. The game already does that once a day ([Updates in the core](../src/DragNWash.ModFramework/Updates/UpdateCheck.cs)), so the launcher reads what that check found. The check asks GitHub the same single question as before; it just keeps more of the answer now: the release notes, the page, when it was published, and the files with their sizes and SHA-256.
 
@@ -95,6 +95,41 @@ The launcher is .NET Framework 4.7.2 and reads this with `DataContractJsonSerial
 ### What the launcher still has to check
 
 The game keeps only `https://github.com/` addresses for `htmlUrl`, and only files under `https://github.com/<repository>/releases/download/` in `assets`. The file sits in the game folder, though, so anyone who can write there can change it. Before installing anything, the launcher has to check these addresses again and compare the download's size and SHA-256 with these fields. A file with no `sha256` can't be checked that way.
+
+## Updating from the Mods screen
+
+When a mod has a newer release and our installer put it in (its folder has `mod-install.json`, `installManifest` above), its "New version available" note on the Mods screen gets **Update now** next to **Open release page**. Other mods keep just the page button. So does every mod on a PC without the WebView2 runtime, because the launcher can't update anything without it.
+
+**Update now** asks first, the same way **Uninstall** does. A yellow note at the top of the notes says the game will quit and unsaved progress may be lost, the button turns into **Quit and update** and keeps the focus, and **Open release page** turns into **Cancel**. Pressing it again (A twice on a pad) goes ahead. Picking another mod, leaving the screen or Back (B) cancels. It can't be pressed while the Mods screen is still checking the mods.
+
+Going ahead, the game writes `BepInEx/cache/DragNWash.ModFramework/update-request.json`, again through a temporary file:
+
+```json
+{
+  "schema": 1,
+  "requestedUtc": "2026-09-25T10:00:00Z",
+  "gamePid": 1234,
+  "mods": [ "com.tomxv.dragnwash.localization" ]
+}
+```
+
+`gamePid` is the game's process id, and `mods` holds that one mod's GUID. Then:
+
+- **Started by the launcher**: the game just quits, the way its own Quit button does. The launcher is waiting for it, finds the request, updates the mod and starts the game again. The launcher sets `DNW_LAUNCHER=1` for the game it starts; a game without it still counts as started by the launcher when its parent process is `BepInEx/DragNWash.Installer/Launcher.exe`.
+- **Started any other way** (from Steam without the launch option, or from the exe): the game starts `Launcher.exe --update-after-exit --wait-pid <pid> --mods "<guid>"` without a window and then quits. The launcher waits for the game to close, updates the mod and starts the game again through Steam.
+
+If `Launcher.exe` isn't there, the game writes nothing and doesn't quit. The note says the launcher isn't installed and that running the installer again adds it; **Open release page** stays. If anything else goes wrong, `BepInEx/LogOutput.log` says what, and the page button still works.
+
+The game itself still downloads nothing. The launcher only goes online after the player pressed Update, here or in the launcher's own window: it downloads the release file and checks its size and SHA-256 against `updates.json` before installing it.
+
+### The launcher's settings
+
+The launcher reads the `[Launcher]` section of `BepInEx/config/com.tomxv.dragnwash.modframework.cfg` when it starts, and uses the defaults when the file or a line is missing. The game adds the section, so it's also on the Mods screen, under the framework's Settings.
+
+| Key | Values | Default |
+|---|---|---|
+| `Logo lettering` | `Handwriting` (drawn stroke by stroke) or `Typewriter` (typed letter by letter) | `Handwriting` |
+| `Progress bar` | `Bottom edge` (along the window's bottom edge) or `Under text` | `Bottom edge` |
 
 ## Updating from 1.5.0
 
