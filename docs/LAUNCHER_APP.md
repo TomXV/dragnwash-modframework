@@ -35,7 +35,7 @@ It waits for that process to exit, installs the updates, and asks Steam to start
 3. Otherwise the logo moves up and the list of updates comes in: each mod with its version now and the new one, the size, and its release notes. Tick the ones you want. **Update and play** installs them and starts the game; **Play without updating** just starts it. Either way, the window closes first. **Skip this version** stops that version of that mod from bringing the window up again; the next version will.
 4. The list only offers a checkbox for mods the installer put in (their folder has `mod-install.json`). Other mods get **Open release page** instead.
 
-A version already installed since the game looked (the mod's `mod-install.json` says so) isn't shown.
+A version already installed since the game looked (the mod's `mod-install.json` says so) isn't shown. The other way round, when an older version has been put back since then, it is shown even though the game didn't list it.
 
 **After an update asked for in the game**
 

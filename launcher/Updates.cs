@@ -145,7 +145,8 @@ namespace DragNWash.Launcher
         }
 
         // The updates to tell the player about before the game starts: newer, not skipped,
-        // and not installed some other way since the game wrote the file.
+        // and not installed some other way since the game wrote the file. An older version
+        // put back since then counts too; the game said "not newer" about the one it saw.
         internal List<ModUpdate> Pending(UpdatesFile updates, LauncherState state)
         {
             var list = new List<ModUpdate>();
@@ -155,7 +156,11 @@ namespace DragNWash.Launcher
             }
             foreach (ModUpdate mod in updates.Mods)
             {
-                if (!mod.Newer || mod.Latest == null || string.IsNullOrWhiteSpace(mod.Latest.Tag))
+                if (mod.Latest == null || string.IsNullOrWhiteSpace(mod.Latest.Tag))
+                {
+                    continue;
+                }
+                if (!mod.Newer && !PutBackOlder(mod))
                 {
                     continue;
                 }
@@ -209,19 +214,7 @@ namespace DragNWash.Launcher
         // the release's version already, the player installed it since the game looked.
         private bool AlreadyInstalled(ModUpdate mod)
         {
-            if (string.IsNullOrWhiteSpace(mod.PluginFolder) || !SafeFolder(mod.PluginFolder))
-            {
-                return false;
-            }
-            string copy = Path.Combine(Game, "BepInEx", "plugins", mod.PluginFolder, ModManifest.FileName);
-            Version have = null;
-            try
-            {
-                have = File.Exists(copy) ? Numeric(ModManifest.Load(copy).Version) : null;
-            }
-            catch (Exception)
-            {
-            }
+            Version have = InstalledNow(mod);
             Version offered = Numeric(mod.Latest.Version ?? mod.Latest.Tag);
             if (have != null && offered != null && have >= offered)
             {
@@ -229,6 +222,39 @@ namespace DragNWash.Launcher
                 return true;
             }
             return false;
+        }
+
+        // The other way round: the game saw the release's version or a newer one, and an
+        // older one has been put in since (by hand, or by Install.exe from an older zip).
+        private bool PutBackOlder(ModUpdate mod)
+        {
+            Version have = InstalledNow(mod);
+            Version offered = Numeric(mod.Latest.Version ?? mod.Latest.Tag);
+            if (have == null || offered == null || have >= offered)
+            {
+                return false;
+            }
+            Log.Line($"{mod.ShownName}: the game saw {mod.InstalledVersion}, {have} is installed now, older than {mod.Latest.Tag}");
+            mod.InstalledVersion = have.ToString(3);
+            return true;
+        }
+
+        // The version in the mod's mod-install.json, or null without one.
+        private Version InstalledNow(ModUpdate mod)
+        {
+            if (string.IsNullOrWhiteSpace(mod.PluginFolder) || !SafeFolder(mod.PluginFolder))
+            {
+                return null;
+            }
+            string copy = Path.Combine(Game, "BepInEx", "plugins", mod.PluginFolder, ModManifest.FileName);
+            try
+            {
+                return File.Exists(copy) ? Numeric(ModManifest.Load(copy).Version) : null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
         }
 
         // Whether the launcher can install the mod itself, and which zip: the mod was put in
