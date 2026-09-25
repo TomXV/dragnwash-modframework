@@ -861,6 +861,11 @@ const Done = {
       n.classList.remove('play', 'fin', 'enter');
       n.classList.add('done-b');
       Head.state(e.state);
+      // the progress card's words too, when the language has changed
+      if (relang) {
+        n.querySelector('.pl').textContent = e.label || '';
+        n.querySelector('.psub').textContent = e.sub || '';
+      }
     };
     if (fresh) {
       build();
