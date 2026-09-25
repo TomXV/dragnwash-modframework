@@ -17,6 +17,8 @@ namespace DragNWash.Installer
             internal int Stage;
             internal string Text;
             internal string Small;
+            // Uninstall: the plan's own line, for the done board's list.
+            internal string Long;
             internal string Pic;
             internal bool BepInEx;
             internal string Mark = "todo";
@@ -47,7 +49,11 @@ namespace DragNWash.Installer
 
         // How the last run ended, for the done or failed board (and a new language).
         private InstallResult _result;
-        private List<string> _uninstalled;
+        // Uninstall's plan as the setup board showed it, in every language, taken just before
+        // the run (the folder has changed after it): the done board's list, which follows a
+        // new language. _runLang: the language the run's checklist is in.
+        private Dictionary<string, List<string>> _uninstallPlans;
+        private string _runLang;
         private Exception _error;
         private string _errorDetails;
 
@@ -261,6 +267,8 @@ namespace DragNWash.Installer
                 _lines.Clear();
             }
             _rows = run.Install ? InstallRows(run) : UninstallRows(run);
+            _runLang = Strings.Current;
+            _uninstallPlans = run.Install ? null : UninstallPlans(run);
             _seen.Clear();
             _pct = 0;
             _canStop = run.Install;
@@ -381,21 +389,45 @@ namespace DragNWash.Installer
         // before Uninstall starts.
         private List<Row> UninstallRows(InstallRun.Request run)
         {
-            List<(UninstallStage Stage, string Text)> steps;
+            List<(UninstallStage Stage, string Text, string Step, string Small)> steps;
             try
             {
                 steps = _core.UninstallSteps(run.Game, run.KeepData, run.AlsoBepInEx, run.Launch);
             }
             catch (Exception)
             {
-                steps = new List<(UninstallStage, string)>();
+                steps = new List<(UninstallStage, string, string, string)>();
             }
             return steps.OrderBy(s => s.Stage == UninstallStage.LaunchOption ? 0 : 1).Select(s => new Row
             {
                 Stage = (int)s.Stage,
-                Text = s.Text,
+                Text = s.Step,
+                Small = s.Small,
+                Long = s.Text,
                 Pic = UninstallPic(s.Stage),
             }).ToList();
+        }
+
+        private Dictionary<string, List<string>> UninstallPlans(InstallRun.Request run)
+        {
+            var plans = new Dictionary<string, List<string>>();
+            try
+            {
+                foreach (string lang in Strings.Languages)
+                {
+                    Strings.Current = lang;
+                    plans[lang] = _core.UninstallPlan(run.Game, run.KeepData, run.AlsoBepInEx, run.Launch);
+                }
+            }
+            catch (Exception)
+            {
+                plans = null;
+            }
+            finally
+            {
+                Strings.Current = _runLang;
+            }
+            return plans;
         }
 
         private static string UninstallPic(UninstallStage stage)
@@ -523,9 +555,13 @@ namespace DragNWash.Installer
             }
             _canStop = false;
             bool done = stage == UninstallStage.Done;
+            // Two lines of one stage (the framework and the save history): the first runs, the second waits its turn.
+            bool first = true;
             foreach (Row row in _rows)
             {
-                row.Mark = done || _seen.Contains(row.Stage) && row.Stage != (int)stage ? "done" : row.Stage == (int)stage ? "now" : row.Mark == "now" ? "done" : row.Mark;
+                bool runs = row.Stage == (int)stage && first;
+                first &= !runs;
+                row.Mark = done || _seen.Contains(row.Stage) && row.Stage != (int)stage ? "done" : runs ? "now" : row.Mark == "now" ? "done" : row.Mark;
             }
             _seen.Add((int)stage);
             Send(Strings.Get(done ? Strings.Key.WebPhaseRemoved : Strings.Key.WebPhaseRemove), SubGame(), 0);
@@ -606,7 +642,6 @@ namespace DragNWash.Installer
             if (outcome.Error == null)
             {
                 _result = outcome.Result;
-                _uninstalled = install ? null : _rows.Select(r => r.Text).ToList();
                 Refresh();
                 SendDone(false);
                 return;
@@ -621,7 +656,7 @@ namespace DragNWash.Installer
         {
             _board = "done";
             bool install = _request.Install;
-            List<(bool Done, string Text)> summary = install ? _core.Summary(_result) : _uninstalled.Select(t => (true, t)).ToList();
+            List<(bool Done, string Text)> summary = install ? _core.Summary(_result) : UninstallSummary();
             // The launcher shows first when the game starts, if it's in the launch options now.
             bool launcher = install && _found && Steam.State(_request.Game).AnyHas;
             string[] lines;
@@ -637,11 +672,27 @@ namespace DragNWash.Installer
                 "title", Strings.Get(!install ? Strings.Key.WebDoneUninstall : _update ? Strings.Key.WebDoneUpdate : Strings.Key.WebDoneInstall),
                 "lead", Strings.Get(install ? Strings.Key.WebDoneLead : Strings.Key.WebDoneLeadUninstall),
                 "summary", summary.Select(l => Json.Obj("done", l.Done, "text", l.Text)),
-                "card", install ? Strings.Get(Strings.Key.WebReady) : Strings.Get(Strings.Key.WebDoneUninstall),
+                "card", Strings.Get(install ? Strings.Key.WebReady : Strings.Key.WebUninstalledCard),
                 "cardSmall", install ? Strings.Get(launcher ? Strings.Key.WebReadyLauncher : Strings.Key.WebReadySteam) : Strings.Get(Strings.Key.WebUninstalledSmall),
                 "label", Strings.Get(install ? Strings.Key.WebPhaseDone : Strings.Key.WebPhaseRemoved),
                 "sub", SubGame(),
                 "log", lines));
+        }
+
+        // Uninstall's plan as it was shown, in the page's language now: each line done (the
+        // run had it in its checklist) or not (what was kept).
+        private List<(bool Done, string Text)> UninstallSummary()
+        {
+            List<string> ran = null, now = null;
+            if (_uninstallPlans?.TryGetValue(_runLang, out ran) != true)
+            {
+                return _rows.Select(r => (true, r.Long)).ToList();
+            }
+            if (_uninstallPlans.TryGetValue(Strings.Current, out now) != true || now.Count != ran.Count)
+            {
+                now = ran;
+            }
+            return ran.Select((line, i) => (_rows.Any(r => r.Long == line), now[i])).ToList();
         }
 
         private void SendFailed(bool relang)

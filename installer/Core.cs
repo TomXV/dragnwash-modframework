@@ -1582,14 +1582,15 @@ namespace DragNWash.Installer
         // something, with the stage that does it, in the order Uninstall goes through
         // them (see ProgressSteps for the install side). Lines for what is only kept are
         // left out, the same as ProgressSteps leaves out a framework part that is kept.
-        // The texts are the plan's own (UninstallPlan): what "will happen" already reads
-        // fine as "happening now" for a removal, unlike Install's downloads and copies.
+        // Text is the plan's own line (UninstallPlan), for the done board's list; Step and
+        // Small are the checklist's short label and its small second line (or null).
         // launch: LaunchOptionChange.Remove adds the LaunchOption line, for the checklist
         // only; Uninstall itself never touches Steam's launch options (see its own
         // comment), so the caller reports that step.
-        internal List<(UninstallStage Stage, string Text)> UninstallSteps(string game, bool keepData, bool removeBepInEx, LaunchOptionChange launch = LaunchOptionChange.None)
+        internal List<(UninstallStage Stage, string Text, string Step, string Small)> UninstallSteps(string game, bool keepData, bool removeBepInEx, LaunchOptionChange launch = LaunchOptionChange.None)
         {
-            var steps = new List<(UninstallStage, string)>();
+            var steps = new List<(UninstallStage, string, string, string)>();
+            void Add(UninstallStage stage, string text, Strings.Key step, string small, params object[] args) => steps.Add((stage, text, Strings.Get(step, args), small));
             string plugins = Path.Combine(game, "BepInEx", "plugins");
             bool keptAny = false;
             foreach (string plugin in _manifest.Plugins)
@@ -1604,16 +1605,18 @@ namespace DragNWash.Installer
                         .Where(k => File.Exists(Path.Combine(dir, k)) || Directory.Exists(Path.Combine(dir, k))).ToArray()
                     : new string[0];
                 keptAny |= keep.Length > 0;
-                steps.Add((UninstallStage.Mod, keep.Length == 0
-                    ? Strings.Get(Strings.Key.PlanRemovePlugin, plugin)
-                    : Strings.Get(Strings.Key.PlanRemovePluginKeep, plugin, JoinList(keep.Select(k => k.Replace('/', '\\'))))));
+                string kept = JoinList(keep.Select(k => k.Replace('/', '\\')));
+                // The mod's own name when it is one folder; each folder's name when it is several.
+                Add(UninstallStage.Mod, keep.Length == 0 ? Strings.Get(Strings.Key.PlanRemovePlugin, plugin) : Strings.Get(Strings.Key.PlanRemovePluginKeep, plugin, kept),
+                    Strings.Key.WebStepRemoveMod, keep.Length == 0 ? @"BepInEx\plugins\" + plugin : Strings.Get(Strings.Key.WebStepRemoveModKeeps, kept),
+                    _manifest.Plugins.Length == 1 ? _manifest.Name : plugin);
             }
 
             foreach (string file in _manifest.ConfigFiles)
             {
                 if (File.Exists(Path.Combine(game, "BepInEx", "config", file)))
                 {
-                    steps.Add((UninstallStage.Settings, Strings.Get(Strings.Key.PlanRemoveConfig, file)));
+                    Add(UninstallStage.Settings, Strings.Get(Strings.Key.PlanRemoveConfig, file), Strings.Key.WebStepRemoveConfig, @"BepInEx\config\" + file);
                 }
             }
 
@@ -1624,26 +1627,26 @@ namespace DragNWash.Installer
             {
                 if (framework)
                 {
-                    steps.Add((UninstallStage.Framework, Strings.Get(Strings.Key.PlanRemoveFramework)));
+                    Add(UninstallStage.Framework, Strings.Get(Strings.Key.PlanRemoveFramework), Strings.Key.WebStepRemoveFramework, Strings.Get(Strings.Key.WebStepRemoveFrameworkSmall));
                 }
                 if (!keepData && Directory.Exists(history))
                 {
-                    steps.Add((UninstallStage.Framework, Strings.Get(Strings.Key.PlanRemoveSaveHistory)));
+                    Add(UninstallStage.Framework, Strings.Get(Strings.Key.PlanRemoveSaveHistory), Strings.Key.WebStepRemoveHistory, @"BepInEx\SaveHistory");
                 }
             }
 
             if (launch == LaunchOptionChange.Remove)
             {
-                steps.Add((UninstallStage.LaunchOption, Strings.Get(Strings.Key.PlanLaunchOptionRemove)));
+                Add(UninstallStage.LaunchOption, Strings.Get(Strings.Key.PlanLaunchOptionRemove), Strings.Key.WebStepLaunchRemove, Strings.Get(Strings.Key.WebStepLaunchRemoveSmall));
             }
             string installer = Path.Combine(game, "BepInEx", Paths.InstallerFolder);
             if (others.Count == 0 && File.Exists(Paths.Launcher(game)))
             {
-                steps.Add((UninstallStage.Launcher, Strings.Get(Strings.Key.PlanRemoveLauncher)));
+                Add(UninstallStage.Launcher, Strings.Get(Strings.Key.PlanRemoveLauncher), Strings.Key.WebStepRemoveLauncher, @"BepInEx\" + Paths.InstallerFolder);
             }
             if (Directory.Exists(Path.Combine(installer, "backup")) || Directory.Exists(Path.Combine(installer, "staging")))
             {
-                steps.Add((UninstallStage.InstallerBackup, Strings.Get(Strings.Key.PlanRemoveInstallerFolder)));
+                Add(UninstallStage.InstallerBackup, Strings.Get(Strings.Key.PlanRemoveInstallerFolder), Strings.Key.WebStepRemoveBackup, @"BepInEx\" + Paths.InstallerFolder + @"\backup");
             }
 
             if (removeBepInEx && HasBepInEx(game))
@@ -1653,7 +1656,9 @@ namespace DragNWash.Installer
                     .Any(e => !string.Equals(Path.GetFileName(e), Paths.FrameworkPatcher, StringComparison.OrdinalIgnoreCase));
                 if (others.Count == 0 && !patchersLeft)
                 {
-                    steps.Add((UninstallStage.BepInEx, Strings.Get(keepData && (keptAny || Directory.Exists(history)) ? Strings.Key.PlanRemoveBepInExKeep : Strings.Key.PlanRemoveBepInEx)));
+                    bool keeps = keepData && (keptAny || Directory.Exists(history));
+                    Add(UninstallStage.BepInEx, Strings.Get(keeps ? Strings.Key.PlanRemoveBepInExKeep : Strings.Key.PlanRemoveBepInEx), Strings.Key.WebStepRemoveBepInEx,
+                        keeps ? Strings.Get(Strings.Key.WebStepRemoveBepInExKeep) : null);
                 }
             }
             return steps;

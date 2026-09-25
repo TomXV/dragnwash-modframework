@@ -113,6 +113,9 @@ namespace DragNWash.Installer.Tests
                     steps.First(s => s.Stage == UninstallStage.Mod).Text.Contains("UserData"));
                 Check("keep data: SaveHistory's own line is left out (kept, not removed)",
                     steps.Count(s => s.Stage == UninstallStage.Framework) == 1);
+                Check("keep data: the checklist's short line for the mod says what's kept",
+                    steps.First(s => s.Stage == UninstallStage.Mod).Small?.Contains("UserData") == true);
+                Check("every step has a short label for the checklist", steps.All(s => !string.IsNullOrEmpty(s.Step)));
             }
             finally
             {
