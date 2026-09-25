@@ -36,6 +36,9 @@ namespace DragNWash.Installer
         private string _failure;
         private bool _shown;
 
+        // The window is on its way out: a second Close or Start the game does nothing.
+        private bool _finishing;
+
         // The setup board: the game folder and what was chosen on it.
         private string _game = "";
         private bool _found;
@@ -147,6 +150,11 @@ namespace DragNWash.Installer
         // Closes the window for good (the page fades out first).
         private async void Finish()
         {
+            if (_finishing)
+            {
+                return;
+            }
+            _finishing = true;
             if (_broken)
             {
                 _window.Gone();
@@ -512,8 +520,11 @@ namespace DragNWash.Installer
                     SendSetup();
                     break;
                 case "start":
-                    StartGame();
-                    Finish();
+                    if (!_finishing)
+                    {
+                        StartGame();
+                        Finish();
+                    }
                     break;
             }
         }

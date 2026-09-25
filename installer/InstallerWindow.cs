@@ -195,6 +195,11 @@ namespace DragNWash.Installer
                 case null:
                     return;
                 case "ready":
+                    if (_closing)
+                    {
+                        // Too late: the WinForms window has taken over (Gone), so this one never shows.
+                        return;
+                    }
                     Send(_init());
                     if (!Visible)
                     {
