@@ -79,7 +79,7 @@ Copy-Item -LiteralPath (Join-Path $Root 'installer/bin/Release/Install.exe') -De
 Copy-Item -LiteralPath (Join-Path $Root 'installer/install-steamdeck.sh') -Destination $InstallerStage
 Copy-Item -LiteralPath (Join-Path $Root 'installer/mod-install.example.json') -Destination $InstallerStage
 $InstallerHash = (Get-FileHash -LiteralPath (Join-Path $InstallerStage 'Install.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
-Write-Host "Install.exe sha256 $InstallerHash (unchanged unless installer/ or the .NET SDK changed)"
+Write-Host "Install.exe sha256 $InstallerHash (unchanged unless installer/, webui/, the logo or the .NET SDK changed)"
 
 # The crash reporter the core starts on Windows (https://github.com/TomXV/dragnwash-modframework/wiki/Crash-reports), next to
 # the core DLL. Built deterministically, like Install.exe.
