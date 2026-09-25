@@ -102,7 +102,7 @@ const Head = {
   state(key) { swapText($('state'), t(key)); },
   logoAway() {
     const logo = $('hlogo');
-    logo.classList.remove('back', 'landing');
+    logo.classList.remove('back', 'landing', 'land');
     replay(logo, 'away');
   },
   logoBack() {
@@ -228,16 +228,15 @@ const List = {
     $('list-lead').textContent = t('listLead', fmtChecked(S.init.checkedUtc));
     const box = $('mods');
     box.textContent = '';
-    mods.forEach((m, i) => box.append(this.row(m, i, mods.length)));
+    mods.forEach((m, i) => box.append(this.row(m, i)));
     if (mods.length) this.pick(mods[0].guid);
     this.total();
   },
 
-  row(m, i, count) {
+  row(m, i) {
     const row = el('div', 'mod');
     row.dataset.guid = m.guid;
     row.style.setProperty('--t', sec(.15 + .1 * i));
-    row.style.setProperty('--r', count - 1 - i);
     if (m.installable) {
       const box = el('input', 'ck');
       box.type = 'checkbox';
@@ -315,34 +314,38 @@ const List = {
     $('list-update').disabled = chosen.length === 0;
   },
 
+  // the list after the intro's hand-off: the rows come in one after another, then the notes
   show(reveal) {
     const node = $('list');
-    showLayer(node);
-    node.classList.remove('rewind');
-    node.inert = false;
+    Motion.reset(node);
+    Motion.show(node);
     if (reveal) replay(node, 'reveal');
     else node.classList.remove('reveal');
     replay(node, 'play');
     S.board = 'list';
   },
 
-  // "Update and play": the list rewinds, then the updating board builds up (0.6 s later than B starts,
-  // plus a little for each row past two, since the rows leave one by one)
+  // back from the updating board (Cancel): the list comes in from the left, in reading order
+  enter(kind) {
+    const node = $('list');
+    Motion.reset(node);
+    node.classList.remove('reveal', 'play');
+    Motion.enterBoard(node, kind);
+    S.board = 'list';
+  },
+
+  // "Update and play": the command goes at once, the button gives its little press and the list leaves to the
+  // left; the updating board starts coming in just before it is gone
   update() {
     if ($('list-update').disabled || S.board !== 'list') return;
     S.chosen = S.mods.filter((m) => m.installable && m.selected);
     S.board = 'upd';
-    const node = $('list');
-    node.inert = true;
-    const extra = (S.mods.length - 2) * .1;
-    const delay = reduced() ? 0 : .6 + extra;
-    Updating.begin(delay, true);
-    Updating.timers.after(reduced() ? 0 : .75 + extra, () => Head.state('stateUpdating'));
-    node.style.setProperty('--x', sec(extra));
-    node.classList.remove('reveal');
-    replay(node, 'rewind');
-    leaveLayer(node, delay);
     send('update', { mods: S.chosen.map((m) => m.guid) });
+    $('list-update').classList.add('pressed');
+    const node = $('list');
+    node.classList.remove('reveal');
+    const at = Motion.change(node, 'fwd', () => Head.state('stateUpdating'));
+    Updating.begin(at, true, 'fwd');
   },
 };
 
@@ -350,8 +353,12 @@ $('list-update').addEventListener('click', () => List.update());
 $('list-play').addEventListener('click', () => sendOnce('play'));
 $('notes-open').addEventListener('click', () => send('open', { guid: S.picked }));
 $('skip').addEventListener('change', (e) => {
-  S.skipped[S.picked] = e.target.checked;
-  send('skip', { guid: S.picked, on: e.target.checked });
+  const on = e.target.checked;
+  S.skipped[S.picked] = on;
+  send('skip', { guid: S.picked, on });
+  // the row stays where it is, a little dimmer, with a small tag
+  const row = [...$('mods').children].find((r) => r.dataset.guid === S.picked);
+  if (row) Motion.skip(row, on, t('skippedTag'));
 });
 
 // ---------- the countdown card ----------
@@ -413,7 +420,7 @@ const PACE = {
   sweep: 1.4, tickGap: .8, chkTail: .6, // check: one lens sweep per zip, next zip after a tick, pause after the last
   beat: 2.2,                           // the gear (a tooth every 0.2 s) and the scrub (1.1 s) are both at rest every 2.2 s
   countdown: 1.5,                      // from the all-in moment to the countdown starting (the celebration comes first)
-  stepIn: .5, stepGap: .15,            // the steps come in one after another
+  stepIn: .5, stepGap: .15,            // the steps come in one after another (from the list or Try again: .17, .06)
   steam: 1.8, opt: 1.8,                // the launch option's steps: closing Steam (its window shrinks away), the change
   failAfter: 2.4,                      // the launch option: a failure shows once its step has been up this long
 };
@@ -431,9 +438,10 @@ const Updating = {
   pumpTimer: 0,
   raf: 0,
 
-  // prepares the board; it starts `delay` seconds from now
-  begin(delay, enter) {
+  // prepares the board; it starts `delay` seconds from now. kind 'fwd': it comes in from the list or Try again
+  begin(delay, enter, kind) {
     this.stop();
+    this.kind = kind || '';
     Object.assign(this, {
       z: performance.now() + delay * 1000,
       cur: null, curAt: 0,              // the step on screen, and since when
@@ -445,7 +453,7 @@ const Updating = {
       shown: 0, lastFrame: 0, pct: -1,
     });
     this.build();
-    this.timers.after(delay, () => this.start(enter));
+    this.timers.after(delay, () => this.start(enter, kind));
   },
 
   // stops everything (the board is being left)
@@ -474,10 +482,11 @@ const Updating = {
       : { dl: t('smallDl', S.chosen.length, size), chk: t('smallChk'), bak: t('smallBak'), ins: t('smallIns') };
     const steps = $('steps');
     steps.textContent = '';
+    const [stepIn, stepGap] = this.kind === 'fwd' ? [.17, .06] : [PACE.stepIn, PACE.stepGap];
     this.keys.forEach((key, i) => {
       const li = el('li', 'st todo');
       li.dataset.step = key;
-      li.style.setProperty('--t', sec(PACE.stepIn + PACE.stepGap * i));
+      li.style.setProperty('--t', sec(stepIn + stepGap * i));
       const text = el('div');
       text.append(el('span', null, key === 'go' ? t(S.restart ? 'stepGoAgain' : 'stepGo') : t(STEP_NAME[key])));
       if (small[key]) text.append(el('small', null, small[key]));
@@ -494,37 +503,25 @@ const Updating = {
     $('pct').textContent = '0%';
     $('log-lines').textContent = '';
     $('upd-again').classList.remove('counting');
-    $('upd').classList.remove('play', 'fin', 'enter', 'leave');
+    Motion.reset($('upd'));
+    $('upd').classList.remove('play', 'fin', 'enter');
   },
 
-  start(enter) {
+  start(enter, kind) {
     this.z = performance.now();
     const node = $('upd');
-    showLayer(node);
+    Motion.show(node);
     if (enter) node.classList.add('enter');
+    if (kind) Motion.setKind(node, kind);
     replay(node, 'play');
-    this.aimFly();
+    // with motion reduced the board's own build-up doesn't run: its parts just fade in
+    if (enter && reduced()) Motion.enterBoard(node, 'fwd');
+    Motion.fly($('fly'), $('hlogo'), $('mlogo'));
     Head.logoAway();
     replay($('fly'), 'go');
     this.lastFrame = performance.now();
     this.raf = requestAnimationFrame(() => this.frame());
     this.pump();
-  },
-
-  // the header logo's copy flies from the header logo's box to the working logo's box
-  aimFly() {
-    const logo = $('hlogo');
-    logo.classList.remove('away', 'back');
-    const from = boxOf(logo);
-    const to = boxOf($('mlogo'));
-    const w = from.w || 50;
-    const style = $('fly').style;
-    style.setProperty('--fl', from.x + 'px');
-    style.setProperty('--ft', from.y + 'px');
-    style.setProperty('--fw', w + 'px');
-    style.setProperty('--dx', to.x - from.x + 'px');
-    style.setProperty('--dy', to.y - from.y + 'px');
-    style.setProperty('--k', to.w / w);
   },
 
   // ----- the queue -----
@@ -836,12 +833,19 @@ $('upd-cancel').addEventListener('click', () => Updating.cancel());
 // the launcher stopped after Cancel, nothing changed: back to the list as it was
 function onCancelled() {
   if (S.board !== 'upd') return;
+  S.board = 'moving';
   Updating.stop();
-  leaveLayer($('upd'));
-  $('fly').classList.remove('go');
-  Head.logoBack();
-  Head.state('stateList');
-  List.show(true);
+  const node = $('upd');
+  // the working logo flies back up into the header while the board leaves to the right
+  if (reduced()) $('hlogo').classList.remove('away');
+  else Motion.flyBack($('fly'), $('hlogo'), $('mlogo'));
+  $('upd-cancel').classList.add('pressed');
+  const parts = Motion.partsOf(node);
+  parts.r = parts.r.filter((n) => n !== $('mlogo'));
+  Motion.change(node, 'back', () => {
+    Head.state('stateList');
+    List.enter('back');
+  }, { parts });
 }
 
 // ---------- 3: failed ----------
@@ -851,9 +855,31 @@ const FAIL_KINDS = ['offline', 'busy', 'limited', 'notfound', 'mismatch', 'insta
 const Fail = {
   details: '',
 
+  // the board on screen leaves (calmly, downwards) and the failed board comes in once it has gone; the marks
+  // keep their own bounce
   show(e) {
     Updating.stop();
-    S.board = 'fail';
+    const was = [$('upd'), $('list')].find((n) => !n.hidden);
+    S.board = 'moving';
+    $('fly').classList.remove('go');
+    Head.reveal(false);
+    Head.logoBack();
+    Head.state('stateFailed');
+    const enter = () => {
+      this.fill(e);
+      const node = $('fail');
+      Motion.reset(node);
+      node.hidden = false;
+      replay(node, 'play');
+      Motion.enterBoard(node, 'fail');
+      S.board = 'fail';
+      if (e.restart) Countdown.start($('fail-again'), reduced() ? 0 : 1);
+    };
+    if (was) Motion.change(was, 'fail', enter);
+    else enter();
+  },
+
+  fill(e) {
     const restart = !!e.restart;
     const kind = FAIL_KINDS.includes(e.kind) ? e.kind : 'other';
     const words = STRINGS[lang];
@@ -890,32 +916,27 @@ const Fail = {
     $('fail-retry').hidden = restart;
     $('fail-play').hidden = restart;
     $('fail-again').hidden = !restart;
-
-    $('fly').classList.remove('go');
-    Head.reveal(false);
-    Head.logoBack();
-    Head.state('stateFailed');
-    leaveLayer($('upd'));
-    leaveLayer($('list'));
-    const node = $('fail');
-    showLayer(node);
-    replay(node, 'play');
-    if (restart) Countdown.start($('fail-again'), reduced() ? 0 : 1);
   },
 
+  // Try again: the command goes at once, then the failed board leaves to the left and the updating board comes in
   retry() {
     if (S.board !== 'fail') return;
     S.board = 'upd';
-    Head.state(S.restart ? 'stateRestart' : 'stateUpdating');
-    Updating.begin(0, true);
-    leaveLayer($('fail'));
     send('retry');
+    $('fail-retry').classList.add('pressed');
+    const at = Motion.change($('fail'), 'fwd', () => Head.state(S.restart ? 'stateRestart' : 'stateUpdating'));
+    Updating.begin(at, true, 'fwd');
   },
 };
 
 $('fail-retry').addEventListener('click', () => Fail.retry());
 $('fail-play').addEventListener('click', () => sendOnce('play'));
 $('fail-openlog').addEventListener('click', () => send('openLog'));
+// Details: the box closes up and opens again instead of jumping
+$('fail').querySelector('details.det > summary').addEventListener('click', (e) => {
+  e.preventDefault();
+  Motion.details(e.currentTarget.parentElement);
+});
 $('fail-copy').addEventListener('click', (e) => {
   send('copy', { text: Fail.details });
   const link = e.currentTarget;
@@ -953,22 +974,32 @@ document.addEventListener('keydown', (e) => {
 
 // ---------- closing ----------
 
-// the launcher is closing the window: everything stops and fades out, then the launcher fades the window away
-// (with the animations on) and closes it
+// the launcher is closing the window: everything stops, the board's parts leave (the countdown card first), the
+// header and the page fade, then the launcher fades the window away and closes it. With motion reduced the
+// window just closes
 function bye() {
   if (S.board === 'bye') return;
   S.board = 'bye';
   Intro.timers.clear();
   Intro.live = false;
   Updating.stop();
+  Motion.timers.clear();
   const win = $('win');
   win.inert = true;
   if (reduced()) {
     send('gone', { on: false });
     return;
   }
-  win.classList.add('bye');
-  setTimeout(() => send('gone', { on: true }), 250);
+  const board = [$('upd'), $('fail'), $('list')].find((n) => !n.hidden);
+  if (board) {
+    // the countdown card leads, once it is up (while it is still coming in, it just goes with the rest)
+    const card = [...board.querySelectorAll('.again')]
+      .find((n) => !n.hidden && getComputedStyle(n).visibility === 'visible' && getComputedStyle(n).opacity === '1');
+    if (card) for (const b of card.querySelectorAll('button')) b.disabled = true;
+    Motion.exitBoard(board, 'bye', Motion.partsOf(board), card ? [card] : []);
+  }
+  win.classList.add('x-bye');
+  setTimeout(() => send('gone', { on: true }), 300);
 }
 
 // ---------- events from the launcher ----------
