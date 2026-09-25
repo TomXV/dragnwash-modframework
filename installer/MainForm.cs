@@ -32,6 +32,7 @@ namespace DragNWash.Installer
         private readonly GroupBox _installGroup = new WrappingGroupBox();
         private readonly GroupBox _uninstallGroup = new WrappingGroupBox();
         private readonly List<(ModChoice Choice, Label Label, ComboBox Box)> _choices = new List<(ModChoice, Label, ComboBox)>();
+        private readonly CheckBox _launchOption = new CheckBox { AutoSize = true, Checked = true, Margin = new Padding(3, 6, 3, 0) };
         private readonly CheckBox _keepData = new CheckBox { AutoSize = true, Checked = true };
         private readonly CheckBox _alsoBepInEx = new CheckBox { AutoSize = true };
         private readonly Label _installWill = new Label { AutoSize = true, Margin = new Padding(0, 8, 0, 2) };
@@ -53,6 +54,9 @@ namespace DragNWash.Installer
 
         // The mod's version in the chosen game folder, or null when it is not there.
         private string _installed;
+
+        // The game's launch options in Steam, read when the game folder is chosen.
+        private Steam.LaunchState _steam = new Steam.LaunchState();
         private bool _busy;
         private CancellationTokenSource _cancel;
         private bool _closeWhenDone;
@@ -145,6 +149,7 @@ namespace DragNWash.Installer
                 _choices.Add((choice, label, box));
                 AddRow(install, label, 1, box, 1);
             }
+            AddRow(install, _launchOption, 2);
             AddRow(install, _installWill, 2);
             AddRow(install, _installSteps, 2);
             AddRow(layout, _installGroup, 3);
@@ -197,6 +202,11 @@ namespace DragNWash.Installer
             {
                 _summary = null;
                 ApplyMode();
+            };
+            _launchOption.CheckedChanged += (_, __) =>
+            {
+                _summary = null;
+                RefreshPlan();
             };
             _keepData.CheckedChanged += (_, __) => RefreshPlan();
             _alsoBepInEx.CheckedChanged += (_, __) => RefreshPlan();
@@ -388,6 +398,7 @@ namespace DragNWash.Installer
             _uninstallGroup.Text = Strings.Get(Strings.Key.Uninstall);
             _installWill.Text = Strings.Get(Strings.Key.InstallWill);
             _uninstallWill.Text = Strings.Get(Strings.Key.UninstallWill);
+            _launchOption.Text = Strings.Get(Strings.Key.LaunchOptionCheck);
             _keepData.Text = Strings.Get(Strings.Key.KeepData);
             _alsoBepInEx.Text = Strings.Get(Strings.Key.AlsoBepInEx);
             _close.Text = Strings.Get(Strings.Key.Close);
@@ -411,6 +422,9 @@ namespace DragNWash.Installer
             {
                 _modeInstall.Checked = true;
             }
+            _steam = found ? Steam.State(game) : new Steam.LaunchState();
+            // The box does something only with a Steam account to set it in and a launcher to start.
+            _launchOption.Enabled = !_busy && found && _steam.Accounts > 0 && _core.LauncherAfterInstall(game);
             if (!found)
             {
                 _status.Text = Strings.Get(Strings.Key.NotFound);
@@ -458,9 +472,10 @@ namespace DragNWash.Installer
             {
                 try
                 {
+                    LaunchOptionChange launch = LaunchChange(install, game);
                     steps = summary
                         ? _core.Summary(_summary).Select(l => (l.Done ? Mark.Done : Mark.Kept, l.Text)).ToList()
-                        : (install ? _core.InstallPlan(game, SelectedChoices()) : _core.UninstallPlan(game, _keepData.Checked, _alsoBepInEx.Checked))
+                        : (install ? _core.InstallPlan(game, SelectedChoices(), launch) : _core.UninstallPlan(game, _keepData.Checked, _alsoBepInEx.Checked, launch))
                             .Select(s => (Mark.Planned, s)).ToList();
                 }
                 catch (Exception)
@@ -471,6 +486,28 @@ namespace DragNWash.Installer
             _installWill.Text = Strings.Get(summary ? Strings.Key.DoneList : Strings.Key.InstallWill);
             (install ? _installWill : _uninstallWill).Visible = steps != null;
             FillSteps(install ? _installSteps : _uninstallSteps, steps ?? new List<(Mark, string)>());
+        }
+
+        // What Install or Uninstall is to do with the game's launch options in Steam.
+        // Ticked: put the launcher in, unless it is there already. Unticked: take it out
+        // if it is there. Uninstall takes it out when the framework (and so the launcher)
+        // goes. When the launcher won't be there after Install, a launch option that
+        // starts it is taken out too: the game would not start from Steam otherwise.
+        private LaunchOptionChange LaunchChange(bool install, string game)
+        {
+            if (_steam.Accounts == 0)
+            {
+                return LaunchOptionChange.None;
+            }
+            if (!install)
+            {
+                return _steam.AnyHas && _core.RemovesFramework(game) ? LaunchOptionChange.Remove : LaunchOptionChange.None;
+            }
+            if (_launchOption.Checked && _launchOption.Enabled)
+            {
+                return _steam.AllSet ? LaunchOptionChange.AlreadySet : LaunchOptionChange.Add;
+            }
+            return _steam.AnyHas ? LaunchOptionChange.Remove : LaunchOptionChange.None;
         }
 
         private Dictionary<string, string> SelectedChoices()
@@ -497,6 +534,29 @@ namespace DragNWash.Installer
             Dictionary<string, string> choices = SelectedChoices();
             bool keepData = _keepData.Checked;
             bool alsoBepInEx = _alsoBepInEx.Checked;
+            // Steam first, before the download question and before anything changes.
+            LaunchOptionChange launch = InstallerCore.IsGameFolder(game) ? LaunchChange(install, game) : LaunchOptionChange.None;
+            bool skipped = false;
+            string closedSteam = null;
+            if ((launch == LaunchOptionChange.Add || launch == LaunchOptionChange.Remove) && Steam.Running())
+            {
+                using (var dialog = new SteamDialog(Text, launch == LaunchOptionChange.Remove, AppendLog))
+                {
+                    switch (dialog.ShowDialog(this))
+                    {
+                        case DialogResult.OK:
+                            closedSteam = dialog.ClosedExe;
+                            break;
+                        case DialogResult.Ignore:
+                            AppendLog("Steam launch option: skipped this time (Steam is running)");
+                            skipped = true;
+                            launch = LaunchOptionChange.None;
+                            break;
+                        default:
+                            return;
+                    }
+                }
+            }
             if (install && options == null)
             {
                 options = new InstallOptions();
@@ -528,10 +588,28 @@ namespace DragNWash.Installer
                     if (install)
                     {
                         result = _core.Install(game, choices, options, progress, cancel);
+                        // Once the files are in place, so the launcher is there to be started.
+                        result.LaunchOption = skipped ? LaunchOptionOutcome.Skipped
+                            : launch == LaunchOptionChange.Add ? Steam.Apply(game, true, AppendLog)
+                            : launch == LaunchOptionChange.Remove ? Steam.Apply(game, false, AppendLog)
+                            : LaunchOptionOutcome.None;
                     }
                     else
                     {
-                        _core.Uninstall(game, keepData, alsoBepInEx);
+                        // Out of the launch options before the launcher goes, and the launcher
+                        // stays while they still start it.
+                        InstallerCore.CheckReady(game);
+                        if (launch == LaunchOptionChange.Remove)
+                        {
+                            Steam.Apply(game, false, AppendLog);
+                        }
+                        bool keepLauncher = _core.RemovesFramework(game) && Steam.State(game).AnyHas;
+                        _core.Uninstall(game, keepData, alsoBepInEx, keepLauncher);
+                    }
+                    // Steam, if the installer closed it, is started again once all went well.
+                    if (closedSteam != null)
+                    {
+                        Steam.Start(closedSteam, AppendLog);
                     }
                     return (Cancelled: false, Error: (Exception)null, Details: (string)null, Result: result);
                 }
@@ -729,7 +807,7 @@ namespace DragNWash.Installer
         {
             _busy = busy;
             UseWaitCursor = false;
-            foreach (Control c in new Control[] { _run, _browse, _game, _modeInstall, _modeUninstall, _keepData, _alsoBepInEx, _language })
+            foreach (Control c in new Control[] { _run, _browse, _game, _modeInstall, _modeUninstall, _launchOption, _keepData, _alsoBepInEx, _language })
             {
                 c.Enabled = !busy;
             }
