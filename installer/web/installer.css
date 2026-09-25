@@ -1,0 +1,209 @@
+/* Drag'n Wash Mod Installer: Install.exe's own boards, from the approved installer mock. Everything it shares
+   with the launcher's page (the window, the header, the working and failed boards, the logo intro, the
+   pictures, the motion) is in webui/; this is what only the installer has: the language select in the
+   header, the setup board, the question sheets, the checklist's done board and the framework's way by hand. */
+
+.lw{--net:#8fd3ff}
+.lw select,.lw input{font:inherit;color:inherit}
+
+/* the installer's language, in the header */
+.lhead .hsel{margin-left:auto;height:26px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--dim);font-size:12px;padding:0 6px;cursor:pointer}
+.lhead .hsel + .wc{margin-left:6px}
+.lhead .hsel:hover:not(:disabled){border-color:rgba(232,239,247,.3);color:var(--ink)}
+.lhead .hsel:disabled{opacity:.45;cursor:default}
+.lhead .hsel option{background:#1b2429;color:var(--ink)}
+
+/* the intro's "look for the folder" picture, beside the line under the logo */
+.intro .ifind{position:absolute;left:calc(50% - 176px);bottom:30px;width:40px;height:34px;z-index:3}
+
+/* ===== the setup board ===== */
+/* the mode switch at its top */
+.seg{display:inline-flex;padding:3px;border-radius:9px;background:var(--deep);border:1px solid var(--line);margin:0 0 12px;align-self:flex-start}
+.seg button{height:26px;padding:0 14px;border-radius:6px;border:0;background:none;color:var(--dim);font-weight:600;cursor:pointer;font-size:12px}
+.seg button.on{background:rgba(82,199,184,.16);color:var(--ink);box-shadow:inset 0 0 0 1px rgba(82,199,184,.6)}
+.seg button:disabled{opacity:.4;cursor:default}
+.segnote{color:var(--dim);font-size:11px;margin:-8px 0 10px}
+
+/* the game folder card */
+.fcard{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px 11px;margin-bottom:12px}
+.fcard.bad{border-color:rgba(243,201,139,.55);background:rgba(243,201,139,.06)}
+.flab{font-size:11.5px;color:var(--dim);margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.flab .ok{display:inline-flex;align-items:center;gap:5px;color:var(--accent);margin-left:auto;font-weight:600}
+.flab .ok .mk{width:14px;height:14px;background:var(--accent)}
+.flab .ok .mk::after{content:"";width:6px;height:3px;border-left:2px solid var(--on-accent);border-bottom:2px solid var(--on-accent);transform:translate(0,-1px) rotate(-45deg)}
+.frow{display:flex;gap:8px;align-items:center}
+/* a long path keeps its end (the game's own folder) in sight */
+.fpath{flex:1 1 auto;min-width:0;font-family:var(--mono);font-size:11px;background:var(--deep);border:1px solid var(--line);border-radius:6px;padding:6px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl;text-align:left;user-select:text;cursor:text}
+.fpath.empty{color:var(--warn);font-family:var(--ui);direction:ltr;white-space:normal;font-size:11.5px;line-height:1.45;user-select:none;cursor:default}
+.lb.sm{height:28px;padding:0 11px;font-size:12px;border-radius:6px}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.chip{font-size:11px;color:var(--dim);padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:rgba(0,0,0,.15);white-space:nowrap}
+.chip b{font-weight:600;color:var(--ink);margin-left:4px}
+.chip.yes b{color:var(--accent)}
+
+/* the mod's own choices (from mod-install.json) and the checkboxes */
+.field{display:flex;align-items:center;gap:10px;margin:0 0 10px}
+.field > span{min-width:0;flex:0 0 auto;font-weight:600}
+.dsel{flex:1 1 auto;min-width:0;height:30px;border-radius:7px;background:var(--deep);border:1px solid rgba(232,239,247,.22);padding:0 8px;cursor:pointer}
+.dsel:hover:not(:disabled){border-color:var(--accent)}
+.dsel:disabled{opacity:.45;cursor:default}
+.dsel option{background:#1b2429}
+.opt{display:flex;gap:9px;align-items:flex-start;line-height:1.45;margin:0 0 9px;cursor:pointer}
+.opt small{display:block;color:var(--dim);font-size:11px;margin-top:1px}
+.opt.off{cursor:default}
+.opt.off > span{color:var(--dim)}
+.opt.off .ck{opacity:.4;cursor:default}
+.opt .why{color:var(--warn)}
+.setup .col-l{overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(232,239,247,.35) transparent;padding-right:2px}
+
+/* the plan: what the chosen action will do, in the launcher's deep box */
+.col-r > .nt{flex:0 0 auto;margin:2px 0 8px;font-size:inherit;font-weight:600}
+.plan{flex:1 1 auto;min-height:0;overflow-y:auto;background:var(--deep);border:1px solid var(--line);border-radius:8px;margin:0;padding:8px 12px;list-style:none;font-size:12px;line-height:1.55;scrollbar-width:thin;scrollbar-color:rgba(232,239,247,.35) transparent;user-select:text;cursor:auto}
+.plan li{display:flex;gap:9px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.045);overflow-wrap:anywhere}
+.plan li:last-child{border-bottom:0}
+.plan li::before{content:"";width:5px;height:5px;border-radius:50%;background:rgba(232,239,247,.55);flex:0 0 auto;margin-top:.62em}
+.plan li.last{color:var(--dim)}
+.plan li.last::before{background:transparent}
+.plan li.stop{color:var(--warn);font-weight:600}
+.plan li.stop::before{background:var(--warn)}
+.plan .tag{display:inline-block;font-size:10px;font-weight:700;color:var(--net);border:1px solid rgba(143,211,255,.45);border-radius:4px;padding:0 4px;margin-left:6px;line-height:15px;vertical-align:1px;white-space:nowrap}
+.plan.wait{display:flex;align-items:center;justify-content:center;color:var(--dim);text-align:center;padding:20px}
+.hint{color:var(--dim);font-size:11px;line-height:1.5;margin:8px 0 0;flex:0 0 auto}
+.warnbox{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border-radius:9px;background:rgba(243,201,139,.08);border:1px solid rgba(243,201,139,.5);margin:0 0 10px;line-height:1.5;font-size:12px;flex:0 0 auto}
+.warnbox .mk{width:18px;height:18px;border-radius:50%;background:var(--warn);color:#2e2210;font-weight:700;font-size:12px;flex:0 0 auto}
+.warnbox b{display:block;color:var(--warn)}
+.banner{display:flex;gap:8px;align-items:center;margin:0 0 8px;padding:6px 10px;border-radius:8px;background:rgba(82,199,184,.12);border:1px solid rgba(82,199,184,.45);font-size:12px;font-weight:600;flex:0 0 auto}
+.banner .mk{width:16px;height:16px;background:var(--accent)}
+.banner .mk::after{content:"";width:7px;height:3px;border-left:2px solid var(--on-accent);border-bottom:2px solid var(--on-accent);transform:translate(0,-1px) rotate(-45deg)}
+.lfoot .net .blocked{color:var(--warn);font-weight:600}
+.lfoot .net .llink{white-space:nowrap}
+
+/* setup board entrance: parts come in one after another, like the launcher's list */
+.setup.play .col-l > *{animation:fadeup .4s ease both}
+.setup.play .col-l > :nth-child(2){animation-delay:.06s}
+.setup.play .col-l > :nth-child(3){animation-delay:.12s}
+.setup.play .col-l > :nth-child(4){animation-delay:.18s}
+.setup.play .col-l > :nth-child(5){animation-delay:.24s}
+.setup.play .col-l > :nth-child(n+6){animation-delay:.3s}
+.setup.play .col-r > *{animation:fadeup .45s ease .3s both}
+.setup.play .plan li{animation:fadeup .35s ease calc(.4s + var(--i) * .05s) both}
+.setup.play .lfoot > *{animation:fadeup .4s ease .45s both}
+/* a greyed button ends its entrance greyed (the animation's end state would win over :disabled) */
+.setup.play .lfoot > .lb:disabled{animation-name:fadeupdim}
+@keyframes fadeupdim{from{opacity:0;transform:translateY(6px)}to{opacity:.38;transform:none}}
+/* a change on the board (another folder, mode or choice): only the plan's lines come in again */
+.setup .plan.swap li{animation:fadeup .3s ease calc(var(--i) * .03s) both}
+
+/* ===== question sheets over the board (the old separate dialogs): the board dims, the sheet rises ===== */
+.layer.under{transform:scale(.985);filter:brightness(.8);transition:transform .32s cubic-bezier(.4,0,.2,1),filter .32s ease}
+.layer.back{transition:transform .32s cubic-bezier(.4,0,.2,1),filter .32s ease}
+.veil{position:absolute;left:0;right:0;top:46px;bottom:0;z-index:5;background:rgba(8,12,15,.66);display:flex;align-items:center;justify-content:center;animation:xcome .2s ease both}
+.veil.out{animation:xgone .2s ease .06s both}
+.sheet{position:relative;width:560px;max-height:calc(100% - 28px);box-sizing:border-box;display:flex;flex-direction:column;background:linear-gradient(180deg,#1f2b30,#182226);border:1px solid rgba(255,255,255,.13);border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.55);animation:sheetin .38s cubic-bezier(.2,.8,.3,1) .05s both}
+.sheet.wide{width:660px}
+.sheet.swap-in{animation:swapin .34s cubic-bezier(.2,.7,.3,1) .12s both}
+.sheet.swap-out{position:absolute;animation:swapout .22s cubic-bezier(.5,0,.75,.4) both;pointer-events:none}
+.veil.out .sheet{animation:sheetout .2s cubic-bezier(.5,0,.75,.4) both}
+@keyframes sheetin{from{opacity:0;transform:translateY(16px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes sheetout{to{opacity:0;transform:translateY(10px) scale(.99)}}
+@keyframes swapin{from{opacity:0;transform:translateX(14px)}}
+@keyframes swapout{to{opacity:0;transform:translateX(-14px)}}
+.sbody{display:flex;gap:14px;padding:18px 22px 14px;overflow-y:auto;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(232,239,247,.35) transparent}
+.stext{flex:1 1 auto;min-width:0}
+.stext h2{font-size:15.5px;margin:1px 0 6px;line-height:1.4;padding-right:24px}
+.stext p{margin:0 0 6px;line-height:1.6;color:var(--ink);overflow-wrap:anywhere}
+.stext p.dim{color:var(--dim);font-size:11.5px}
+.sfoot{display:flex;gap:10px;align-items:center;padding:12px 16px;border-top:1px solid var(--line);background:rgba(0,0,0,.2);border-radius:0 0 12px 12px;flex:0 0 auto}
+.sfoot .sp{flex:1 1 auto}
+.sx{position:absolute;right:8px;top:8px;width:28px;height:26px;border-radius:6px;border:0;background:none;color:var(--dim);cursor:pointer;font-size:12px}
+.sx:hover{background:rgba(255,255,255,.08);color:var(--ink)}
+.sicon{width:42px;height:42px;flex:0 0 auto;margin-top:2px}
+.sicon svg{width:100%;height:100%;display:block;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.sheet .ghmark{margin-top:2px}
+.sheet .ghmark svg{animation:ghin .45s ease-out .15s both}
+.sheet .ghmark .ghx{display:none}
+.facts{display:grid;grid-template-columns:auto 1fr;margin:10px 0 8px;border-top:1px solid var(--line);font-size:12px}
+.facts dt,.facts dd{margin:0;padding:6px 0;border-bottom:1px solid var(--line);line-height:1.55}
+.facts dt{font-weight:700;padding-right:16px;white-space:nowrap;color:var(--dim)}
+.facts dd{overflow-wrap:anywhere;white-space:pre-line;user-select:text;cursor:auto}
+.waitrow{display:flex;gap:10px;align-items:center;margin-top:10px;padding:8px 10px;border-radius:8px;background:rgba(82,199,184,.08);border:1px solid rgba(82,199,184,.35);line-height:1.5}
+.waitrow.slow{background:rgba(243,201,139,.08);border-color:rgba(243,201,139,.5);color:var(--warn)}
+.waitrow .scbox{width:48px;height:41px}
+/* without the app-closing picture: the turning gear from the logo as the "waiting" mark */
+.gearwait{width:22px;height:22px;flex:0 0 auto;background:url(gear.png) 0 0/100% 100% no-repeat;animation:gspin 2.4s linear infinite}
+.slow .gearwait{animation:none;opacity:.5}
+
+/* ===== working boards: the launcher's board 2 with the installer's own checklist ===== */
+.upd .steps{gap:7px;overflow-y:auto;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(232,239,247,.35) transparent;padding-right:2px}
+.upd .st small{font-size:11px}
+.inst .col-l{flex-basis:300px}
+.inst .ls{margin-bottom:10px}
+.pbar .f{transition:width .35s ease}
+.pbar .f.full{width:100% !important}
+.st.kept .mk{border:1.5px solid rgba(232,239,247,.4)}
+.st.kept .mk::after{content:"";width:7px;height:1.5px;background:rgba(232,239,247,.6)}
+.st.kept{color:var(--dim)}
+.upd .lfoot .net{display:grid}
+.upd .lfoot .net .ph{white-space:normal}
+/* the mod's own icon beside the picture while its files go in or out */
+.scbox .micon{position:absolute;right:-4px;bottom:-4px}
+
+/* done: the steps give way to what was done, the log to the ready card; the logo and the progress card stay */
+.done-b .sumh{font-size:12px;font-weight:600;color:var(--dim);margin:2px 0 6px}
+.sum{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;overflow-y:auto;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(232,239,247,.35) transparent;font-size:12px;user-select:text;cursor:auto}
+.sum .st{line-height:1.45}
+.sum .st .mk{width:16px;height:16px;margin-top:1px}
+.okcard{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:10px;background:rgba(82,199,184,.10);border:1px solid rgba(82,199,184,.45);align-self:stretch;line-height:1.5;flex:0 0 auto}
+.okcard .mk{width:30px;height:30px;background:var(--accent)}
+.okcard .mk::after{content:"";width:12px;height:6px;border-left:2.5px solid var(--on-accent);border-bottom:2.5px solid var(--on-accent);transform:translate(0,-2px) rotate(-45deg)}
+.okcard b{display:block}
+.okcard span{color:var(--dim);font-size:11.5px}
+/* the log under the ready card: open, it takes the room that's left and scrolls, never past the footer */
+.tail2{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.tail2 details.det{margin-top:0;flex:0 0 auto}
+.tail2 details.det[open]{flex:1 1 0;min-height:0;display:flex;flex-direction:column}
+.tail2 details.det[open]::details-content{flex:1 1 0;min-height:0;display:flex;flex-direction:column}
+.tail2 details.det .logbox{max-height:none;flex:1 1 0;min-height:0;overflow:auto;white-space:pre}
+.done-b .mlogo .mgear{animation:gspin 9s linear infinite}
+.done-b.play .mlogo{animation:mpop .6s cubic-bezier(.3,1.4,.5,1) .35s both}
+.done-b.play .mlogo .mgear{animation:gfast .9s cubic-bezier(.2,.7,.3,1) .35s both,gspin 9s linear 1.25s infinite}
+.done-b.play .mlogo .msp{animation:mhop .55s ease-out .4s both}
+.done-b.play .mlogo .mshine::before{animation:shine .75s ease-in-out .7s both}
+.done-b.play .mstage .spk{animation:twinkle .75s ease-out calc(.35s + var(--st)) both}
+.done-b .scbox{display:none}
+.done-b .pcard,.done-b .pcard .pbar,.done-b .pcard .pp{animation:none !important}
+
+/* failed: the launcher's board 3, plus the framework's way by hand */
+.fwway{margin-top:12px;padding:10px 12px;border-radius:9px;background:var(--card);border:1px solid var(--line);line-height:1.6;font-size:12px}
+.fwway p{margin:0 0 6px}
+.fwway .llink{display:block;margin-top:3px;text-align:left}
+.fail.play .fwway{animation:fadeup .45s ease .6s both}
+.fail .errtext .ls + .ls{margin-top:4px}
+.fail details.det .logbox{white-space:pre}
+.fail .errrow > .sc{width:42px;height:42px;flex:0 0 auto}
+
+/* ===== boards coming and going (the shared Motion part takes this over once it's there) =====
+   .bout-KIND: the board leaving; .bin-KIND: the one coming in. fwd goes left, back right, up lifts, fail sinks */
+.bout-fwd{animation:bout .26s cubic-bezier(.5,0,.75,.4) both;--ox:-14px;pointer-events:none}
+.bout-back{animation:bout .26s cubic-bezier(.5,0,.75,.4) both;--ox:14px;pointer-events:none}
+.bout-up{animation:bout .26s cubic-bezier(.5,0,.75,.4) both;--oy:-8px;pointer-events:none}
+.bout-fail{animation:bout .3s cubic-bezier(.35,0,.25,1) both;--oy:5px;pointer-events:none}
+.bin-fwd .lbody,.bin-fwd .lfoot{animation:bin .4s cubic-bezier(.2,.7,.3,1) both;--ix:14px}
+.bin-back .lbody,.bin-back .lfoot{animation:bin .4s cubic-bezier(.2,.7,.3,1) both;--ix:-14px}
+.bin-fail .lbody,.bin-fail .lfoot{animation:bin .45s cubic-bezier(.35,0,.25,1) both;--iy:-4px}
+.bin-up .col-l,.bin-up .tail2,.bin-up .lfoot{animation:bin .45s cubic-bezier(.22,1.25,.36,1) both;--iy:10px}
+.bin-up .tail2{animation-delay:.12s}
+.bin-up .lfoot{animation-delay:.18s}
+@keyframes bout{to{opacity:0;transform:translate(var(--ox,0px),var(--oy,0px))}}
+@keyframes bin{from{opacity:0;transform:translate(var(--ix,0px),var(--iy,0px))}}
+/* closing: the whole page fades out, then Install.exe fades the window itself away */
+.lw.bye{animation:byeout .25s ease forwards}
+
+/* ===== reduced motion: short fades instead of movement ===== */
+.reduced .lw .bout-fwd,.reduced .lw .bout-back,.reduced .lw .bout-up,.reduced .lw .bout-fail{animation:fadeonly .12s linear both !important}
+.reduced .lw [class*="bin-"]{animation:fadein .15s linear .12s both !important}
+.reduced .lw .veil{animation:fadein .15s linear both !important}
+.reduced .lw .veil.out{animation:fadeonly .12s linear both !important}
+.reduced .layer.under{transform:none;filter:brightness(.8)}
+@keyframes fadeonly{to{opacity:0}}
+@keyframes fadein{from{opacity:0}}

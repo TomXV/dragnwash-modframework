@@ -43,18 +43,35 @@ namespace DragNWash.Installer
             {
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                ModManifest manifest;
+                ModManifest manifest = null;
+                InstallerException startError = null;
                 try
                 {
                     manifest = LoadManifest(here);
                 }
                 catch (InstallerException ex)
                 {
-                    MessageBox.Show(ex.Text() + (ex.Detail == null ? "" : Environment.NewLine + Environment.NewLine + ex.Detail),
+                    startError = ex;
+                }
+                // The window in WebView2 when it can be had (WebUi.cs); otherwise the WinForms one
+                // as before, which then says in its log why.
+                string note = null;
+                if (WebUi.Wanted())
+                {
+                    string why = WebUi.Run(manifest, startError, here);
+                    if (why == null)
+                    {
+                        return startError == null ? 0 : 1;
+                    }
+                    note = "The WebView2 window couldn't be shown (" + why + "), so this is the classic one.";
+                }
+                if (startError != null)
+                {
+                    MessageBox.Show(startError.Text() + (startError.Detail == null ? "" : Environment.NewLine + Environment.NewLine + startError.Detail),
                         "Drag'n Wash Mod Installer", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return 1;
                 }
-                Application.Run(new MainForm(manifest, here));
+                Application.Run(new MainForm(manifest, here, note));
                 return 0;
             }
             return RunCommandLine(args, here);
