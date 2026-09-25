@@ -32,6 +32,7 @@ updates:
       - "/crashreporter"
       - "/codegraph"
       - "/codegraph-standalone"
+      - "/launcher"
     schedule:
       interval: "weekly"
       day: "monday"
