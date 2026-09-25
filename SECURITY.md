@@ -48,6 +48,7 @@ Everything this repository ships is in scope:
 - the core plugin and the libraries (`src/`), and the preloader patcher
 - `Install.exe`, the shared installer other mods use ([`installer/`](installer/)),
   along with the Steam Deck script
+- `Launcher.exe`, the update launcher that runs before the game ([`launcher/`](launcher/))
 - the crash reporter ([`crashreporter/`](crashreporter/)) and the Code Graph
   tools ([`codegraph/`](codegraph/), [`codegraph-standalone/`](codegraph-standalone/))
 - the build and release workflows in [`.github/workflows/`](.github/workflows/)
@@ -68,10 +69,22 @@ outside world:
 - **Update notices**
   - They ask `api.github.com` once a day for the latest release of a mod that
     names its repository. They send nothing about the player and download
-    nothing; the Mods screen only opens the release page in a browser.
-  - A real bug would be anything that turns that into a download, or that leaks
-    information about the player.
+    nothing. What they find is written to `BepInEx/cache` for the launcher.
+  - A real bug would be anything that turns that into a download inside the
+    game, or that leaks information about the player.
   - There's more in [Going online (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Going-online).
+- **The launcher**
+  - Steam starts it before the game through the launch option the installer
+    sets (it only edits that one value in Steam's `localconfig.vdf`). It reads
+    what the game's update check wrote and goes online only when the player
+    presses Update, and only to github.com and release-assets.githubusercontent.com.
+    It downloads a mod's zip from an address it builds from the repository and
+    tag, checks its size and SHA-256 against GitHub's digest, and installs it
+    with the installer's own code. Its page is built into the exe and loads
+    nothing from outside; release notes are shown as text.
+  - A real bug would be a way to make it download from another address, accept
+    a file that doesn't match, run script from release notes, write outside the
+    game folder, or change other launch options or Steam settings.
 - **Asset and mod loading**
   - `GameAssets` and the Overrides library read files out of a mod's folder.
   - A real bug would be a crafted file that reaches outside that folder, or one
