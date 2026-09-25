@@ -94,6 +94,8 @@ namespace DragNWash.ModFramework.Mods
             _confirming = null;
             _confirmingUninstall = null;
             ForgetUpdate();
+            // Steam's launch option may have been changed outside the game meanwhile.
+            Updates.LaunchOptionSwitch.Forget();
             _tab = TabAbout;
             _query = "";
             _settingsQuery = "";
@@ -353,11 +355,14 @@ namespace DragNWash.ModFramework.Mods
             Focus(UpdateButton, ReleasePageButton);
         }
 
+        // Also the launch option's switch: it asks the same way.
         private void ForgetUpdate()
         {
             _confirmingUpdate = null;
             _updateProblemFor = null;
             _updateProblem = null;
+            _askingLaunchOption = null;
+            _launchOptionFailed = false;
         }
 
         private void OnSwitch(ModCatalog.Entry entry)

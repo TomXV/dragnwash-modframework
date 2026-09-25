@@ -283,6 +283,14 @@ namespace DragNWash.ModFramework.Mods
         {
             string neededBy = Escape(string.Join(", ", entry.Dependents.Select(g => ModCatalog.NameOf(_entries, g))));
             string status = Status(entry);
+            if (entry.IsFramework && _askingLaunchOption != null)
+            {
+                Band(content, "ConfirmLaunchOption", null, TextConfirmLaunchOption, ModsLook.Warning);
+            }
+            else if (entry.IsFramework && _launchOptionFailed)
+            {
+                Band(content, "LaunchOptionFailed", null, TextLaunchOptionFailed, ModsLook.Warning);
+            }
             if (_confirmingUpdate == entry)
             {
                 Band(content, "ConfirmUpdate", null, TextConfirmUpdate, ModsLook.Warning);
@@ -655,6 +663,8 @@ namespace DragNWash.ModFramework.Mods
                 return;
             }
             _tab = key;
+            // Picking another tab takes back the launch option's switch that asks.
+            _askingLaunchOption = null;
             RebuildDetails(false);
             Focus("Tab" + key);
         }
@@ -851,6 +861,12 @@ namespace DragNWash.ModFramework.Mods
             if (_confirmingUpdate != null && Details != null && focused.transform.IsChildOf(Details))
             {
                 CancelUpdate();
+                return true;
+            }
+            // So does Back while the launch option's switch asks.
+            if (_askingLaunchOption != null && Details != null && focused.transform.IsChildOf(Details))
+            {
+                CancelLaunchOption();
                 return true;
             }
             if (Details != null && focused.transform.IsChildOf(Details))

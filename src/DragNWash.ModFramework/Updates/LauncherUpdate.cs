@@ -270,7 +270,7 @@ namespace DragNWash.ModFramework.Updates
         // EdgeUpdate client key, for the machine or for this user, with a
         // version. When the registry can't be read, the launcher is left to
         // find out.
-        private static bool WebView2Installed()
+        internal static bool WebView2Installed()
         {
             if (Environment.OSVersion.Platform != PlatformID.Win32NT)
             {

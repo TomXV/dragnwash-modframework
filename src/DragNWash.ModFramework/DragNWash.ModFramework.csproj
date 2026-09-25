@@ -33,6 +33,12 @@
     <Compile Include="..\DragNWash.ModFramework.Preloader\PendingReloads.cs" Link="Mods\PendingReloads.cs" />
   </ItemGroup>
 
+  <!-- Steam's launch option as text, shared with Install.exe and the launcher, for the
+       Mods screen's switch (Updates/LaunchOptionSwitch.cs). No file access in it. -->
+  <ItemGroup>
+    <Compile Include="..\..\installer\SteamConfig.cs" Link="Updates\SteamConfig.cs" />
+  </ItemGroup>
+
   <!--
     These reference assemblies are NOT committed (libs/ is ignored). Copy them from your
     own game install with tools/copy-libs.ps1, which lists every file.

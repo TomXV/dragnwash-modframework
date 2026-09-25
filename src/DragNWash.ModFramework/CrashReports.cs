@@ -383,7 +383,7 @@ namespace DragNWash.ModFramework
         // Wine (and Proton) export wine_get_version from their ntdll; Windows
         // does not. A registry key is no proof: some Windows tools create
         // HKCU\Software\Wine too.
-        private static bool RunningUnderWine()
+        internal static bool RunningUnderWine()
         {
             try
             {
