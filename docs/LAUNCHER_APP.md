@@ -2,7 +2,7 @@
 
 [日本語](LAUNCHER_APP.ja.md)
 
-> **Built**: `Launcher.exe` itself, with its window. The installer doesn't put it in the game folder or set the launch option yet, and the game's Update button doesn't use it yet; those come next. What the game writes for it (`updates.json`) is described in `docs/LAUNCHER.md`.
+> **Built**: `Launcher.exe` itself, with its window, and the installer's part: Install.exe puts it in the game folder and sets Steam's launch option. The game's Update button doesn't use it yet; that comes next. What the game writes for it (`updates.json`) is described in `docs/LAUNCHER.md`.
 
 When the game's update check found a new version of a mod last time you played, the launcher shows it before the game starts: what changed, and a button to install it and play. You no longer have to open GitHub, download the zip and run Install.exe again. The game isn't running yet at that point, so no file is in use.
 
@@ -60,6 +60,41 @@ The launcher goes online only after you press **Update and play** (or Update in 
 - **Several mods** are downloaded and checked first, then installed one after another. Each install is complete on its own, so if the second one fails, the first stays updated (the failure screen says so). As with Install.exe, only the last install's backup is kept.
 - **Cancel** works until the checks are done. Until then nothing is written to the game folder.
 
+## Putting it in place: Install.exe
+
+**The launcher itself.** Whenever Install.exe installs or updates the framework, it also puts `Launcher.exe` and its three WebView2 files into `BepInEx\DragNWash.Installer`, from the framework's zip (or from the mod's zip, when that brings the framework). It does so whether or not the launch option is set, because the game's Update button uses the launcher too. It goes through the same backup and putting back as every other file, and a newer launcher already there is never replaced by an older one. When the launcher installs an update itself, its own files are in use: they're renamed to `<name>.old` and the new ones put in their place, and the next install deletes the `.old` copies.
+
+**The checkbox.** The Install group has **Check for mod updates when the game starts (sets the Steam launch option)**, ticked to begin with. The list of what Install will do then says "Add the update launcher to the game's launch options in Steam (launch options you already have stay)", or that it's already there. The box is greyed out when there's no Steam account on the PC or no launcher to start (a mod that pins a framework older than 1.6.0).
+
+Unticked, and the launcher is in the launch options: Install takes it out ("Take the update launcher out of the game's launch options in Steam (your other launch options stay)").
+
+**What gets written.** Every Steam account's `userdata\<id>\config\localconfig.vdf`, under `UserLocalConfigStore > Software > Valve > Steam > apps > 4739660 > LaunchOptions` (missing blocks are made). The launcher goes in front of `%command%`, so whatever you had still reaches the game:
+
+| You had | It becomes |
+|---|---|
+| (nothing) | `"<game>\BepInEx\DragNWash.Installer\Launcher.exe" %command%` |
+| `-force-d3d11` | `"...\Launcher.exe" %command% -force-d3d11` |
+| `<something> %command% -x` | `<something> "...\Launcher.exe" %command% -x` |
+| the launcher of another game folder | the same, with this game folder's path |
+
+Taking it out removes the launcher, and a `%command%` left at the start with nothing before it: `-force-d3d11` comes back as `-force-d3d11` (Steam puts options without `%command%` after the game, so both start the game the same way). Anything else you had in front of `%command%` stays.
+
+- **Which accounts.** Putting it in: every account that has played the game (its file has the game's block) and the one that signed in last (`config\loginusers.vdf`); when neither can be told, every account. Taking it out: every account that has it.
+- **Only that value changes.** The rest of the file stays byte for byte: its order, tabs, escapes and line ends. The file as it was is copied to `localconfig.vdf.dnw-backup` first, and the new one replaces it in one step. A file that isn't UTF-8 or isn't laid out as expected is left alone, and the log says so.
+- **The log** says, for each account, what the options were and what they are now.
+
+**When Steam is running.** Steam keeps its settings in memory and writes them over the file when it exits, so the file can only be changed with Steam closed. After you press Install, Update or Uninstall, and before the download question or any change, a window says so, with three buttons:
+
+- **Close Steam for me** asks Steam to exit (`steam.exe -shutdown`, what its own Exit does) and waits. When Steam hasn't closed after 90 seconds, the window says so, and you can close it yourself or skip.
+- **I'll close it** waits until Steam is gone.
+- **Skip this option** (on Uninstall, **Leave it as it is**) carries on without changing the launch options this time.
+
+Either way, the window carries on by itself once Steam has closed. The close box and Esc cancel the whole install, with nothing changed. When the installer closed Steam, it starts Steam again once the install has gone well.
+
+**Uninstalling.** When Uninstall removes ModFramework itself (no other mod uses it), it takes the launcher out of the launch options first (same window if Steam is running), then removes `BepInEx\DragNWash.Installer` with the launcher in it. While other mods still use the framework, the launcher and the launch option both stay, and only the installer's backup goes. If the launch option couldn't be taken out (Steam running and skipped), the launcher stays too: without it, the game wouldn't start from Steam.
+
+**Command line.** `Install.exe --install` sets the launch option too; `--launch-option on|off|keep` changes that (`on` is the default, `off` takes it out, `keep` leaves the launch options alone). `--uninstall` takes it out when ModFramework goes, unless `--launch-option keep`. The command line never closes Steam: while Steam runs, the launch options are left as they are, and the log says so.
+
 ## Settings
 
 The launcher reads `[Launcher]` in `BepInEx\config\com.tomxv.dragnwash.modframework.cfg` (the game registers these, so they show in the Mods screen too). Missing means the default.
@@ -111,3 +146,10 @@ A Debug build also reads these environment variables, for trying it without GitH
 | `DNW_LAUNCHER_WEB=<launcher/web folder>` | Serves the page from disk, so it can be changed without building again. |
 
 Any exe named `DragNWash.exe` in a folder with `BepInEx\core\BepInEx.dll` will do as the game.
+
+Install.exe's part: `dotnet run --project installer/tests -c Release` checks the launch option rules and the `localconfig.vdf` edits on made-up files (CI runs it too). A Debug build of Install.exe also reads these; a Release build ignores them:
+
+| Variable | |
+|---|---|
+| `DNW_INSTALLER_STEAM=<folder>` | Takes this folder for Steam's (`steamapps`, `userdata`, `config\loginusers.vdf`, `steam.exe`), and only a `steam.exe` started from it counts as Steam running. For trying the launch option without the real Steam. |
+| `DNW_INSTALLER_STEAM_WAIT=<seconds>` | How long **Close Steam for me** waits before saying Steam hasn't closed (otherwise 90). |
