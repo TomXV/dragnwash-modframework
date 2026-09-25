@@ -2,6 +2,14 @@
 
 Versions of the core and of each library are separate, and follow semantic versioning: from 1.0.0 on, a change that breaks the public API comes only with a new major version.
 
+## Unreleased
+
+### Core
+
+- The update check keeps more of GitHub's answer: the release notes, the release page, when it was published, and each file's name, size, address and SHA-256. It's the same single request as before, once a day, so nothing new goes online. The Mods screen works as it did.
+- What the check found is written to `BepInEx/cache/DragNWash.ModFramework/updates.json`, for a launcher that runs before the game and shows updates without going online itself. It lists each installed mod that names its GitHub repository: the installed version, its folder under `plugins`, whether the installer's `mod-install.json` is there, and the latest release. It's written a few seconds after start, when a check brings a result, and when **Check for updates** is switched on or off; with checking off it lists no mods. [docs/LAUNCHER.md](docs/LAUNCHER.md) describes the format.
+- After updating from 1.5.0, which kept only each release's tag, each repository is checked once more at the first start so the new details get filled in. After that it's once a day again.
+
 ## 2026-09-23: a whole new look
 
 The core, the preloader patcher and every library go to 1.5.0, so from here on one number says which release you have. For mods, everything is additive, as before: a mod built for 1.4.x keeps working.
