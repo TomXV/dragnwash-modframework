@@ -195,15 +195,7 @@ const Intro = {
       ist.append(LogoIntro.leaves(LogoIntro.withDots(LogoIntro.typed(t('WebLooking'), I.chk, I.chkLen), I.dots), I.res - .16));
       ist.append(LogoIntro.typed(last, I.res, I.resLen, found ? 'acc' : ''));
     }
-    // the "look for the folder" picture beside the line
-    const find = picture('find');
-    if (find) {
-      const box = el('div', 'scbox ifind');
-      box.append(find);
-      host.append(box);
-      this.timers.after(reduced() ? 0 : I.chk, () => find.classList.add('on'));
-      if (found) this.timers.after(reduced() ? 0 : I.res, () => find.classList.add('found'));
-    }
+    // Just the logo and the line, as in the launcher: no picture beside them (Tom).
     replay(host, 'play');
     if (reduced()) {
       // the logo and the line just show, for a moment to read them
