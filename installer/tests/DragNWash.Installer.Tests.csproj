@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The installer's checks that need no Windows, no Steam and no game: the launch
+    option rules and the localconfig.vdf edits (installer/SteamConfig.cs, compiled
+    in from the installer). A plain console program; it prints each check and exits
+    with 1 when one fails. Run it with dotnet run, giving this folder as the project
+    (docker/checks.sh and the CI installer job do).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>InstallerTests</AssemblyName>
+    <RootNamespace>DragNWash.Installer.Tests</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\SteamConfig.cs" Link="SteamConfig.cs" />
+  </ItemGroup>
+
+</Project>

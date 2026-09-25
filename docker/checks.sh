@@ -101,6 +101,12 @@ run "Build the preloader patcher" \
 run "Build Install.exe" \
     build installer/DragNWash.Installer.csproj
 
+installer_tests() {
+    (cd "$TREE" && dotnet run --project installer/tests -c Release)
+}
+
+run "Installer checks: the Steam launch option and localconfig.vdf" installer_tests
+
 installer_extras() {
     bash -n installer/install-steamdeck.sh \
         && python3 -c "import json; json.load(open('installer/mod-install.example.json', encoding='utf-8'))"
