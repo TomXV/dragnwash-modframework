@@ -41,6 +41,7 @@ namespace DragNWash.Launcher
             Log.Open(folder != null ? Path.Combine(folder, "BepInEx", Paths.InstallerFolder) : here);
             Log.Line($"Launcher {typeof(Program).Assembly.GetName().Version.ToString(3)}: {(fromGame ? string.Join(" ", args) : args.Length == 0 ? "no command" : "command " + args[0] + (args.Length > 1 ? $" and {args.Length - 1} arguments" : ""))}");
             Log.Line("Game folder: " + (folder ?? "not found"));
+            Game.ForgetDoorstop();
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);

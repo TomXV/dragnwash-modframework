@@ -147,8 +147,7 @@ namespace DragNWash.ModFramework.Updates
                     CreateNoWindow = true,
                     WorkingDirectory = Path.GetDirectoryName(launcher),
                 };
-                // The launcher this starts is not the game's parent.
-                start.EnvironmentVariables.Remove(LauncherUpdate.LauncherVariable);
+                LauncherUpdate.CleanEnvironment(start);
                 using (Process.Start(start))
                 {
                 }

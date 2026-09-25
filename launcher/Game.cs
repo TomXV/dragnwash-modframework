@@ -12,6 +12,26 @@ namespace DragNWash.Launcher
     // Steam, which watches what it started, keeps counting the play time.
     internal sealed class Game
     {
+        // Doorstop marks the game's environment once it has loaded BepInEx, and whatever
+        // the game starts inherits the marks: this launcher when the game started it, and
+        // then a Steam this launcher starts, and every game that Steam starts after, which
+        // Doorstop would then leave without mods. So they go before anything is started.
+        // An older framework's game didn't drop them, and a Steam already carrying them
+        // passes them to the launcher it starts; this covers both.
+        internal static void ForgetDoorstop()
+        {
+            string[] names = Environment.GetEnvironmentVariables().Keys.Cast<string>()
+                .Where(n => n.StartsWith("DOORSTOP_", StringComparison.OrdinalIgnoreCase)).ToArray();
+            foreach (string name in names)
+            {
+                Environment.SetEnvironmentVariable(name, null);
+            }
+            if (names.Length > 0)
+            {
+                Log.Line("Launcher: dropped the loader's marks from the environment (" + string.Join(", ", names) + ")");
+            }
+        }
+
         internal const string LauncherVariable = "DNW_LAUNCHER";
 
         [DllImport("user32.dll")]

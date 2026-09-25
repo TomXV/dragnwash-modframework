@@ -55,6 +55,27 @@ namespace DragNWash.ModFramework.Updates
 
         private static bool? _webView2;
 
+        // The launcher the game starts gets the game's environment. Two things in it must
+        // not go on: DNW_LAUNCHER (this launcher is not the game's parent), and the
+        // variables Doorstop sets once it has loaded BepInEx. A Steam the launcher starts
+        // would hand those to the next game, and Doorstop would then skip loading mods.
+        internal static void CleanEnvironment(ProcessStartInfo start)
+        {
+            var names = new List<string>();
+            foreach (string name in start.EnvironmentVariables.Keys)
+            {
+                if (name.StartsWith("DOORSTOP_", StringComparison.OrdinalIgnoreCase))
+                {
+                    names.Add(name);
+                }
+            }
+            names.Add(LauncherVariable);
+            foreach (string name in names)
+            {
+                start.EnvironmentVariables.Remove(name);
+            }
+        }
+
         internal static string LauncherPath => Path.Combine(Path.Combine(Paths.BepInExRootPath, "DragNWash.Installer"), "Launcher.exe");
 
         private static string RequestPath => Path.Combine(UpdateCheck.LauncherCacheFolder, RequestFileName);
@@ -138,8 +159,7 @@ namespace DragNWash.ModFramework.Updates
                         CreateNoWindow = true,
                         WorkingDirectory = Path.GetDirectoryName(LauncherPath),
                     };
-                    // The launcher this starts is not the game's parent.
-                    start.EnvironmentVariables.Remove(LauncherVariable);
+                    CleanEnvironment(start);
                     using (Process.Start(start))
                     {
                     }
