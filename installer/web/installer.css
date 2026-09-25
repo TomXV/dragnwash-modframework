@@ -14,7 +14,7 @@
 .lhead .hsel option{background:#1b2429;color:var(--ink)}
 
 /* the intro's "look for the folder" picture, beside the line under the logo */
-.intro .ifind{position:absolute;left:calc(50% - 176px);bottom:30px;width:40px;height:34px;z-index:3}
+.intro .ifind{position:absolute;left:calc(50% - 172px);bottom:22px;width:56px;height:48px;z-index:3}
 
 /* ===== the setup board ===== */
 /* the mode switch at its top */

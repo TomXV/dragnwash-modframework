@@ -424,12 +424,18 @@ namespace DragNWash.Installer
             bool done = progress.Stage == InstallStage.Done;
             if (done && _rows.Any(r => r.Stage == LaunchStage) && !_seen.Contains(LaunchStage))
             {
-                // Install is done; the launch option comes next (ShowLaunch).
-                stage = LaunchStage - 1;
+                // Install is done and the launch option comes straight after: ShowLaunch moves the list on, so
+                // the page never shows its label over the last line's picture.
+                return;
             }
             foreach (Row row in _rows)
             {
-                row.Mark = done && stage != LaunchStage - 1 || row.Stage < stage ? "done" : row.Stage == stage ? "now" : "todo";
+                row.Mark = done || row.Stage < stage ? "done" : row.Stage == stage ? "now" : "todo";
+            }
+            if (!done && !_rows.Any(r => r.Mark == "now"))
+            {
+                // A stage this run has no line for (checking downloads when nothing was downloaded).
+                return;
             }
             // Putting BepInEx in is part of the backup stage: its line goes on once the backup's has had a moment.
             Row bep = _rows.FirstOrDefault(r => r.BepInEx);
@@ -485,7 +491,7 @@ namespace DragNWash.Installer
                         sub = SubGame();
                         break;
                     default:
-                        label = stage == LaunchStage - 1 ? Strings.Get(Strings.Key.WebPhaseLaunch) : Strings.Get(Strings.Key.WebPhaseDone);
+                        label = Strings.Get(Strings.Key.WebPhaseDone);
                         sub = SubGame();
                         break;
                 }

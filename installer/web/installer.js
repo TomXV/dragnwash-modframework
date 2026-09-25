@@ -144,20 +144,10 @@ function focusLater(node, ms = 450) {
 
 // ---------- the step pictures ----------
 
-// pictures the shared set doesn't have yet are shown with the nearest one it has
-const PIC_STANDIN = { scan: 'chk', loader: 'ins', modin: 'ins', modup: 'ins', set: 'ins', optx: 'opt', modout: 'bak', cfgx: 'bak', fwx: 'bak', lnx: 'bak', bakx: 'bak', rb: 'bak', find: null };
-
+// a step picture by name; the mod pictures (modin, modup, modout) are drawn around the mod's icon or letter tile
 function picture(name) {
-  if (!name) return null;
-  let pic = typeof Pics.modPicture === 'function' && /^mod/.test(name) ? Pics.modPicture(name, S.mod) : Pics.make(name);
-  if (!pic && PIC_STANDIN[name]) {
-    pic = Pics.make(PIC_STANDIN[name]);
-    // the mod's own icon (or its letter tile) goes on the stand-in for the mod's pictures
-    if (pic && /^mod/.test(name) && S.mod) pic.append(ModIcon.svg(S.mod, 54, 40, 24));
-  }
-  if (!pic) return null;
-  pic.classList.remove(...Pics.names.filter((n) => n !== name));
-  pic.dataset.pic = name;
+  const pic = name ? Pics.make(name, S.mod) : null;
+  if (pic) pic.dataset.pic = name;
   return pic;
 }
 
@@ -898,6 +888,7 @@ const Done = {
 
 // ---------- 4: failed ----------
 
+// Install.exe's names for the marks that Pics calls otherwise
 const MARKS = { gh: 'github', '!': 'bang' };
 
 const Fail = {
