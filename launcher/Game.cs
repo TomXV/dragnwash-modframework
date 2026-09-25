@@ -193,7 +193,17 @@ namespace DragNWash.Launcher
 #endif
             try
             {
-                Process.Start(new ProcessStartInfo("steam://rungameid/" + Paths.SteamAppId) { UseShellExecute = true })?.Dispose();
+                // Through steam.exe with a fresh environment (see Steam.StartFresh): when
+                // Steam isn't running, this is the Steam that starts.
+                string steam = Steam.Exe();
+                if (steam != null)
+                {
+                    Steam.StartFresh(steam, "steam://rungameid/" + Paths.SteamAppId);
+                }
+                else
+                {
+                    Process.Start(new ProcessStartInfo("steam://rungameid/" + Paths.SteamAppId) { UseShellExecute = true })?.Dispose();
+                }
                 Log.Line("Game: asked Steam to start it (steam://rungameid/" + Paths.SteamAppId + ")");
             }
             catch (Exception ex)
