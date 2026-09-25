@@ -19,6 +19,17 @@ namespace DragNWash.Launcher
         // Without an answer by then after the update is done, the game starts anyway.
         private static readonly TimeSpan AnswerWait = TimeSpan.FromSeconds(60);
 
+        // How long the page may take to come up; the intro waits less, since the game waits for it.
+        private static readonly TimeSpan PageWait = TimeSpan.FromSeconds(15);
+        private static readonly TimeSpan IntroPageWait = TimeSpan.FromSeconds(6);
+
+        // The page has 6 s to come up and the intro then takes about 4.5 s; without its end by
+        // then, the game starts anyway.
+        private static readonly TimeSpan IntroWait = TimeSpan.FromSeconds(12);
+
+        // The longest the window's closing may take before the game starts regardless.
+        private static readonly TimeSpan CloseWait = TimeSpan.FromSeconds(2.5);
+
         private static readonly string UserData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DragNWash ModFramework", "Launcher", "WebView2");
 
         private enum State { Choosing, Running, Writing, Finished }
@@ -35,11 +46,14 @@ namespace DragNWash.Launcher
         private State _now = State.Choosing;
         private System.Windows.Forms.Timer _safety;
 
+        // The window's X while the update ran: once it has stopped, the window closes without the game.
+        private bool _closeAsked;
+
         // What the page's messages do: OnMessage, or the intro's own.
         private Action<PageMessage> _handler;
 
-        // The intro's: whether the game's window is up already (then the window isn't shown).
-        private Func<bool> _quiet;
+        // The intro: the window doesn't take the focus.
+        private bool _quiet;
 
         private Session(GameFiles files, LauncherState state, List<ModUpdate> mods, bool restart)
         {
@@ -49,38 +63,34 @@ namespace DragNWash.Launcher
             _restart = restart;
         }
 
-        // Board 0 while the game starts: closes when the logo is done and the game's window is up.
-        internal static async Task Intro(GameFiles files, Game game)
+        // Board 0 with nothing to update: the logo, "No updates", then "Starting the game" while
+        // the bar fills up. The page says play at its end, and the window has closed by the time
+        // this returns. True: start the game; false: the player closed the window.
+        internal static async Task<bool> Intro(GameFiles files)
         {
-            var session = new Session(files, null, new List<ModUpdate>(), false);
-            bool introDone = false;
-            var timer = new System.Windows.Forms.Timer { Interval = 250 };
-            DateTime opened = DateTime.UtcNow;
+            var session = new Session(files, null, new List<ModUpdate>(), false) { _quiet = true };
+            var timer = new System.Windows.Forms.Timer { Interval = (int)IntroWait.TotalMilliseconds };
             timer.Tick += (s, e) =>
             {
-                // The game's window covers this one soon; it goes when both are ready, and
-                // after 20 s in any case.
-                if ((introDone && game.WindowShown) || game.Exited || DateTime.UtcNow - opened > TimeSpan.FromSeconds(20))
-                {
-                    session.Finish(true);
-                }
+                Log.Line("Window: the intro didn't end; starting the game");
+                session.Finish(true);
             };
             session._handler = message =>
             {
-                if (message.Cmd == "introDone")
-                {
-                    introDone = true;
-                }
-                else if (message.Cmd == "close" || message.Cmd == "play")
+                if (message.Cmd == "play")
                 {
                     session.Finish(true);
                 }
+                else if (message.Cmd == "close")
+                {
+                    Log.Line("Window: closed without starting the game");
+                    session.Finish(false);
+                }
             };
-            session._quiet = () => game.WindowShown;
             timer.Start();
             try
             {
-                await session.Show("intro", false);
+                return await session.Show("intro", false);
             }
             finally
             {
@@ -138,13 +148,12 @@ namespace DragNWash.Launcher
                     }
                 };
                 _window.CloseAsked += () => _handler(new PageMessage { Cmd = "close" });
-                _window.Quiet = _quiet != null;
-                _window.TooLate = _quiet;
+                _window.Quiet = _quiet;
                 _window.Begin(UserData);
-                Task timeout = Task.Delay(TimeSpan.FromSeconds(15));
+                Task timeout = Task.Delay(_quiet ? IntroPageWait : PageWait);
                 if (await Task.WhenAny(_window.Ready, timeout) == timeout || !await _window.Ready)
                 {
-                    Log.Line(_quiet?.Invoke() == true ? "Window: the game's window is up already; no intro" : "Window: the page did not come up; going on without it");
+                    Log.Line("Window: the page did not come up; going on without it");
                     Finish(true);
                 }
             }
@@ -154,10 +163,42 @@ namespace DragNWash.Launcher
                 Finish(true);
             }
             bool answer = await _answer.Task;
-            _window?.CloseForGood();
-            _window?.Dispose();
-            _window = null;
+            await Close();
             return answer;
+        }
+
+        // The window fades out and is gone (not on the screen or the taskbar) before the owner
+        // starts the game. When that takes too long or fails, it is hidden at once instead.
+        private async Task Close()
+        {
+            LauncherWindow window = _window;
+            _window = null;
+            if (window == null)
+            {
+                return;
+            }
+            try
+            {
+                Task closing = window.FadeOut();
+                if (await Task.WhenAny(closing, Task.Delay(CloseWait)) != closing)
+                {
+                    Log.Line("Window: closing took too long; hiding it");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Line("Window: could not fade out: " + ex.Message);
+            }
+            window.Gone();
+            try
+            {
+                window.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Log.Line("Window: could not be disposed: " + ex.Message);
+            }
+            Log.Line("Window: closed");
         }
 
         private void Finish(bool play)
@@ -238,18 +279,17 @@ namespace DragNWash.Launcher
                     }
                     break;
                 case "close":
-                    // The window's X: before the game starts it means "play without updating";
-                    // once an update is done it means "don't start it now". While files are
-                    // being written it waits; before that it cancels.
+                    // The window's X (and "Don't start it now"): the launcher closes without
+                    // starting the game. While files are being written it does nothing; before
+                    // that, the update is cancelled first. "Play without updating" is the way
+                    // to play without the update.
                     if (_now == State.Running)
                     {
+                        Log.Line("Window: closed while updating; cancelling");
+                        _closeAsked = true;
                         _cancel?.Cancel();
                     }
-                    else if (_now == State.Choosing)
-                    {
-                        Finish(!_restart);
-                    }
-                    else if (_now == State.Finished)
+                    else if (_now == State.Choosing || _now == State.Finished)
                     {
                         Log.Line("Window: closed without starting the game");
                         Finish(false);
@@ -296,10 +336,23 @@ namespace DragNWash.Launcher
             if (outcome.Cancelled)
             {
                 _now = State.Choosing;
+                if (_closeAsked)
+                {
+                    Log.Line("Window: closed without starting the game");
+                    Finish(false);
+                    return;
+                }
                 _window?.Send(Json.Object("type", "cancelled"));
                 return;
             }
             _now = State.Finished;
+            if (_closeAsked)
+            {
+                // X came too late to cancel: the files were being written by then.
+                Log.Line("Window: closed without starting the game");
+                Finish(false);
+                return;
+            }
             if (outcome.Failure == null)
             {
                 _window?.Send(Json.Object("type", "done", "backup", outcome.Backup, "updated", outcome.Updated));

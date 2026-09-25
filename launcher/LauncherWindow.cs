@@ -47,6 +47,7 @@ namespace DragNWash.Launcher
 
         private readonly WebView2 _view = new WebView2 { Dock = DockStyle.Fill, DefaultBackgroundColor = Color.FromArgb(24, 32, 37) };
         private readonly TaskCompletionSource<bool> _ready = new TaskCompletionSource<bool>();
+        private readonly TaskCompletionSource<bool> _faded = new TaskCompletionSource<bool>();
         private readonly string _init;
         private bool _closing;
 
@@ -56,11 +57,9 @@ namespace DragNWash.Launcher
         // The window's own close (Alt+F4, the taskbar): the owner decides what it means.
         internal event Action CloseAsked;
 
-        // Shown beside the game while it starts: the window must not take the focus from it
-        // (a full-screen game would drop to the taskbar), and is not shown at all when the
-        // game's window came first.
+        // The intro asks nothing of the player, so it doesn't take the focus from whatever
+        // has it; the boards that need an answer do.
         internal bool Quiet;
-        internal Func<bool> TooLate;
 
         protected override bool ShowWithoutActivation => Quiet;
 
@@ -227,11 +226,6 @@ namespace DragNWash.Launcher
                 case null:
                     return;
                 case "ready":
-                    if (TooLate?.Invoke() == true)
-                    {
-                        _ready.TrySetResult(false);
-                        return;
-                    }
                     Send(_init);
                     if (!Visible)
                     {
@@ -248,6 +242,10 @@ namespace DragNWash.Launcher
                     return;
                 case "minimize":
                     WindowState = FormWindowState.Minimized;
+                    return;
+                case "gone":
+                    // The page has faded out (On: with its animations on, so the window fades too).
+                    _faded.TrySetResult(message.On);
                     return;
             }
             Message?.Invoke(message);
@@ -275,14 +273,59 @@ namespace DragNWash.Launcher
             }
         }
 
-        internal void CloseForGood()
+        // Closes the window for good: the page fades out, then the window, and then it's gone
+        // from the screen and the taskbar. The owner waits for this before it starts the game,
+        // and gives up waiting after a moment (the window is hidden then anyway).
+        internal async Task FadeOut()
         {
             if (_closing || IsDisposed)
             {
                 return;
             }
+            bool fade = false;
+            if (Visible && WindowState != FormWindowState.Minimized && _ready.Task.IsCompleted && _ready.Task.Result)
+            {
+                Send(Json.Object("type", "bye"));
+                Task<bool> faded = _faded.Task;
+                if (await Task.WhenAny(faded, Task.Delay(1000)) == faded)
+                {
+                    fade = faded.Result;
+                }
+            }
             _closing = true;
-            Close();
+            if (fade && !IsDisposed)
+            {
+                // What is left is the page's dark background; the window takes it away.
+                var clock = System.Diagnostics.Stopwatch.StartNew();
+                const double length = 160;
+                while (!IsDisposed && clock.ElapsedMilliseconds < length)
+                {
+                    double t = clock.ElapsedMilliseconds / length;
+                    Opacity = Math.Max(0, 1 - t * t);
+                    await Task.Delay(15);
+                }
+            }
+            Gone();
+        }
+
+        // Off the screen and the taskbar at once, without any fade.
+        internal void Gone()
+        {
+            _closing = true;
+            if (IsDisposed)
+            {
+                return;
+            }
+            try
+            {
+                TopMost = false;
+                Hide();
+                Close();
+            }
+            catch (Exception ex)
+            {
+                Log.Line("Window: could not be closed: " + ex.Message);
+            }
         }
 
         protected override void Dispose(bool disposing)

@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using DragNWash.Installer;
@@ -12,6 +13,9 @@ namespace DragNWash.Launcher
     internal sealed class Game
     {
         internal const string LauncherVariable = "DNW_LAUNCHER";
+
+        [DllImport("user32.dll")]
+        private static extern bool AllowSetForegroundWindow(int processId);
 
         private readonly string[] _command;
         private Process _process;
@@ -48,48 +52,17 @@ namespace DragNWash.Launcher
                 _process?.Dispose();
                 _process = Process.Start(info);
                 Log.Line($"Game: started {exe}{(_command.Length > 1 ? " with " + (_command.Length - 1) + " arguments" : "")}, pid {_process?.Id}");
+                if (_process != null)
+                {
+                    // The launcher's window is gone by now; the game's window may come to the front.
+                    AllowSetForegroundWindow(_process.Id);
+                }
                 return _process != null;
             }
             catch (Exception ex)
             {
                 Log.Line("Game: could not start: " + ex.Message);
                 return false;
-            }
-        }
-
-        // Whether the game's window is up (the intro can close then).
-        internal bool WindowShown
-        {
-            get
-            {
-                try
-                {
-                    if (_process == null || _process.HasExited)
-                    {
-                        return true;
-                    }
-                    _process.Refresh();
-                    return _process.MainWindowHandle != IntPtr.Zero;
-                }
-                catch (Exception)
-                {
-                    return true;
-                }
-            }
-        }
-
-        internal bool Exited
-        {
-            get
-            {
-                try
-                {
-                    return _process == null || _process.HasExited;
-                }
-                catch (Exception)
-                {
-                    return true;
-                }
             }
         }
 

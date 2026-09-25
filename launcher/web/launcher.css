@@ -58,6 +58,9 @@ button{font:inherit;color:inherit}
 /* ===== shared parts of the boards ===== */
 .layer{position:absolute;left:0;right:0;top:46px;bottom:0;display:flex;flex-direction:column;z-index:1}
 .layer.leave{animation:xgone .25s ease both}
+/* closing: the whole page fades out, then the launcher fades the window itself away */
+.lw.bye{animation:byeout .25s ease forwards}
+@keyframes byeout{from{opacity:1}to{opacity:0}}
 .lbody{flex:1 1 auto;min-height:0;display:flex;gap:16px;padding:6px 20px 14px}
 .col-l{flex:0 0 290px;display:flex;flex-direction:column;min-height:0;min-width:0}
 .col-r{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;min-height:0}
@@ -113,15 +116,16 @@ button{font:inherit;color:inherit}
 @keyframes wavesout{from{opacity:1}to{opacity:0}}
 
 /* progress bar: along the window's bottom edge (.pb-edge, default) or under the status line.
-   It fills to about half while checking; with no updates it creeps on while the game starts, with a light
-   running through it; with updates (.found) it fills up and fades before the hand-off */
+   It fills to about half while checking; with no updates it fills to the end under "Starting the game", with a
+   light running through it once, and the window closes; with updates (.found) it fills up and fades before the
+   hand-off */
 .intro .ipb{position:absolute;left:50%;bottom:30px;width:200px;height:3px;margin-left:-100px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden;z-index:3;opacity:0}
 .pb-edge .intro .ipb{left:0;right:0;bottom:0;width:auto;margin-left:0;height:3px;border-radius:0;background:rgba(255,255,255,.05)}
 .intro .ipb i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--accent);border-radius:inherit;overflow:hidden}
 .intro .ipb i::after{content:"";position:absolute;top:0;bottom:0;width:60px;left:-60px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent)}
 .intro.play .ipb{animation:pbin .3s ease var(--pchk) both}
-.intro.play .ipb i{animation:pb1 var(--dchk) ease-in-out var(--pchk) both,pb2 .35s ease-out var(--pres) forwards,pb3 3.5s cubic-bezier(.2,.6,.3,1) var(--pgo) forwards}
-.intro.play .ipb i::after{animation:pbsheen 1.3s ease-in-out var(--pgo) infinite}
+.intro.play .ipb i{animation:pb1 var(--dchk) ease-in-out var(--pchk) both,pb2 .35s ease-out var(--pres) forwards,pbgo .45s cubic-bezier(.2,.6,.3,1) var(--pgo) forwards}
+.intro.play .ipb i::after{animation:pbsheen .45s ease-in-out var(--pgo) both}
 .intro.play.found .ipb{animation:pbin .3s ease var(--pchk) both,pbout .3s ease var(--pho) forwards}
 .intro.play.found .ipb i{animation:pb1 var(--dchk) ease-in-out var(--pchk) both,pbfull .45s ease-out var(--pres) forwards}
 .intro.play.found .ipb i::after{animation:none}
@@ -129,7 +133,7 @@ button{font:inherit;color:inherit}
 @keyframes pbout{from{opacity:1}to{opacity:0}}
 @keyframes pb1{from{width:0}to{width:55%}}
 @keyframes pb2{from{width:55%}to{width:70%}}
-@keyframes pb3{from{width:70%}to{width:90%}}
+@keyframes pbgo{from{width:70%}to{width:100%}}
 @keyframes pbfull{from{width:55%}to{width:100%}}
 @keyframes pbsheen{from{left:-60px}to{left:100%}}
 
@@ -231,12 +235,12 @@ button{font:inherit;color:inherit}
 @keyframes chin{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
 
 /* skipped (a click or a key): the logo stands whole at once, the gear keeps turning */
-.intro.play.skipped .big,.intro.play.skipped .big *{animation:none}
+.intro.play.skipped .big,.intro.play.skipped .big *,.intro.play.skipped .big img.full{animation:none}
 .intro.play.skipped .big .gearspin{animation:gspin 9s linear infinite}
 .intro.play.skipped .mfw{display:none}
 .intro.play.skipped .ipb{animation:none;opacity:1}
-.intro.play.skipped .ipb i{width:70%;animation:pb3 3.5s cubic-bezier(.2,.6,.3,1) forwards}
-.intro.play.skipped .ipb i::after{animation:pbsheen 1.3s ease-in-out infinite}
+.intro.play.skipped .ipb i{width:70%;animation:pbgo .45s cubic-bezier(.2,.6,.3,1) forwards}
+.intro.play.skipped .ipb i::after{animation:pbsheen .45s ease-in-out both}
 /* hand-off (updates found): the logo moves up into the header, the list fades in under it.
    --hox/--hoy/--hok (the header logo's place and size) are measured by launcher.js */
 .intro.play.handoff .big{animation:handoff .6s cubic-bezier(.4,0,.2,1) both}
@@ -522,7 +526,7 @@ details.det .logbox{margin-top:8px;max-height:120px}
 /* ===== reduced motion: nothing moves; the states still show ===== */
 .reduced .lw *,.reduced .lw *::before,.reduced .lw *::after{animation:none !important;transition:none !important}
 .reduced .intro .ipb{opacity:1}
-.reduced .intro .ipb i{width:90%}
+.reduced .intro .ipb i{width:100%}
 .reduced .intro.found .ipb{display:none}
 .reduced .mfw{display:none !important}
 .reduced .fly,.reduced .hlogo.away{display:none}

@@ -21,8 +21,9 @@ namespace DragNWash.Launcher
     // by a game that was not started through the launcher: it waits for that game to
     // exit, updates, and has Steam start the game again.
     //
+    // The game starts only once the window has closed, so the two never show at once.
     // Whatever goes wrong in here, the game still starts: every failure ends in
-    // starting it without the window.
+    // starting it without the window. Only the window's X leaves it unstarted.
     internal static class Program
     {
         [STAThread]
@@ -106,18 +107,19 @@ namespace DragNWash.Launcher
                     LauncherState state = files.ReadState();
                     List<ModUpdate> pending = files.Pending(files.ReadUpdates(), state);
                     Log.Line($"Launcher: {pending.Count} {(pending.Count == 1 ? "update" : "updates")} to show");
+                    bool play = true;
                     if (pending.Count > 0 && web)
                     {
-                        if (!await Session.Choose(files, state, pending))
-                        {
-                            Log.Line("Launcher: the player closed the window; the game is not started");
-                            return;
-                        }
+                        play = await Session.Choose(files, state, pending);
                     }
                     else if (web)
                     {
-                        started = game.Start();
-                        await Session.Intro(files, game);
+                        play = await Session.Intro(files);
+                    }
+                    if (!play)
+                    {
+                        Log.Line("Launcher: the player closed the window; the game is not started");
+                        return;
                     }
                 }
                 if (!started)

@@ -189,10 +189,12 @@ const Head = {
 
 // ---------- 0: logo intro ----------
 
-/* Seconds from the start, as in the mock: the logo is done by about 2 s and its light sweep by 2.9 s; then
-   "Checking for updates" types itself out, its dots go round twice, and the result replaces it. With no
-   updates, "Starting the game" follows (its dots keep going); with updates, the logo hands over to the list. */
-const INTRO = { chk: 2.92, chkLen: .52, dots: 3.52, round: 1, res: 5.52, resLen: .32, go: 6.52, goLen: .5 };
+/* Seconds from the start. The logo is done by about 2 s (MOD FRAMEWORK from 1.3 s to 2.0 s) and its light runs
+   over it until 2.8 s; meanwhile "Checking for updates" types itself out and its dots go round once, and the result
+   replaces it at 3.2 s. With no updates, "Starting the game" follows at 3.7 s while the bar fills to the end, and
+   at 4.25 s the page says play: the launcher fades the window out, closes it, and only then starts the game.
+   With updates, "Updates found" stays up for a second and the logo hands over to the list. */
+const INTRO = { chk: 2, chkLen: .36, dots: 2.4, round: .8, res: 3.2, resLen: .3, go: 3.7, goLen: .35, fill: .45, end: .55, ho: 4.2 };
 
 // a line that types itself out: every character gets its own start time (--t); CSS does the motion
 function typed(text, t0, len, cls) {
@@ -237,19 +239,23 @@ const Intro = {
     node.hidden = false;
     node.classList.toggle('found', variant === 'found');
     const I = INTRO;
-    const moments = { pchk: I.chk, dchk: I.res - I.chk, pres: I.res, pgo: I.go, pho: I.go };
+    const moments = { pchk: I.chk, dchk: I.res - I.chk, pres: I.res, pgo: I.go, pho: I.ho };
     for (const [name, at] of Object.entries(moments)) node.style.setProperty('--' + name, sec(at));
     this.status(false);
     replay(node, 'play');
     if (reduced()) {
-      // the logo and the last line just show; with updates, the list follows after a moment to read it
-      if (variant === 'found') this.timers.after(1, () => this.handoff());
-      else sendOnce('introDone');
+      // the logo and the last line just show, for a moment to read them
+      this.timers.after(1, () => (variant === 'found' ? this.handoff() : this.done()));
       return;
     }
     this.live = true;
-    if (variant === 'found') this.timers.after(I.go, () => this.handoff());
-    else this.timers.after(I.go + I.goLen, () => this.done());
+    if (variant === 'found') {
+      this.timers.after(I.ho, () => this.handoff());
+    } else {
+      // once "Starting the game" is up, the last half second just plays out
+      this.timers.after(I.go, () => { this.live = false; });
+      this.timers.after(I.go + I.end, () => this.done());
+    }
   },
 
   // the status line under the logo; fromGo: only "Starting the game", from now (after a skip)
@@ -257,26 +263,27 @@ const Intro = {
     const ist = $('ist');
     const I = INTRO;
     const found = this.variant === 'found';
+    const last = t(found ? 'introFound' : 'introStarting');
     ist.textContent = '';
-    ist.append(el('span', 'sr', found ? t('introFound') : t('introStarting') + '...'));
+    ist.append(el('span', 'sr', last));
     if (reduced()) {
-      ist.append(found ? typed(t('introFound'), 0, 0, 'acc') : withDots(typed(t('introStarting'), 0, 0), 0));
+      ist.append(typed(last, 0, 0, found ? 'acc' : ''));
       return;
     }
     if (fromGo) {
-      ist.append(withDots(typed(t('introStarting'), 0, I.goLen), I.goLen + .1));
+      ist.append(typed(last, 0, I.goLen));
       return;
     }
     ist.append(leaves(withDots(typed(t('introChecking'), I.chk, I.chkLen), I.dots), I.res - .16));
     if (found) {
-      ist.append(leaves(typed(t('introFound'), I.res, I.resLen, 'acc'), I.go));
+      ist.append(leaves(typed(last, I.res, I.resLen, 'acc'), I.ho));
     } else {
       ist.append(leaves(typed(t('introNone'), I.res, I.resLen), I.go - .15));
-      ist.append(withDots(typed(t('introStarting'), I.go, I.goLen), I.go + I.goLen + .1));
+      ist.append(typed(last, I.go, I.goLen));
     }
   },
 
-  // a click or a key: the logo stands whole at once
+  // a click or a key: the logo stands whole at once; with no updates, "Starting the game" and the bar fill up
   skip() {
     if (!this.live) return;
     this.live = false;
@@ -286,14 +293,14 @@ const Intro = {
       this.handoff();
     } else {
       this.status(true);
-      this.done();
+      this.timers.after(INTRO.end, () => this.done());
     }
   },
 
-  // "Starting the game" is up: the launcher closes the window once the game's window is there too
+  // the bar is full: the launcher closes the window, then starts the game
   done() {
     this.live = false;
-    sendOnce('introDone');
+    sendOnce('play');
   },
 
   // updates found: the logo moves up into the header while the header and the list fade in under it
@@ -1012,6 +1019,26 @@ document.addEventListener('keydown', (e) => {
   else if (S.board === 'fail' && !$('fail-play').hidden) sendOnce('play');
 });
 
+// ---------- closing ----------
+
+// the launcher is closing the window: everything stops and fades out, then the launcher fades the window away
+// (with the animations on) and closes it
+function bye() {
+  if (S.board === 'bye') return;
+  S.board = 'bye';
+  Intro.timers.clear();
+  Intro.live = false;
+  Updating.stop();
+  const win = $('win');
+  win.inert = true;
+  if (reduced()) {
+    send('gone', { on: false });
+    return;
+  }
+  win.classList.add('bye');
+  setTimeout(() => send('gone', { on: true }), 250);
+}
+
 // ---------- events from the launcher ----------
 
 function init(e) {
@@ -1051,6 +1078,7 @@ window.dnw = (e) => {
   switch (e.type) {
     case 'init': return init(e);
     case 'cancelled': return onCancelled();
+    case 'bye': return bye();
     case 'step': case 'download': case 'verified': case 'checked': case 'log': case 'done': case 'failed':
       return Updating.push(e);
   }

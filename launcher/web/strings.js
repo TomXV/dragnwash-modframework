@@ -132,7 +132,7 @@ const STRINGS = {
     introChecking: '更新があるか確認しています',
     introFound: '更新がありました',
     introNone: '更新はありません',
-    introStarting: 'ゲームを起動しています',
+    introStarting: 'ゲームを起動します',
 
     listTitle: (n) => `${n} つの Mod に更新があります`,
     listLead: (when) => '入れるものを選んでください。前回ゲームの中で調べた結果です' + (when ? `（${when}）。` : '。'),
