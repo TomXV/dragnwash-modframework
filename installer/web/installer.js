@@ -611,6 +611,7 @@ const Work = {
 
   start(e) {
     this.stop();
+    this.stopped = false;
     S.board = 'work';
     S.busy = true;
     S.log = [];
@@ -744,7 +745,8 @@ const Work = {
     this.pct(e.pct || 0);
     const cancel = $('w-cancel');
     if (cancel && !cancel.hidden) cancel.disabled = !e.canStop;
-    if (e.net) swapText($('w-net'), e.net);
+    // (after Cancel, the lines still waiting their turn don't take back the "stopping" note)
+    if (e.net && !this.stopped) swapText($('w-net'), e.net);
   },
 
   pct(p) {
@@ -771,6 +773,8 @@ const Work = {
   stopping() {
     const cancel = $('w-cancel');
     if (cancel) cancel.disabled = true;
+    this.stopped = true;
+    if ($('w-net')) swapText($('w-net'), t('WebNetStopping'));
   },
 
   // all in: the steps are ticked off, the logo celebrates, then the board becomes the done board

@@ -538,6 +538,7 @@ namespace DragNWash.Installer
                 _pct = Math.Max(_pct, Math.Min(100, pct));
             }
             string net = !_request.Install ? Strings.Get(Strings.Key.WebNetUninstall)
+                : _cancel != null && _cancel.IsCancellationRequested ? Strings.Get(Strings.Key.WebNetStopping)
                 : _canStop ? Strings.Get(_downloads ? Strings.Key.DownloadHint : Strings.Key.WebNetNotYet)
                 : Strings.Get(Strings.Key.WebNetWriting);
             _window.Send(Json.Object(
