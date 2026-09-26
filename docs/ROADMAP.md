@@ -99,4 +99,4 @@ Released together with Drag'n Wash Localization v1.2.0.
 
 ## Waiting on others
 
-- **macOS:** BepInEx's Doorstop cannot hook Unity 6.3 yet ([UnityDoorstop#108](https://github.com/NeighTools/UnityDoorstop/issues/108)).
+- **macOS:** the Doorstop in BepInEx's current release can't hook Unity 6.3 ([UnityDoorstop#108](https://github.com/NeighTools/UnityDoorstop/issues/108)). The fix is merged but not released yet, so for now mods run on macOS only through Drag'n Wash Localization's experimental install script, with that unreleased build and under Rosetta. Two releases are still to come: a stable UnityDoorstop 4.6.0, and a BepInEx 5 with the native arm64 fix ([BepInEx#1402](https://github.com/BepInEx/BepInEx/pull/1402)), which would run the game without Rosetta. Progress: [#85](https://github.com/TomXV/dragnwash-modframework/issues/85).

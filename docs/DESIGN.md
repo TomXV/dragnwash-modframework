@@ -37,7 +37,7 @@ In most modding scenes every author designs things their own way. Two mods patch
 
 - Loading new 3D content (custom dragons, models). Possible later, but it depends on how the developers feel about it.
 - Replacing BepInEx or Harmony. The framework is a BepInEx 5 plugin and uses Harmony internally.
-- macOS, until BepInEx can load on Unity 6.3 there (NeighTools/UnityDoorstop#108).
+- Full macOS support, until a released BepInEx can load on Unity 6.3 there (NeighTools/UnityDoorstop#108). Until then, macOS runs only through Drag'n Wash Localization's experimental install script (#85). The framework's own parts that need care on macOS, such as the Tool window's font, are fixed as they are found.
 
 ## Packaging and versioning
 

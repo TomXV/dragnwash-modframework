@@ -99,4 +99,4 @@ Drag'n Wash Localization v1.2.0 と一緒にリリースしました。
 
 ## ほかの動きを待っているもの
 
-- **macOS：** BepInEx の Doorstop が、まだ Unity 6.3 にフックできません（[UnityDoorstop#108](https://github.com/NeighTools/UnityDoorstop/issues/108)）。
+- **macOS：** 今の BepInEx のリリースに入っている Doorstop は、Unity 6.3 にフックできません（[UnityDoorstop#108](https://github.com/NeighTools/UnityDoorstop/issues/108)）。修正は本家に入りましたがまだリリースされていないので、今のところ macOS では、Drag'n Wash Localization の試験版のインストールスクリプトで、そのビルドを使って Rosetta で動かすだけです。待っているのは 2 つのリリースです。UnityDoorstop 4.6.0 の安定版と、ネイティブの arm64 の修正（[BepInEx#1402](https://github.com/BepInEx/BepInEx/pull/1402)）が入った BepInEx 5 で、こちらが出れば Rosetta なしで動かせます。進み具合：[#85](https://github.com/TomXV/dragnwash-modframework/issues/85)

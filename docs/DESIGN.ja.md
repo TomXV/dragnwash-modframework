@@ -37,7 +37,7 @@
 
 - 新しい 3D コンテンツ（独自のドラゴン、モデル）の読み込み。将来はありえますが、開発者さんの考え方次第です
 - BepInEx や Harmony の置き換え。フレームワークは BepInEx 5 のプラグインで、内部で Harmony を使います
-- macOS。BepInEx が macOS の Unity 6.3 で読み込めるようになるまで（NeighTools/UnityDoorstop#108）
+- macOS への正式な対応。リリースされた BepInEx が macOS の Unity 6.3 で読み込めるようになるまで（NeighTools/UnityDoorstop#108）。それまでは、Drag'n Wash Localization の試験版のインストールスクリプトでだけ動きます（#85）。Tool window のフォントのように、フレームワーク側で macOS 向けに気をつけるところは、見つかったら直します。
 
 ## パッケージとバージョン
 
