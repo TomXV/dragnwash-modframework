@@ -6,8 +6,8 @@
     <RootNamespace>DragNWash.ModFramework.Text</RootNamespace>
     <LangVersion>latest</LangVersion>
     <!-- A library on top of the core, with its own version. Keep in sync with GameText.Version. -->
-    <Version>1.5.0</Version>
-    <FileVersion>1.5.0</FileVersion>
+    <Version>1.6.0</Version>
+    <FileVersion>1.6.0</FileVersion>
     <Nullable>disable</Nullable>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

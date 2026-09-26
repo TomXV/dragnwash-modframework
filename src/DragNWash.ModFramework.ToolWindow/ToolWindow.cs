@@ -43,7 +43,7 @@ namespace DragNWash.ModFramework.ToolWindow
         public const string Guid = "com.tomxv.dragnwash.modframework.toolwindow";
 
         /// <summary>Library version. Keep in sync with the csproj.</summary>
-        public const string Version = "1.5.0";
+        public const string Version = "1.6.0";
 
         /// <summary>Height of one row of controls, in pixels.</summary>
         public const float RowHeight = 30f;

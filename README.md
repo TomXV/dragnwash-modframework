@@ -15,7 +15,7 @@ A prerequisite mod for [Drag'n Wash](https://store.steampowered.com/app/4739660/
 So when the game updates, only the framework has to catch up.
 
 > [!NOTE]
-> **1.5.0** is the latest release. [Releases](#releases) below says what changed in each version, and [CHANGELOG.md](CHANGELOG.md) has every detail. What's coming next is in [docs/ROADMAP.md](docs/ROADMAP.md).
+> **1.6.0** is the latest release. [Releases](#releases) below says what changed in each version, and [CHANGELOG.md](CHANGELOG.md) has every detail. What's coming next is in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Where to read
 
@@ -57,8 +57,9 @@ To switch it off, open **Options → Mods → Drag'n Wash ModFramework → Setti
 
 From 1.0.0 on, a change that breaks the public API only ever comes with a new major version. Every change is in [CHANGELOG.md](CHANGELOG.md).
 
+- **1.6.0**: a launcher before the game. `Launcher.exe` runs from Steam's launch options and brings mods up to date before you play; **Update now** on the Mods screen does it from inside the game. The installer's window is rebuilt to match, and the F1 window draws its text on macOS.
 - **1.5.0**: a whole new look. The Mods screen is rebuilt on frosted glass, every tab of the F1 window got a going-over, starts are faster, and the installer fetches ModFramework from its own release. From 1.5.0 on, the core and every library share one version number.
-- **1.4.3** (latest): the Bridge tab gets **Open page** and **Graphs** buttons, so the editor is one press away.
+- **1.4.3**: the Bridge tab gets **Open page** and **Graphs** buttons, so the editor is one press away.
 - **1.4.2**: a graph that answers a key now tells you which other mods answer it too (`ModFramework.WhoElseUses`).
 - **1.4.1**: **[Graphs](https://github.com/TomXV/dragnwash-modframework/wiki/Graphs)** 0.1.0, mods with no code that *do* things (*when this happens, do these things*). It comes with:
   - the first write operations

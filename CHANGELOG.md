@@ -2,9 +2,11 @@
 
 Versions of the core and of each library are separate, and follow semantic versioning: from 1.0.0 on, a change that breaks the public API comes only with a new major version.
 
-## Unreleased
+## 2026-09-26: a launcher before the game
 
-### Core
+The core, the preloader patcher and every library go to 1.6.0. The big part is new: `Launcher.exe` runs before the game from Steam's launch options and brings mods up to date before you play, and the installer's window now looks like it. On the Mods screen, **Update now** does the same from inside the game. The Tool window draws its text on macOS. For mods, everything is additive, as before: a mod built for 1.5.0 keeps working.
+
+### Core 1.6.0
 
 - The update check keeps more of GitHub's answer: the release notes, the release page, when it was published, and each file's name, size, address and SHA-256. It's the same single request as before, once a day, so nothing new goes online. The Mods screen works as it did.
 - What the check found is written to `BepInEx/cache/DragNWash.ModFramework/updates.json`, for a launcher that runs before the game and shows updates without going online itself. It lists each installed mod that names its GitHub repository: the installed version, its folder under `plugins`, whether the installer's `mod-install.json` is there, and the latest release. It's written a few seconds after start, when a check brings a result, and when **Check for updates** is switched on or off; with checking off it lists no mods. [docs/LAUNCHER.md](docs/LAUNCHER.md) describes the format.
@@ -15,7 +17,39 @@ Versions of the core and of each library are separate, and follow semantic versi
 - `updates.json` now carries `icon` for a mod that has one: its `IconPath` file when it gave one, otherwise its `Icon` texture encoded to `BepInEx/cache/DragNWash.ModFramework/icons/<guid>.png` when the texture can be read back. A launcher without either just shows the mod's initials, as the Mods screen always has.
 - A mod's letter tile (the Mods screen, and now the launcher too) drops a leading "Drag'n Wash" from its name first, the same way a library's name already loses everything up to its colon: "Drag'n Wash Localization" is L now, not D, and "Drag'n Wash" alone is still DW.
 
-### Launcher
+### Text 1.6.0
+
+- No changes of its own; the number follows the release.
+
+### Dialogue 1.6.0
+
+- No changes of its own; the number follows the release.
+
+### Assets 1.6.0
+
+- No changes of its own; the number follows the release.
+
+### Flags and saves 1.6.0
+
+- No changes of its own; the number follows the release.
+
+### Inspector 1.6.0
+
+- No changes of its own; the number follows the release.
+
+### Overrides 1.6.0
+
+- No changes of its own; the number follows the release.
+
+### Bridge 1.6.0
+
+- No changes of its own; the number follows the release.
+
+### Graphs 1.6.0
+
+- No changes of its own; the number follows the release.
+
+### Launcher 1.0.0 (new)
 
 - New: `Launcher.exe`, a small program that runs before the game from Steam's launch options (`"<game>\BepInEx\DragNWash.Installer\Launcher.exe" %command%`). When the game's update check found new versions last time, it shows them with their release notes before the game starts, and **Update and play** downloads, checks, backs up and installs them, then starts the game. **Skip this version** keeps a version from bringing the window up again. With nothing to show, the logo plays for about four seconds ("No updates", then "Starting the game" while the bar fills up). See [docs/LAUNCHER_APP.md](docs/LAUNCHER_APP.md).
 - The game starts only after the launcher's window has faded out and closed, on every path: after the logo, **Play without updating**, **Update and play**, and the countdown after an update asked for in the game (or its **Start now**). The launcher then waits for the game with no window.
@@ -32,7 +66,7 @@ Versions of the core and of each library are separate, and follow semantic versi
 - Without the WebView2 runtime there's no window: the game starts as usual. Whatever fails in the launcher, the game still starts: a page that doesn't come up or a window that doesn't close in time is hidden, and the game starts anyway.
 - The framework's zip has it in `BepInEx/DragNWash.Installer/`, with the three WebView2 files it needs. Install.exe puts it in the game folder and sets the launch option (see Installer below).
 
-### Tool window
+### Tool window 1.6.0
 
 - The Tool window (F1) draws its text on macOS. Unity 6 draws the window's text with its own text engine (TextCore), which couldn't load Hiragino Sans, so the window showed no text at all and wrote two lines to Player.log for every string. A font that engine can't load is now skipped, and Arial Unicode MS is used there. Thanks to 223n (#84).
 - Characters the window can't draw show as `?` everywhere in the window now, asked of the text engine the window really draws with, instead of a box. Text you type or paste into a field is left as it is. (#84)

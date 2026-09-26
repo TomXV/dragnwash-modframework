@@ -12,7 +12,7 @@ namespace DragNWash.ModFramework.Bridge
         public const string Guid = "com.tomxv.dragnwash.modframework.bridge";
 
         /// <summary>The library's version.</summary>
-        public const string Version = "1.5.0";
+        public const string Version = "1.6.0";
 
         /// <summary>True while the Bridge is listening.</summary>
         public static bool Listening => BridgePlugin.Server != null;

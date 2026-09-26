@@ -2,9 +2,18 @@
 
 [日本語](ROADMAP.ja.md)
 
-Where Drag'n Wash ModFramework is going. Plans change; dates are given only when they are close. Updated 2026-09-23.
+Where Drag'n Wash ModFramework is going. Plans change; dates are given only when they are close. Updated 2026-09-26.
 
 The yardsticks stay the same: every mod runs safely together, and each part stays small enough that someone else can carry it on.
+
+## Released: 1.6.0 (2026-09-26)
+
+The core, the preloader patcher and every library go to 1.6.0. See [CHANGELOG.md](../CHANGELOG.md) for the whole list.
+
+- **A launcher before the game.** `Launcher.exe` runs from Steam's launch options: when the game's update check found newer versions, it shows them before the game starts and installs the ones you pick, checked by size and SHA-256 and backed up first. It goes online only when you press Update.
+- **Update from the Mods screen.** A mod the installer put in gets **Update now**: the game quits, the launcher updates it and starts the game again.
+- **The installer, rebuilt.** Install.exe looks like the launcher, sets the Steam launch option for you, and shows Uninstall's real progress. Without WebView2 the old window opens as before.
+- **macOS.** The F1 window draws its text on macOS (thanks to 223n). The game itself runs with mods on macOS only through Drag'n Wash Localization's experimental install script for now ([#85](https://github.com/TomXV/dragnwash-modframework/issues/85)).
 
 ## Released: 1.5.0 (2026-09-23)
 
