@@ -270,14 +270,47 @@ namespace DragNWash.ModFramework.ToolWindow
             return _drawable[c];
         }
 
-        // From the plugin's Update: what OnGUI could not check, all at once.
+        // Prepared characters not checked yet (see CheckNow), oldest first.
+        private static readonly List<char> _backlog = new List<char>();
+        private static readonly HashSet<char> _inBacklog = new HashSet<char>();
+
+        // How long an Update may spend on the backlog. Checking a character adds
+        // its glyph to TextCore's atlases, the window font's and the fallbacks'
+        // it falls through to, a few milliseconds each on Windows: the 870 the
+        // Localization mod prepares took 2.5 s in one Update, a freeze the first
+        // time F1 was pressed.
+        private const double BacklogMsPerFrame = 6;
+
+        // From the plugin's Update: what OnGUI could not check, all at once
+        // (it is on screen), then as much of the backlog as fits in the budget.
         internal static void CheckQueued()
         {
-            if (_unchecked.Count == 0) return;
-            var chars = new char[_unchecked.Count];
-            _unchecked.CopyTo(chars);
-            _unchecked.Clear();
-            if (MenuFont.Font != null) Check(MenuFont.Font, chars);
+            Font font = MenuFont.Font;
+            if (_unchecked.Count > 0)
+            {
+                var chars = new char[_unchecked.Count];
+                _unchecked.CopyTo(chars);
+                _unchecked.Clear();
+                if (font != null)
+                {
+                    foreach (char c in chars) if (_inBacklog.Remove(c)) _backlog.Remove(c);
+                    Check(font, chars);
+                }
+            }
+            if (font == null || _backlog.Count == 0 || InOnGUI) return;
+            long started = System.Diagnostics.Stopwatch.GetTimestamp();
+            long budget = (long)(BacklogMsPerFrame * System.Diagnostics.Stopwatch.Frequency / 1000);
+            int done = 0;
+            while (done < _backlog.Count && System.Diagnostics.Stopwatch.GetTimestamp() - started < budget)
+            {
+                int take = Math.Min(4, _backlog.Count - done);
+                var slice = _backlog.GetRange(done, take).ToArray();
+                done += take;
+                foreach (char c in slice) _inBacklog.Remove(c);
+                slice = Array.FindAll(slice, c => !_drawable.ContainsKey(c));
+                if (slice.Length > 0) Check(font, slice);
+            }
+            _backlog.RemoveRange(0, done);
         }
 
         // From MenuFont as characters are prepared, in Update or Awake, and
@@ -306,10 +339,21 @@ namespace DragNWash.ModFramework.ToolWindow
                 fresh.Add(c);
             }
             if (fresh == null) return;
-            var batch = new char[fresh.Count];
-            fresh.CopyTo(batch);
+            // Printable ASCII and a handful are asked now; a bigger batch (every
+            // character mods prepared, when the font is made) goes to the
+            // backlog, which Update works through a few milliseconds at a time.
+            // Until then such a character reads as '?' where it is drawn, and
+            // drawing it moves it ahead (see CheckQueued).
+            var now = new List<char>();
+            foreach (char c in fresh)
+            {
+                if (c < 128 || fresh.Count <= 8) now.Add(c);
+                else if (_inBacklog.Add(c)) _backlog.Add(c);
+            }
+            if (now.Count == 0) return;
+            var batch = now.ToArray();
             // Answered here, so not asked again on the next Update.
-            _unchecked.ExceptWith(fresh);
+            _unchecked.ExceptWith(batch);
             _size = MenuFont.Size;
             Check(font, batch);
         }

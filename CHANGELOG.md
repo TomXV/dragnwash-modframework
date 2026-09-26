@@ -8,6 +8,7 @@ The core, the preloader patcher and every library go to 1.6.0. The big part is n
 
 ### Core 1.6.0
 
+- On Direct3D 12, at most four font atlases go up to the GPU in a frame; the rest follow in the next frames. The first time the Tool window opened after the check of every prepared character came in, one frame uploaded 35 atlases and the game crashed (the same Unity bug as UUM-140564). A glyph may be blank for a few frames instead.
 - The update check keeps more of GitHub's answer: the release notes, the release page, when it was published, and each file's name, size, address and SHA-256. It's the same single request as before, once a day, so nothing new goes online. The Mods screen works as it did.
 - What the check found is written to `BepInEx/cache/DragNWash.ModFramework/updates.json`, for a launcher that runs before the game and shows updates without going online itself. It lists each installed mod that names its GitHub repository: the installed version, its folder under `plugins`, whether the installer's `mod-install.json` is there, and the latest release. It's written a few seconds after start, when a check brings a result, and when **Check for updates** is switched on or off; with checking off it lists no mods. [docs/LAUNCHER.md](docs/LAUNCHER.md) describes the format.
 - After updating from 1.5.0, which kept only each release's tag, each repository is checked once more at the first start so the new details get filled in. After that it's once a day again.
@@ -68,6 +69,7 @@ The core, the preloader patcher and every library go to 1.6.0. The big part is n
 
 ### Tool window 1.6.0
 
+- Opening the window no longer checks every character mods prepared in one go. That took 2.5 s the first time F1 was pressed with the Localization mod (about 870 characters, each added to the window font's and its fallbacks' atlases). The window checks the printable ASCII when its font is made and the rest a few milliseconds a frame after that; a character drawn before its turn shows as `?` for one frame and is checked right away.
 - The Tool window (F1) draws its text on macOS. Unity 6 draws the window's text with its own text engine (TextCore), which couldn't load Hiragino Sans, so the window showed no text at all and wrote two lines to Player.log for every string. A font that engine can't load is now skipped, and Arial Unicode MS is used there. Thanks to 223n (#84).
 - Characters the window can't draw show as `?` everywhere in the window now, asked of the text engine the window really draws with, instead of a box. Text you type or paste into a field is left as it is. (#84)
 
