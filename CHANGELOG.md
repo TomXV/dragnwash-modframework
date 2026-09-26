@@ -32,6 +32,11 @@ Versions of the core and of each library are separate, and follow semantic versi
 - Without the WebView2 runtime there's no window: the game starts as usual. Whatever fails in the launcher, the game still starts: a page that doesn't come up or a window that doesn't close in time is hidden, and the game starts anyway.
 - The framework's zip has it in `BepInEx/DragNWash.Installer/`, with the three WebView2 files it needs. Install.exe puts it in the game folder and sets the launch option (see Installer below).
 
+### Tool window
+
+- The Tool window (F1) draws its text on macOS. Unity 6 draws the window's text with its own text engine (TextCore), which couldn't load Hiragino Sans, so the window showed no text at all and wrote two lines to Player.log for every string. A font that engine can't load is now skipped, and Arial Unicode MS is used there. Thanks to 223n (#84).
+- Characters the window can't draw show as `?` everywhere in the window now, asked of the text engine the window really draws with, instead of a box. Text you type or paste into a field is left as it is. (#84)
+
 ### Installer
 
 - Install.exe puts the launcher (`Launcher.exe` and its three WebView2 files) into `BepInEx\DragNWash.Installer` whenever it installs or updates the framework, from the framework's zip, whether or not the launch option is set: the game's Update button uses it too. The list of what Install will do says so. It goes through the same backup and putting back as every other file, an older launcher never replaces a newer one, and when the launcher installs an update itself, its files in use are renamed to `.old` and deleted by the next install.
