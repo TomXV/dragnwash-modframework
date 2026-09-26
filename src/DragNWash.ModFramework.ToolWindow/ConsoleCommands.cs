@@ -435,6 +435,36 @@ namespace DragNWash.ModFramework.ToolWindow
             // The same as "log clear", under the names people type by habit.
             Register(ToolWindow.Guid, "clear", "Clears the console (also: cls, log clear)", args => { ConsoleLog.Clear(); return ""; });
             Register(ToolWindow.Guid, "cls", "Clears the console (also: clear, log clear)", args => { ConsoleLog.Clear(); return ""; });
+            Register(ToolWindow.Guid, "mem", "The game's memory now and over the last minute | mem counters: every memory counter this Unity has | mem collect", args =>
+            {
+                if (args.Length > 0 && args[0].Equals("counters", StringComparison.OrdinalIgnoreCase))
+                {
+                    return string.Join("\n", Diagnostics.MemoryWatch.Counters().ToArray());
+                }
+                if (args.Length > 0 && args[0].Equals("collect", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Diagnostics.MemoryWatch.CollectNow();
+                }
+                return Diagnostics.MemoryWatch.Describe(Diagnostics.MemoryWatch.Now());
+            }, args => Options(args, 0, "counters", "collect"));
+            Register(ToolWindow.Guid, "stacks", "Where the main thread is now | stacks all: every managed thread | stacks <id> | add full for every frame", args =>
+            {
+                List<Diagnostics.ThreadStack> threads = Diagnostics.ManagedStacks.Capture(out string reason);
+                if (threads == null) return "Managed stacks could not be read: " + reason;
+                bool full = Array.Exists(args, a => a.Equals("full", StringComparison.OrdinalIgnoreCase));
+                string which = Array.Find(args, a => !a.Equals("full", StringComparison.OrdinalIgnoreCase)) ?? "main";
+                List<Diagnostics.ThreadStack> shown;
+                if (which.Equals("all", StringComparison.OrdinalIgnoreCase)) shown = threads;
+                else if (which.Equals("main", StringComparison.OrdinalIgnoreCase)) shown = threads.FindAll(t => t.IsMain);
+                else if (int.TryParse(which.TrimStart('t', 'T'), out int id)) shown = threads.FindAll(t => t.Id == id);
+                else return $"\"{which}\" is not main, all or a thread id. {threads.Count} managed threads: " + string.Join(", ", threads.ConvertAll(t => t.IsMain ? "main" : "t" + t.Id).ToArray());
+                if (shown.Count == 0) return "No such managed thread.";
+                return $"{threads.Count} managed threads\n" + Diagnostics.ManagedStacks.Text(shown, full ? 0 : 10);
+            }, args => args.Length == 1 ? new[] { "main", "all", "full" } : args.Length == 2 ? new[] { "full" } : new string[0]);
+            Register(ToolWindow.Guid, "snapshot", "Writes a memory dump (Windows), every managed thread's stack, the memory numbers and the loaded modules into BepInEx/CrashReports", args =>
+            {
+                return Diagnostics.Snapshot.Write(out _);
+            });
             ConsoleOperations.Register();
         }
 

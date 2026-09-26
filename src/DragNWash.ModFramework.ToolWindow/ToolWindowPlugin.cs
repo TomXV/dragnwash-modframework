@@ -154,6 +154,7 @@ namespace DragNWash.ModFramework.ToolWindow
             BepInEx.Logging.Logger.Listeners.Add(new ConsoleLog.Listener());
             ConsoleCommands.RegisterBuiltIns();
             ConsoleTab.Install();
+            MemoryTab.Install();
         }
 
         private void ApplyConsoleConfig()

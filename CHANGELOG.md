@@ -2,6 +2,21 @@
 
 Versions of the core and of each library are separate, and follow semantic versioning: from 1.0.0 on, a change that breaks the public API comes only with a new major version.
 
+## Unreleased
+
+### Core
+
+- Experimental: the game's memory, read the way a release build of Unity allows it. `MemoryWatch` takes a reading once a second while Developer tools are on and keeps the last five minutes: the managed (GC) heap used and reserved, how many collections ran, and Unity's own totals (allocated, reserved, system, audio, video). Sizes per texture or mesh need a development build of the game, so they aren't there. `MemoryWatch.Counters()` lists every memory counter this Unity build offers.
+- Experimental: `ManagedStacks.Capture()` says where each managed thread is right now, main thread first. It uses Mono's own `Thread.Mono_GetStackTraces`, so it works from any thread and on Linux too. Threads Unity runs natively (jobs, rendering) aren't managed and don't show up.
+- Experimental: `Snapshot.Write()` writes a folder under `BepInEx/CrashReports` without a crash: a memory dump (Windows only), `stacks.txt`, `memory.txt` and `modules.txt` (where each native module was loaded, to read the dump against). The dump holds part of the game's memory, so share it privately.
+- When the game freezes (the hang watchdog), the hang folder now gets `stacks.txt` and `memory.txt` next to `hang.dmp`. The stacks are taken on a thread of their own, so a thread that won't stop holds up nothing else, and on Linux, where there's no dump, they're the main clue.
+- New operations: `diagnostics.memory.get` (with up to 300 seconds of history), `diagnostics.stacks.get` and `diagnostics.snapshot` (a write).
+
+### Tool window
+
+- A **Memory** tab, next to Console: bars for the last one or five minutes (GC used, or Unity's total), yellow where a garbage collection ran that second, the numbers now, and each managed thread's stack (main, or all) with **Refresh**. **Collect now** runs a full garbage collection and says what it freed; **Snapshot** writes the snapshot above.
+- New console commands: `mem` (the numbers and the last minute; `mem counters`, `mem collect`), `stacks` (the main thread; `stacks all`, `stacks <id>`, and `full` for every frame) and `snapshot`.
+
 ## 2026-09-26: a launcher before the game
 
 The core, the preloader patcher and every library go to 1.6.0. The big part is new: `Launcher.exe` runs before the game from Steam's launch options and brings mods up to date before you play, and the installer's window now looks like it. On the Mods screen, **Update now** does the same from inside the game. The Tool window draws its text on macOS. For mods, everything is additive, as before: a mod built for 1.5.0 keeps working.
