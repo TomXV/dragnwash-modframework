@@ -39,6 +39,28 @@ namespace DragNWash.ModFramework.Mods
 
         private const float DetailsPadding = 24f;
 
+        // The buttons of the new version's band, by name, so the focus can be
+        // put back on them. Update keeps its name while it asks, so the
+        // focus stays on it.
+        private const string ReleasePageButton = "ReleasePage";
+        private const string UpdateButton = "UpdateNow";
+
+        // Quit and update, asking: the Uninstall button's asking look in the
+        // warning colour.
+        private static readonly Color AskingFace = new Color(0.29f, 0.235f, 0.09f);
+
+        // A button at the right of a note.
+        private sealed class BandButton
+        {
+            internal string Name;
+            internal string Text;
+            internal UnityAction OnClick;
+            // Asking to be pressed again.
+            internal bool Asking;
+            // Waiting for the check of the mods.
+            internal bool Held;
+        }
+
         // The title in the header, cut to two lines once laid out.
         private TMP_Text _headerName;
 
@@ -261,6 +283,22 @@ namespace DragNWash.ModFramework.Mods
         {
             string neededBy = Escape(string.Join(", ", entry.Dependents.Select(g => ModCatalog.NameOf(_entries, g))));
             string status = Status(entry);
+            if (entry.IsFramework && _askingLaunchOption != null)
+            {
+                Band(content, "ConfirmLaunchOption", null, TextConfirmLaunchOption, ModsLook.Warning);
+            }
+            else if (entry.IsFramework && _launchOptionFailed)
+            {
+                Band(content, "LaunchOptionFailed", null, TextLaunchOptionFailed, ModsLook.Warning);
+            }
+            if (_confirmingUpdate == entry)
+            {
+                Band(content, "ConfirmUpdate", null, TextConfirmUpdate, ModsLook.Warning);
+            }
+            else if (_updateProblemFor == entry && _updateProblem != null)
+            {
+                Band(content, "UpdateProblem", null, _updateProblem, ModsLook.Warning);
+            }
             if (_confirmingUninstall == entry)
             {
                 Band(content, "ConfirmUninstall", null, TextConfirmUninstall, ModsLook.Warning);
@@ -314,7 +352,23 @@ namespace DragNWash.ModFramework.Mods
             if (newer != null)
             {
                 string url = newer.Url;
-                Band(content, "Update", TextNewVersion, Escape(newer.Tag), ModsLook.Accent, TextOpenReleasePage, () => OpenReleasePage(url));
+                var buttons = new List<BandButton>();
+                if (_confirmingUpdate == entry)
+                {
+                    buttons.Add(new BandButton { Name = ReleasePageButton, Text = TextCancel, OnClick = CancelUpdate });
+                    buttons.Add(new BandButton { Name = UpdateButton, Text = TextQuitAndUpdate, OnClick = () => OnUpdate(entry), Asking = true, Held = Checking });
+                }
+                else
+                {
+                    buttons.Add(new BandButton { Name = ReleasePageButton, Text = TextOpenReleasePage, OnClick = () => OpenReleasePage(url) });
+                    // Only for a mod the installer put in, which the launcher
+                    // can update; not again once the launcher was found missing.
+                    if (_updateProblemFor != entry && Updates.LauncherUpdate.CanUpdate(entry.Guid))
+                    {
+                        buttons.Add(new BandButton { Name = UpdateButton, Text = TextUpdateNow, OnClick = () => OnUpdate(entry), Held = Checking });
+                    }
+                }
+                Band(content, "Update", TextNewVersion, Escape(newer.Tag), ModsLook.Accent, buttons: buttons);
             }
             if (entry.Guid != null && !NetworkWatch.HasUndeclared(entry.Guid))
             {
@@ -338,12 +392,22 @@ namespace DragNWash.ModFramework.Mods
 
         // One note: a bar of its colour on the left, a bold label in that
         // colour, the text (as given: names from mods are escaped by the
-        // caller), maybe a fixed sentence under it, and maybe a button. A
-        // label too long to sit beside the text (common in Japanese or
-        // German) goes above it.
+        // caller), maybe a fixed sentence under it, and maybe a button or
+        // two. A label too long to sit beside the text (common in Japanese or
+        // German, or beside two buttons) goes above it.
         private void Band(RectTransform parent, string name, string label, string value, Color color,
-            string buttonText = null, UnityAction onClick = null, bool spinner = false, string note = null)
+            string buttonText = null, UnityAction onClick = null, bool spinner = false, string note = null, List<BandButton> buttons = null)
         {
+            var shown = new List<BandButton>();
+            if (buttonText != null)
+            {
+                shown.Add(new BandButton { Name = name + "Button", Text = buttonText, OnClick = onClick });
+            }
+            if (buttons != null)
+            {
+                shown.AddRange(buttons);
+            }
+
             RectTransform band = ModsLook.Rect(parent, name);
             ModsLook.Shape(band.gameObject, ModsLook.Rounded, ModsLook.Card, 8f).raycastTarget = false;
             HorizontalLayoutGroup row = band.gameObject.AddComponent<HorizontalLayoutGroup>();
@@ -379,9 +443,9 @@ namespace DragNWash.ModFramework.Mods
             textSize.minWidth = 0f;
             textSize.preferredWidth = 0f;
 
-            if (buttonText != null)
+            foreach (BandButton button in shown)
             {
-                width -= 12f + CreateBandButton(band, name + "Button", buttonText, onClick);
+                width -= 12f + CreateBandButton(band, button);
             }
 
             TMP_Text head = null;
@@ -390,7 +454,9 @@ namespace DragNWash.ModFramework.Mods
                 head = ModsLook.Text(text, "Label", label, size, ModsLook.Readable(color), FontStyles.Bold, false);
             }
             float headWidth = head != null ? ModsLook.Width(head) : 0f;
-            bool beside = head == null || headWidth <= width * 0.45f;
+            // Beside two buttons the value would be squeezed into a narrow
+            // column, so the label always goes above it then.
+            bool beside = head == null || shown.Count < 2 && headWidth <= width * 0.45f;
             HorizontalOrVerticalLayoutGroup lines = beside
                 ? (HorizontalOrVerticalLayoutGroup)text.gameObject.AddComponent<HorizontalLayoutGroup>()
                 : text.gameObject.AddComponent<VerticalLayoutGroup>();
@@ -437,15 +503,28 @@ namespace DragNWash.ModFramework.Mods
                 afterSize.minWidth = 0f;
                 afterSize.preferredWidth = 0f;
             }
-            // The button, if any, goes last, at the right.
-            band.Find(name + "Button")?.SetAsLastSibling();
+            // The buttons, if any, go last, at the right, in their order.
+            foreach (BandButton button in shown)
+            {
+                band.Find(button.Name)?.SetAsLastSibling();
+            }
         }
 
-        private float CreateBandButton(Transform parent, string name, string text, UnityAction onClick)
+        private static float CreateBandButton(Transform parent, BandButton spec)
         {
-            GameObject button = FlatButton(parent, name, text, 19f, ModsLook.Raised, ModsLook.Label, onClick);
+            GameObject button = FlatButton(parent, spec.Name, spec.Text, 19f, spec.Asking ? AskingFace : ModsLook.Raised, ModsLook.Label, spec.OnClick);
             float width = ((RectTransform)button.transform).sizeDelta.x;
             ModsLook.Size(button, width, 44f, 0f, 0f);
+            if (spec.Asking)
+            {
+                RectTransform edge = ModsLook.Rect(button.transform, "Edge");
+                ModsLook.Stretch(edge);
+                ModsLook.Shape(edge.gameObject, ModsLook.Outline, ModsLook.Warning, 10f).raycastTarget = false;
+            }
+            if (spec.Held)
+            {
+                Hold(button);
+            }
             return width;
         }
 
@@ -584,6 +663,8 @@ namespace DragNWash.ModFramework.Mods
                 return;
             }
             _tab = key;
+            // Picking another tab takes back the launch option's switch that asks.
+            _askingLaunchOption = null;
             RebuildDetails(false);
             Focus("Tab" + key);
         }
@@ -774,6 +855,18 @@ namespace DragNWash.ModFramework.Mods
             // the field would save what was half typed.
             if (StopTyping(focused))
             {
+                return true;
+            }
+            // Back while Update asks takes it back, and stays on the button.
+            if (_confirmingUpdate != null && Details != null && focused.transform.IsChildOf(Details))
+            {
+                CancelUpdate();
+                return true;
+            }
+            // So does Back while the launch option's switch asks.
+            if (_askingLaunchOption != null && Details != null && focused.transform.IsChildOf(Details))
+            {
+                CancelLaunchOption();
                 return true;
             }
             if (Details != null && focused.transform.IsChildOf(Details))

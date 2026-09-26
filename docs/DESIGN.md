@@ -2,7 +2,7 @@
 
 [日本語](DESIGN.ja.md)
 
-Status: September 2026. The newest release is 1.5.0, and from 1.5.0 on the core and every library share that number. Parts marked planned or future are not done yet. Open an issue to discuss any part of it.
+Status: September 2026. The newest release is 1.6.0, and from 1.5.0 on the core and every library share that number. Parts marked planned or future are not done yet. Open an issue to discuss any part of it.
 
 The features this memo once listed as designs are built: [Mod reload (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Mod-reload), the [Inspector (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Inspector), the [Console (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Console), [Assets (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Assets) and [Dialogue (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Dialogue) all shipped in 1.2.0 or earlier, and their wiki pages describe them as they are now. What is designed but not built is in [ROADMAP.md](ROADMAP.md).
 
@@ -37,7 +37,7 @@ In most modding scenes every author designs things their own way. Two mods patch
 
 - Loading new 3D content (custom dragons, models). Possible later, but it depends on how the developers feel about it.
 - Replacing BepInEx or Harmony. The framework is a BepInEx 5 plugin and uses Harmony internally.
-- macOS, until BepInEx can load on Unity 6.3 there (NeighTools/UnityDoorstop#108).
+- Full macOS support, until a released BepInEx can load on Unity 6.3 there (NeighTools/UnityDoorstop#108). Until then, macOS runs only through Drag'n Wash Localization's experimental install script (#85). The framework's own parts that need care on macOS, such as the Tool window's font, are fixed as they are found.
 
 ## Packaging and versioning
 

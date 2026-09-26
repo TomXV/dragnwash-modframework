@@ -32,6 +32,7 @@ namespace DragNWash.ModFramework
             Options.OptionsRows.Install(harmony);
             Title.TitleVersion.Install(harmony);
             Updates.UpdateCheck.Install(Config, this);
+            Updates.LauncherUpdate.Install(Config);
         }
 
         private void Update()

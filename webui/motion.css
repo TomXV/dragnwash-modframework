@@ -1,0 +1,95 @@
+/* Shared page parts (webui/): how boards, sheets and rows come and go. motion.js switches the classes and
+   writes each kind's numbers on the board (--do/--go/--eo/--ox/--oy leaving, --di/--gi/--ei/--ix/--iy coming
+   in; every moving part gets data-p and its place in the order, --po or --pi).
+
+   One keyframe pair for every leaving and every coming in (xout has no `from` and xin no `to`, so a greyed
+   button ends greyed); a kind only sets the numbers:
+     .x-out [data-p]            a board's parts leaving (the board is inert from the first click)
+     .x-in [data-p]             a board's parts coming in
+     [data-p].pressed           the pressed button gives its little press, then leaves with the rest
+     .fly.back, .hlogo.land     the working logo flying back up into the header (Cancel)
+     .lw.x-bye                  the page fading before the window closes (the board's parts leave first)
+     .veil > .sheet             a sheet over the window (.sheet.swap-out/.swap-in when one makes way for the
+                                next, .veil.x-out when it closes); the board behind is .layer.under
+     .mod.skipped, .skiptag     a version the player skipped: the row steps back, with a small tag
+   Reduced motion: no movement at all; boards and sheets change with short fades, sizes change at once. */
+
+/* the numbers every kind is made of */
+.lw{
+  --in:.4s;          /* one element coming in (fadeup is .4–.45 s) */
+  --out:.26s;        /* one element leaving: 65 % of coming in */
+  --gap-in:.06s;     /* between elements coming in */
+  --gap-out:.035s;   /* between elements leaving */
+  --lap:.08s;        /* the next board starts this long before the last element has left */
+  --dx:14px;         /* sideways distance, forward and back */
+  --e-in:cubic-bezier(.2,.7,.3,1);      /* slows into place (the same curve as the logo letters' lrise) */
+  --e-out:cubic-bezier(.5,0,.75,.4);    /* picks up speed and is gone, no tail */
+  --e-move:cubic-bezier(.4,0,.2,1);     /* moves and size changes (the hand-off, the picture stepping aside) */
+  --e-calm:cubic-bezier(.35,0,.25,1);   /* failure: soft at both ends, no overshoot */
+  --e-settle:cubic-bezier(.22,1.25,.36,1); /* success: settles with a hint of overshoot (about 2 %) */
+}
+
+@keyframes xout{to{opacity:0;transform:translate(var(--ox,0px),var(--oy,0px)) scale(var(--os,1))}}
+@keyframes xin{from{opacity:0;transform:translate(var(--ix,0px),var(--iy,0px)) scale(var(--is,1))}}
+@keyframes xlift{to{opacity:0;transform:translateY(-8px);visibility:hidden}}
+@keyframes hlland{0%{opacity:0;width:0;margin-right:-10px}60%{opacity:0;width:50px;margin-right:0}99%{opacity:0}100%{opacity:1;width:50px;margin-right:0}}
+@keyframes press{0%,100%{transform:none}45%{transform:scale(.95)}}
+@keyframes byeout{from{opacity:1}to{opacity:0}}
+
+.lw .x-out [data-p]{animation:xout var(--do) var(--eo) calc(var(--po) * var(--go)) both !important;pointer-events:none}
+.lw .x-in [data-p]{animation:xin var(--di) var(--ei) calc(var(--pi) * var(--gi)) both !important}
+.lw .x-out [data-p].pressed{animation:xout var(--do) var(--eo) calc(var(--po) * var(--go)) both,press .22s ease !important}
+
+/* the working board, forward (from the list, or Try again): its own build-up stays (the logo flight, the card,
+   the bar), only the words come in from the direction of travel */
+.upd.play.enter.k-fwd :is(.col-l .lh,.col-l .ls,.st,.lfoot > *){animation-name:xin !important;animation-timing-function:var(--e-in) !important;animation-duration:var(--in) !important;animation-fill-mode:both !important}
+.upd.play.enter.k-fwd .col-l .lh{animation-delay:.04s !important}
+.upd.play.enter.k-fwd .col-l .ls{animation-delay:.1s !important}
+.upd.play.enter.k-fwd .lfoot > *{animation-delay:.36s !important}
+
+/* the working logo flying back up into the header (Cancel): the same copy as the flight down, reversed */
+.fly.back{animation:flyx .6s var(--e-move) both}
+.fly.back img{animation:flyy .6s cubic-bezier(.45,0,.3,1) both}
+.hlogo.land{animation:hlland .6s var(--e-move) both}
+.mlogo.flown{visibility:hidden}
+
+/* all in: the log lifts away and the countdown card settles into its place */
+.upd.play.fin .tail .logbox{animation:xlift var(--out) var(--e-out) .85s both}
+.upd.play.fin .tail .again{--ix:0px;--iy:10px;animation:xin .45s var(--e-settle) .98s both}
+
+/* closing: the board's parts clear first (the countdown card leading), then the header and the page fade */
+.lw.x-bye{animation:byeout .2s var(--e-out) .1s forwards}
+.lw.x-bye .lhead{animation:byeout .2s var(--e-out) .08s both}
+
+/* sheets over the window: a dark veil under the header, the sheet rising into its middle; the board behind
+   steps back a little while it is up */
+.veil{position:absolute;left:0;right:0;top:46px;bottom:0;z-index:5;background:rgba(8,12,15,.66);display:flex;align-items:center;justify-content:center;animation:xcome .2s ease both}
+.sheet{position:relative;width:560px;max-height:calc(100% - 28px);box-sizing:border-box;display:flex;flex-direction:column;background:linear-gradient(180deg,#1f2b30,#182226);border:1px solid rgba(255,255,255,.13);border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.55);animation:sheetin .38s cubic-bezier(.2,.8,.3,1) .05s both}
+@keyframes sheetin{from{opacity:0;transform:translateY(16px) scale(.985)}to{opacity:1;transform:none}}
+.layer{transition:transform .32s var(--e-move),filter .32s var(--e-move)}
+.layer.under{transform:scale(.985);filter:brightness(.8)}
+.veil.x-out{animation:xgone .2s ease .06s both}
+.veil.x-out .sheet{--oy:10px;--os:.99;animation:xout .2s var(--e-out) both !important}
+.sheet.swap-out{position:absolute;--ox:calc(var(--dx) * -1);animation:xout .22s var(--e-out) both !important;pointer-events:none}
+.sheet.swap-in{--ix:var(--dx);animation:xin .34s var(--e-in) .12s both !important}
+
+/* a skipped version: the row stays but steps back, with a small tag */
+.mod .ck,.mod .mt{transition:opacity .25s var(--e-move)}
+.mod.skipped .mt,.mod.skipped .ck{opacity:.5}
+.skiptag{display:inline-block;margin-left:8px;font-size:10.5px;font-weight:600;color:var(--warn);border:1px solid rgba(243,201,139,.5);border-radius:999px;padding:0 7px;line-height:16px;background:rgba(243,201,139,.08);vertical-align:1px;white-space:nowrap}
+.skiptag{--ix:-6px;animation:xin .3s var(--e-in) both}
+.skiptag.bye{--ox:-6px;animation:xout .16s var(--e-out) both}
+
+/* reduced motion: no movement; every leaving is a .12 s fade and every coming in a .15 s fade, one after the
+   other (motion.js sets the times); sheets fade, sizes change at once, the window closes at once */
+.reduced .lw .x-out [data-p],.reduced .lw .x-out [data-p].pressed{animation:xout var(--do) linear both !important}
+.reduced .lw .x-in [data-p]{animation:xin var(--di) linear both !important}
+.reduced .lw .veil{animation:xcome .15s linear both !important}
+.reduced .lw .veil .sheet{animation:xcome .15s linear both !important}
+.reduced .lw .veil.x-out{animation:xgone .12s linear both !important}
+.reduced .lw .veil.x-out .sheet{animation:none !important}
+.reduced .lw .sheet.swap-out{animation:xgone .12s linear both !important}
+.reduced .lw .sheet.swap-in{animation:xcome .15s linear .12s both !important}
+.reduced .lw .layer{transition:none}
+.reduced .lw .layer.under{transform:none;filter:brightness(.8)}
+.reduced .lw.x-bye,.reduced .lw.x-bye .lhead{animation:none}

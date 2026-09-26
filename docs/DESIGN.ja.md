@@ -2,7 +2,7 @@
 
 [English](DESIGN.md)
 
-状態: 2026 年 9 月。いちばん新しいリリースは 1.5.0 で、1.5.0 からは中核と全部のライブラリが同じ番号です。予定や将来と書いた部分はまだ実装していません。どの部分についても、Issue で議論してください。
+状態: 2026 年 9 月。いちばん新しいリリースは 1.6.0 で、1.5.0 からは中核と全部のライブラリが同じ番号です。予定や将来と書いた部分はまだ実装していません。どの部分についても、Issue で議論してください。
 
 このメモが設計として挙げていた機能は、いずれも実装済みです。[Mod reload (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Mod-reload-ja)、[Inspector (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Inspector-ja)、[Console (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Console-ja)、[Assets (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Assets-ja)、[Dialogue (wiki)](https://github.com/TomXV/dragnwash-modframework/wiki/Dialogue-ja) はすべて 1.2.0 までに入っていて、いまどう動くかは各 wiki ページにあります。設計だけで未実装のものは [ROADMAP.ja.md](ROADMAP.ja.md) にまとめています。
 
@@ -37,7 +37,7 @@
 
 - 新しい 3D コンテンツ（独自のドラゴン、モデル）の読み込み。将来はありえますが、開発者さんの考え方次第です
 - BepInEx や Harmony の置き換え。フレームワークは BepInEx 5 のプラグインで、内部で Harmony を使います
-- macOS。BepInEx が macOS の Unity 6.3 で読み込めるようになるまで（NeighTools/UnityDoorstop#108）
+- macOS への正式な対応。リリースされた BepInEx が macOS の Unity 6.3 で読み込めるようになるまで（NeighTools/UnityDoorstop#108）。それまでは、Drag'n Wash Localization の試験版のインストールスクリプトでだけ動きます（#85）。Tool window のフォントのように、フレームワーク側で macOS 向けに気をつけるところは、見つかったら直します。
 
 ## パッケージとバージョン
 

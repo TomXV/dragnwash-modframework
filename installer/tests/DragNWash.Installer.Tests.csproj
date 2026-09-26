@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The installer's checks that need no Windows, no Steam and no game: the launch
+    option rules and the localconfig.vdf edits (installer/SteamConfig.cs, compiled
+    in from the installer). A plain console program; it prints each check and exits
+    with 1 when one fails. Run it with dotnet run, giving this folder as the project
+    (docker/checks.sh and the CI installer job do).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>InstallerTests</AssemblyName>
+    <RootNamespace>DragNWash.Installer.Tests</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <!-- DataContract fields are filled by the JSON serializer (as the installer's own
+         project also sets), and Core.cs/Strings.cs reach for the registry and a system
+         font on paths these checks never take, which only matter on Windows anyway. -->
+    <NoWarn>$(NoWarn);CS0649;CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\SteamConfig.cs" Link="SteamConfig.cs" />
+    <Compile Include="..\Core.cs" Link="Core.cs" />
+    <Compile Include="..\Manifest.cs" Link="Manifest.cs" />
+    <Compile Include="..\ModIcon.cs" Link="ModIcon.cs" />
+    <Compile Include="..\Strings.cs" Link="Strings.cs" />
+    <Compile Include="..\InstallJournal.cs" Link="InstallJournal.cs" />
+    <Compile Include="..\Download.cs" Link="Download.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Only for Strings.UiFont, which these checks never call; needed to compile Strings.cs in. -->
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>

@@ -2,9 +2,18 @@
 
 [English](ROADMAP.md)
 
-Drag'n Wash ModFramework のこれからの予定です。予定は変わることがあり、日付は近いものだけ書いています。更新日：2026-09-23。
+Drag'n Wash ModFramework のこれからの予定です。予定は変わることがあり、日付は近いものだけ書いています。更新日：2026-09-26。
 
 判断の基準は変わりません。すべての Mod が一緒に安全に動くこと。そして、ほかの人が引き継げるように、それぞれの部分を小さく保つことです。
+
+## リリース済み：1.6.0（2026-09-26）
+
+中核、preloader パッチャー、全部のライブラリが 1.6.0 になります。全部の一覧は [CHANGELOG.md](../CHANGELOG.md) にあります。
+
+- **ゲームの前に動くランチャー。** `Launcher.exe` が Steam の起動オプションから動きます。ゲームの更新確認で新しい版が見つかっていれば、ゲームの前に一覧を出して、選んだものを入れます。サイズと SHA-256 で確かめ、先にバックアップを取ります。ネットにつなぐのは、更新を押したときだけです。
+- **Mods 画面から更新。** インストーラーで入れた Mod には **更新する** が出ます。ゲームを終了して、ランチャーが更新し、ゲームを起動し直します。
+- **インストーラーを作り直し。** Install.exe はランチャーと同じ見た目になり、Steam の起動オプションも設定し、アンインストールの進み具合も出します。WebView2 がないときは、今までの窓が開きます。
+- **macOS。** macOS でも F1 の窓の文字が出るようになりました（223n さん、ありがとうございます）。macOS でゲームを Mod 付きで動かすのは、今のところ Drag'n Wash Localization の試験版のインストールスクリプトだけです（[#85](https://github.com/TomXV/dragnwash-modframework/issues/85)）。
 
 ## リリース済み：1.5.0（2026-09-23）
 
@@ -90,4 +99,4 @@ Drag'n Wash Localization v1.2.0 と一緒にリリースしました。
 
 ## ほかの動きを待っているもの
 
-- **macOS：** BepInEx の Doorstop が、まだ Unity 6.3 にフックできません（[UnityDoorstop#108](https://github.com/NeighTools/UnityDoorstop/issues/108)）。
+- **macOS：** 今の BepInEx のリリースに入っている Doorstop は、Unity 6.3 にフックできません（[UnityDoorstop#108](https://github.com/NeighTools/UnityDoorstop/issues/108)）。修正は本家に入りましたがまだリリースされていないので、今のところ macOS では、Drag'n Wash Localization の試験版のインストールスクリプトで、そのビルドを使って Rosetta で動かすだけです。待っているのは 2 つのリリースです。UnityDoorstop 4.6.0 の安定版と、ネイティブの arm64 の修正（[BepInEx#1402](https://github.com/BepInEx/BepInEx/pull/1402)）が入った BepInEx 5 で、こちらが出れば Rosetta なしで動かせます。進み具合：[#85](https://github.com/TomXV/dragnwash-modframework/issues/85)

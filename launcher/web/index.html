@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en" class="mf-write pb-edge">
+<head>
+<meta charset="utf-8">
+<title>Drag'n Wash ModFramework</title>
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="intro.css">
+<link rel="stylesheet" href="pics.css">
+<link rel="stylesheet" href="motion.css">
+<link rel="stylesheet" href="launcher.css">
+</head>
+<body>
+<!-- The page is the launcher's whole window (borderless, 720×440). One header, then one board at a time:
+     the logo intro (0), the updates list (1), updating (2, and B after an in-game update or for the launch option
+     switched on the Mods screen) and failed (3).
+     launcher.js switches them as events come in from the launcher. -->
+<div class="lw" id="win">
+
+  <header class="lhead veiled" id="head">
+    <img class="hlogo" id="hlogo" src="logo-notagames.png" alt="Drag'n Wash ModFramework">
+    <div class="app">Drag'n Wash ModFramework</div>
+    <div class="statewrap" id="state" aria-live="polite"></div>
+    <div class="wc">
+      <button type="button" id="btn-min" data-t-label="minimize">&#8212;</button>
+      <button type="button" id="btn-close" data-t-label="close">&#10005;</button>
+    </div>
+  </header>
+
+  <!-- the header logo's copy that glides down to its place above the progress bar -->
+  <div class="fly" id="fly" aria-hidden="true"><img src="logo-notagames.png" alt=""></div>
+
+  <!-- 0: logo intro, built by intro.js. One image, shown piece by piece through clip-paths and masks (the file itself is untouched) -->
+  <section class="intro" id="intro" hidden></section>
+
+  <!-- 1: updates available -->
+  <section class="layer list" id="list" data-b="list" hidden>
+    <div class="lbody">
+      <div class="col-l">
+        <h1 class="lh" id="list-title"></h1>
+        <p class="ls" id="list-lead"></p>
+        <div class="mods" id="mods"></div>
+        <div class="total" id="total"></div>
+      </div>
+      <div class="col-r">
+        <div class="nhead">
+          <h2 class="nt"><span class="nl" data-t="whatsNew"></span><span id="notes-name"></span></h2>
+          <label class="mute"><input type="checkbox" class="ck" id="skip"><span data-t="skipVersion"></span></label>
+        </div>
+        <p class="ncant" id="notes-cant" hidden><span data-t="cantNote"></span> <button type="button" class="llink" id="notes-open" data-t="openRelease"></button></p>
+        <div class="notes" id="notes" tabindex="0" role="region" data-t-label="notesLabel"></div>
+      </div>
+    </div>
+    <div class="lfoot">
+      <p class="net" data-t="netList"></p>
+      <button type="button" class="lb gho" id="list-play" data-t="playNoUpdate"></button>
+      <button type="button" class="lb pri" id="list-update" data-t="updateAndPlay"></button>
+    </div>
+  </section>
+
+  <!-- 2 / B: updating. The steps, label, percent, bar, log and the picture beside the logo all follow the
+       launcher's events; when everything is in, the log makes way for the countdown card -->
+  <section class="layer upd" id="upd" data-b="upd" hidden>
+    <div class="lbody">
+      <div class="col-l">
+        <h1 class="lh" id="upd-title"></h1>
+        <p class="ls" id="upd-lead"></p>
+        <ol class="steps" id="steps"></ol>
+      </div>
+      <div class="col-r">
+        <!-- the working logo and the step pictures beside it, built by pics.js -->
+        <div class="mstage wsc" id="stage" aria-hidden="true"></div>
+        <div class="pcard">
+          <div class="prow"><div class="pl" id="plabel"></div><div class="pp"><span class="pn" id="pct">0%</span></div></div>
+          <div class="pbar" id="pbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="plabel"><div class="f" id="pfill"></div></div>
+          <div class="psub" id="psub"></div>
+        </div>
+        <div class="tail">
+          <div class="logbox" id="log" tabindex="0" data-t-label="logLabel"><div class="lns" id="log-lines"></div></div>
+          <div class="again" id="upd-again">
+            <div class="cd" role="timer">
+              <svg viewBox="0 0 46 46" aria-hidden="true"><circle class="track" cx="23" cy="23" r="20"/><circle class="run" cx="23" cy="23" r="20"/></svg>
+              <span class="num" aria-hidden="true">10</span>
+              <span class="sr cd-text" aria-live="polite"></span>
+            </div>
+            <div class="at"><b data-t="cdTitle"></b><button type="button" class="llink not-now" data-t="notNow"></button></div>
+            <button type="button" class="lb pri start-now" data-t="startNow"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="lfoot">
+      <p class="net" id="upd-net"></p>
+      <button type="button" class="lb gho cx" id="upd-cancel" data-t="cancel"></button>
+    </div>
+  </section>
+
+  <!-- 3: failed -->
+  <section class="layer fail" id="fail" data-b="fail" hidden>
+    <div class="lbody one">
+      <div class="errrow">
+        <span id="fail-mark" hidden></span>
+        <div class="errtext">
+          <h1 class="lh" id="fail-title"></h1>
+          <p class="ls" id="fail-lead"></p>
+        </div>
+      </div>
+      <div><span class="okpill" id="fail-folder"><span class="mk"></span><span id="fail-folder-text"></span></span></div>
+      <p class="already" id="fail-updated" hidden></p>
+      <div class="again" id="fail-again" hidden>
+        <div class="cd" role="timer">
+          <svg viewBox="0 0 46 46" aria-hidden="true"><circle class="track" cx="23" cy="23" r="20"/><circle class="run" cx="23" cy="23" r="20"/></svg>
+          <span class="num" aria-hidden="true">10</span>
+          <span class="sr cd-text" aria-live="polite"></span>
+        </div>
+        <div class="at"><b data-t="cdTitleAgain"></b><button type="button" class="llink not-now" data-t="notNow"></button></div>
+        <button type="button" class="lb pri start-now" data-t="startNow"></button>
+      </div>
+      <details class="det" open>
+        <summary data-t="details"></summary>
+        <div class="logbox" id="fail-details" tabindex="0" data-t-label="details"></div>
+      </details>
+    </div>
+    <div class="lfoot">
+      <p class="net"><button type="button" class="llink" id="fail-openlog" data-t="openLog"></button> &nbsp;&middot;&nbsp; <button type="button" class="llink" id="fail-copy" data-t="copyDetails"></button></p>
+      <button type="button" class="lb gho" id="fail-retry" data-t="tryAgain"></button>
+      <button type="button" class="lb pri" id="fail-play" data-t="playNoUpdate"></button>
+    </div>
+  </section>
+
+</div>
+<script src="kit.js"></script>
+<script src="motion.js"></script>
+<script src="pics.js"></script>
+<script src="modicon.js"></script>
+<script src="intro.js"></script>
+<script src="strings.js"></script>
+<script src="notes.js"></script>
+<script src="launcher.js"></script>
+</body>
+</html>

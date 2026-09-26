@@ -46,6 +46,7 @@ Drag'n Wash ModFramework はゲームの非公式 Mod で、サービスでは�
 - 中核プラグインとライブラリ（`src/`）、それとプリローダーのパッチャー
 - ほかの Mod も使う共通インストーラー `Install.exe`（[`installer/`](installer/)）と、
   Steam Deck 用のスクリプト
+- ゲームの前に動く更新用のランチャー `Launcher.exe`（[`launcher/`](launcher/)）
 - クラッシュレポーター（[`crashreporter/`](crashreporter/)）と Code Graph
   （[`codegraph/`](codegraph/)、[`codegraph-standalone/`](codegraph-standalone/)）
 - [`.github/workflows/`](.github/workflows/) のビルドとリリースのワークフロー
@@ -63,10 +64,22 @@ Drag'n Wash ModFramework はゲームの非公式 Mod で、サービスでは�
     アーカイブを受け入れさせたり、別の場所からダウンロードさせたりする方法です。
 - **更新のお知らせ**
   - リポジトリを書いている Mod について、1 日 1 回まで `api.github.com` に最新の
-    リリースを聞くだけです。プレイヤーのことは何も送らず、何もダウンロードしません
-    （Mods 画面はブラウザーでリリースページを開くだけです）。
-  - これがダウンロードに化けたり、プレイヤーの情報が漏れたりするなら、本物のバグです。
+    リリースを聞くだけです。プレイヤーのことは何も送らず、何もダウンロードしません。
+    わかったことは、ランチャーのために `BepInEx/cache` に書いておきます。
+  - これがゲームの中でのダウンロードに化けたり、プレイヤーの情報が漏れたりするなら、
+    本物のバグです。
   - 詳しくは[外と通信する Mod の申告（wiki）](https://github.com/TomXV/dragnwash-modframework/wiki/Going-online-ja)にあります。
+- **ランチャー**
+  - インストーラーが設定した起動オプションで、Steam がゲームの前に起動します
+    （インストーラーが書き換えるのは Steam の `localconfig.vdf` のその値 1 つだけです）。
+    ゲームの更新チェックが書いたものを読み、プレイヤーが「更新」を押したときだけ、
+    github.com と release-assets.githubusercontent.com にだけつなぎます。Mod の zip は
+    リポジトリとタグから組み立てた URL で取ってきて、サイズと SHA-256 を GitHub の値と
+    比べてから、インストーラーと同じコードで入れます。画面のページは exe に埋め込んで
+    あり、外からは何も読み込みません。リリースノートは文字として表示します。
+  - 別の場所からダウンロードさせる、合わないファイルを受け入れさせる、リリースノートの
+    スクリプトを動かす、ゲームのフォルダーの外に書かせる、ほかの起動オプションや Steam
+    の設定を変えさせる、といったことができるなら、本物のバグです。
 - **アセットと Mod の読み込み**
   - `GameAssets` と Overrides ライブラリは、Mod のフォルダーからファイルを読みます。
   - 細工したファイルでそのフォルダーの外に手が届いたり、プレイヤーが入れていない

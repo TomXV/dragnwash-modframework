@@ -118,6 +118,8 @@ jobs:
         run: echo "tag=$(docker/ci-image.sh)" >> "$GITHUB_OUTPUT"
       - name: Build Install.exe
         run: docker run --rm -v "$PWD":/work -w /work "${{ steps.image.outputs.tag }}" dotnet build installer/DragNWash.Installer.csproj -c Release -warnaserror
+      - name: Installer checks - the Steam launch option and localconfig.vdf (installer/tests)
+        run: docker run --rm -v "$PWD":/work -w /work "${{ steps.image.outputs.tag }}" dotnet run --project installer/tests -c Release
       - name: Check install-steamdeck.sh
         run: |
           bash -n installer/install-steamdeck.sh

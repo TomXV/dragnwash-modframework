@@ -10,6 +10,16 @@
     Built deterministically: the same sources give a byte-identical Install.exe on
     every build with the same .NET SDK. Antivirus reputation is tied to the file's
     hash, so the file must not change from release to release unless the code does.
+
+    The window is a page in WebView2 (part of Windows 10 and 11), like the launcher's,
+    and Install.exe still ships as one file: mods put it next to their files, and it
+    runs from wherever the mod's zip was extracted. So the two WebView2 DLLs are
+    resources in the exe, loaded from memory when the window first needs them
+    (WebUi.cs), and WebView2Loader.dll (native, one per processor) is a resource too,
+    written once to %LOCALAPPDATA%\DragNWash ModFramework\Installer\WebView2Loader\<hash>
+    and checked against its SHA-256 before every use. Nothing is written next to the
+    exe. Without the WebView2 runtime, or when any of this fails, the WinForms window
+    opens as before.
   -->
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
@@ -32,6 +42,12 @@
     <GenerateSupportedRuntime>false</GenerateSupportedRuntime>
   </PropertyGroup>
 
+  <!-- installer/tests is a program of its own, with its own project. -->
+  <ItemGroup>
+    <Compile Remove="tests\**" />
+    <None Remove="tests\**" />
+  </ItemGroup>
+
   <ItemGroup>
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Drawing" />
@@ -43,6 +59,26 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <!-- Compiled against, never copied beside the exe: see the resources below. The
+         version is the launcher's, so both pages run on the same WebView2 code. -->
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" ExcludeAssets="runtime;native;build;buildTransitive" GeneratePathProperty="true" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- The WebView2 DLLs, carried inside the exe. -->
+  <ItemGroup>
+    <EmbeddedResource Include="$(PkgMicrosoft_Web_WebView2)\lib\net462\Microsoft.Web.WebView2.Core.dll" LogicalName="webview2/Microsoft.Web.WebView2.Core.dll" />
+    <EmbeddedResource Include="$(PkgMicrosoft_Web_WebView2)\lib\net462\Microsoft.Web.WebView2.WinForms.dll" LogicalName="webview2/Microsoft.Web.WebView2.WinForms.dll" />
+    <EmbeddedResource Include="$(PkgMicrosoft_Web_WebView2)\runtimes\win-x64\native\WebView2Loader.dll" LogicalName="webview2/x64/WebView2Loader.dll" />
+    <EmbeddedResource Include="$(PkgMicrosoft_Web_WebView2)\runtimes\win-arm64\native\WebView2Loader.dll" LogicalName="webview2/arm64/WebView2Loader.dll" />
+    <EmbeddedResource Include="$(PkgMicrosoft_Web_WebView2)\runtimes\win-x86\native\WebView2Loader.dll" LogicalName="webview2/x86/WebView2Loader.dll" />
+  </ItemGroup>
+
+  <!-- The page, served to WebView2 from the exe itself: its own files, the parts it
+       shares with the launcher's page, and the logo. Nothing is read from disk. -->
+  <ItemGroup>
+    <EmbeddedResource Include="web\*" LogicalName="web/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\webui\*" LogicalName="web/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\images\logo-notagames.png" LogicalName="web/logo-notagames.png" />
   </ItemGroup>
 
 </Project>

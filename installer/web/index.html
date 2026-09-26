@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en" class="mf-write pb-edge">
+<head>
+<meta charset="utf-8">
+<title>Drag'n Wash Mod Installer</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="intro.css">
+<link rel="stylesheet" href="pics.css">
+<link rel="stylesheet" href="motion.css">
+<link rel="stylesheet" href="installer.css">
+</head>
+<body>
+<!-- The page is Install.exe's whole window (borderless, 720×540). One header, then one board at a time: the logo
+     intro, setup (with the Steam and download questions as sheets over it), working, done and failed.
+     installer.js builds them from Install.exe's events; the words all come from Install.exe (Strings.cs). -->
+<div class="lw" id="win">
+
+  <header class="lhead veiled" id="head">
+    <img class="hlogo" id="hlogo" src="logo-notagames.png" alt="">
+    <div class="app" id="app"></div>
+    <div class="statewrap" id="state" aria-live="polite"></div>
+    <select class="hsel" id="hsel"></select>
+    <div class="wc">
+      <button type="button" id="btn-min">&#8212;</button>
+      <button type="button" id="btn-close">&#10005;</button>
+    </div>
+  </header>
+
+  <!-- the header logo's copy that glides down to its place above the progress bar -->
+  <div class="fly" id="fly" aria-hidden="true"><img src="logo-notagames.png" alt=""></div>
+
+  <!-- the logo intro (webui/intro.js builds it) -->
+  <section class="intro" id="intro" hidden></section>
+
+</div>
+<script src="kit.js"></script>
+<script src="intro.js"></script>
+<script src="pics.js"></script>
+<script src="motion.js"></script>
+<script src="modicon.js"></script>
+<script src="installer.js"></script>
+</body>
+</html>

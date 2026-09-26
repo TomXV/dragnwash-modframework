@@ -1,0 +1,41 @@
+/* Drag'n Wash launcher: the launcher's own boards, from the approved mock (v26). Everything the installer
+   shares with it (the window, the header, the working and failed boards, the logo intro, the pictures, the
+   motion) is in webui/; this is what only the launcher has: the list of updates. */
+
+/* ===== 1: updates available ===== */
+.mods{display:flex;flex-direction:column;gap:6px;min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(232,239,247,.35) transparent}
+.mod{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:8px;background:var(--card);border:1px solid var(--line);cursor:pointer}
+.mod.sel{background:rgba(82,199,184,.11);border-color:rgba(82,199,184,.7)}
+/* the arrow from Segoe UI: Yu Gothic UI draws it as a bare slash */
+.ext{width:16px;flex:0 0 auto;color:var(--dim);text-align:center;line-height:18px;font-family:"Segoe UI",var(--ui)}
+.mt{min-width:0;flex:1 1 auto}
+.pick{display:block;width:100%;text-align:left;background:none;border:0;padding:0;cursor:pointer;border-radius:4px}
+.mn{display:block;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
+.mv{display:block;color:var(--dim);font-size:11.5px;margin-top:2px;line-height:1.45;overflow-wrap:anywhere}
+.mv b{color:var(--accent);font-weight:600}
+.total{margin-top:auto;color:var(--dim);font-size:11.5px;padding-top:8px}
+.nhead{display:flex;align-items:center;gap:10px;margin:2px 0 8px;min-height:24px}
+.nt{font-size:inherit;margin:0;font-weight:600;flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nt span{color:var(--dim);font-weight:400;margin-left:6px}
+.nt span.nl{color:inherit;font-weight:600;margin:0}
+.mute{display:flex;align-items:center;gap:6px;color:var(--dim);font-size:11.5px;flex:0 0 auto;padding:2px 6px;border-radius:5px;cursor:pointer}
+.mute .ck{width:13px;height:13px;border-radius:3px;margin:0}
+.mute .ck:checked::after{width:6px;height:3px}
+.ncant{margin:0 0 8px;color:var(--dim);font-size:11.5px;line-height:1.5}
+.notes{flex:1 1 auto;min-height:0;overflow-y:auto;background:var(--deep);border:1px solid var(--line);border-radius:8px;padding:10px 14px;line-height:1.65;font-size:12.5px;scrollbar-width:thin;scrollbar-color:rgba(232,239,247,.35) transparent;user-select:text;cursor:auto}
+.notes:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.notes h4{margin:0 0 4px;font-size:13.5px}
+.notes h4 span{color:var(--dim);font-weight:400;font-size:12px;margin-left:6px}
+.notes h5{margin:10px 0 2px;font-size:12.5px}
+.notes h6{margin:8px 0 2px;font-size:12px;color:var(--dim)}
+.notes p{margin:4px 0;white-space:pre-line;overflow-wrap:anywhere}
+.notes ul,.notes ol{margin:0;padding-left:18px}
+.notes li{margin:2px 0;overflow-wrap:anywhere}
+.notes li.d1{margin-left:14px}
+.notes li.d2{margin-left:28px}
+.notes li.d3{margin-left:42px}
+.notes .cut{color:var(--dim);font-size:11.5px;margin-top:10px}
+/* the list comes in: rows one after another, then the notes */
+.list.reveal{animation:hofade .5s ease .35s both}
+.list.play .mod{animation:fadeup .45s ease var(--t,0s) both}
+.list.play .nhead,.list.play .ncant,.list.play .notes{animation:fadeup .5s ease .35s both}

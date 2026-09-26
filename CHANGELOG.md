@@ -2,6 +2,92 @@
 
 Versions of the core and of each library are separate, and follow semantic versioning: from 1.0.0 on, a change that breaks the public API comes only with a new major version.
 
+## 2026-09-26: a launcher before the game
+
+The core, the preloader patcher and every library go to 1.6.0. The big part is new: `Launcher.exe` runs before the game from Steam's launch options and brings mods up to date before you play, and the installer's window now looks like it. On the Mods screen, **Update now** does the same from inside the game. The Tool window draws its text on macOS. For mods, everything is additive, as before: a mod built for 1.5.0 keeps working.
+
+### Core 1.6.0
+
+- The update check keeps more of GitHub's answer: the release notes, the release page, when it was published, and each file's name, size, address and SHA-256. It's the same single request as before, once a day, so nothing new goes online. The Mods screen works as it did.
+- What the check found is written to `BepInEx/cache/DragNWash.ModFramework/updates.json`, for a launcher that runs before the game and shows updates without going online itself. It lists each installed mod that names its GitHub repository: the installed version, its folder under `plugins`, whether the installer's `mod-install.json` is there, and the latest release. It's written a few seconds after start, when a check brings a result, and when **Check for updates** is switched on or off; with checking off it lists no mods. [docs/LAUNCHER.md](docs/LAUNCHER.md) describes the format.
+- After updating from 1.5.0, which kept only each release's tag, each repository is checked once more at the first start so the new details get filled in. After that it's once a day again.
+- On the Mods screen, a mod our installer put in gets **Update now** next to **Open release page** when it has a newer release. It asks first, like **Uninstall**: the button turns into **Quit and update**, a yellow note says the game will quit and unsaved progress may be lost, and **Open release page** turns into **Cancel**. Pressing it again leaves `BepInEx/cache/DragNWash.ModFramework/update-request.json` and quits; the launcher updates the mod after the game has closed and starts it again. When the game wasn't started through the launcher, it starts the launcher first. If the launcher isn't installed, the game doesn't quit and says so. The game itself still downloads nothing, and the launcher only goes online after you press Update. [docs/LAUNCHER.md](docs/LAUNCHER.md#updating-from-the-mods-screen) has the details.
+- A **Launcher** section in the framework's settings: **Logo lettering** (Handwriting or Typewriter) and **Progress bar** (Bottom edge or Under text), for how the launcher's logo screen looks. The launcher reads them from the config file.
+- At the top of that section, **Check for mod updates when the game starts (Steam launch option)**: the installer's checkbox, from the game. The switch shows what Steam has now for the account you're playing on, so it has no reset button. Switching it asks first, like **Update now**: a yellow note says the game will quit and Steam and the game will start again, and the switch turns into **Cancel** and **Restart and apply**. Going ahead starts the launcher and quits; the launcher closes Steam, changes the option and starts Steam and the game again. Only on Windows, with the launcher in place (not on the Steam Deck). [docs/LAUNCHER.md](docs/LAUNCHER.md#switching-the-launch-option-from-the-mods-screen) has the details.
+- `updates.json` now carries `icon` for a mod that has one: its `IconPath` file when it gave one, otherwise its `Icon` texture encoded to `BepInEx/cache/DragNWash.ModFramework/icons/<guid>.png` when the texture can be read back. A launcher without either just shows the mod's initials, as the Mods screen always has.
+- A mod's letter tile (the Mods screen, and now the launcher too) drops a leading "Drag'n Wash" from its name first, the same way a library's name already loses everything up to its colon: "Drag'n Wash Localization" is L now, not D, and "Drag'n Wash" alone is still DW.
+
+### Text 1.6.0
+
+- No changes of its own; the number follows the release.
+
+### Dialogue 1.6.0
+
+- No changes of its own; the number follows the release.
+
+### Assets 1.6.0
+
+- No changes of its own; the number follows the release.
+
+### Flags and saves 1.6.0
+
+- No changes of its own; the number follows the release.
+
+### Inspector 1.6.0
+
+- No changes of its own; the number follows the release.
+
+### Overrides 1.6.0
+
+- No changes of its own; the number follows the release.
+
+### Bridge 1.6.0
+
+- No changes of its own; the number follows the release.
+
+### Graphs 1.6.0
+
+- No changes of its own; the number follows the release.
+
+### Launcher 1.0.0 (new)
+
+- New: `Launcher.exe`, a small program that runs before the game from Steam's launch options (`"<game>\BepInEx\DragNWash.Installer\Launcher.exe" %command%`). When the game's update check found new versions last time, it shows them with their release notes before the game starts, and **Update and play** downloads, checks, backs up and installs them, then starts the game. **Skip this version** keeps a version from bringing the window up again. With nothing to show, the logo plays for about four seconds ("No updates", then "Starting the game" while the bar fills up). See [docs/LAUNCHER_APP.md](docs/LAUNCHER_APP.md).
+- The game starts only after the launcher's window has faded out and closed, on every path: after the logo, **Play without updating**, **Update and play**, and the countdown after an update asked for in the game (or its **Start now**). The launcher then waits for the game with no window.
+- Screens change in one way everywhere now. **Update and play** and **Try again** send the list or the failure off to the left while the next board comes in from the right, 0.6 s sooner than before (the list used to play its whole entrance backwards first). **Cancel** goes back the other way, and the logo flies back up into the header. A failure lets the updating board go quietly downwards before the failure screen comes in, so the two no longer show at once. Closing clears the countdown card first. What goes to the launcher is sent on the click, and the board you pressed takes no second click. With reduce-animations on, boards fade (0.12 s out, 0.15 s in) instead of just switching; the window still closes at once.
+- Each step has its own picture now. Installing shows the icon of each mod as it goes in, or the Mods screen's letter tile for a mod without one. The launch option gets its own pictures for closing Steam and for the option going in or coming out, instead of borrowing the game window and the backup box. The failure screen's mark shows what went wrong (no answer from GitHub, the limit, not on GitHub, a download that doesn't match, put back, not all put back, the game still running, another loader, the settings file that can't be written, Steam not closing); GitHub's mark and "!" stay for the rest, with the same bounce as before.
+- **Skip this version** dims the mod's row and gives it a small "skipped" tag, so you can see it took. It doesn't untick the mod.
+- On the failure screen, a long **Details** text with the countdown up no longer pushes the board out of the window: the box gets smaller and scrolls. **Details** also closes and opens smoothly.
+- The page's parts that Install.exe's window shares (the look, the logo intro, the pictures, the mod icon tiles and the motion) moved to `webui/` in the repo; both exes carry them inside.
+- The mods list `init` gives the page carries each mod's icon too, as a data URL ready to show, or empty for a mod with none. A new `installing` message names the mod going into the game folder right now, one after another, since `step`'s `ins` only says once that installing has begun for the whole run.
+- The window's ✕ closes the launcher without starting the game, on every screen. While files are being written it does nothing, and before that it cancels the download first. **Play without updating** is the way to play without the update.
+- It goes online only when you press Update, and only to github.com and release-assets.githubusercontent.com. It installs only mods the installer put in, from the release's zip at an address it builds from the repository and tag, after checking the size and SHA-256 GitHub gave. Installing is Install.exe's own code, compiled into both, so it backs up first and puts everything back if copying fails.
+- It stays the game's parent while you play, so Steam keeps counting play time, and when the game quits to be updated (`update-request.json`) it installs the update and starts the game again after a 10-second countdown. **Start now** skips the wait, and **Don't start it now** closes the window without starting the game. `Launcher.exe --update-after-exit --wait-pid <pid>` does the same for a game started without it, and has Steam start the game again.
+- `Launcher.exe --launch-option on|off --wait-pid <pid>`, for that switch on the Mods screen. Once the game has closed, it closes Steam (waiting up to 90 seconds), puts itself into the launch options or takes itself out with Install.exe's own code (the backup first, nothing else in the file touched), and after the 10-second countdown starts Steam and the game. If Steam doesn't close, nothing changes, and you can try again or just start the game. If the file can't be written, nothing changes, the backup stays, and Steam and the game start as they were. ✕ never starts the game, but starts Steam again if the launcher had closed it. It doesn't go online.
+- Without the WebView2 runtime there's no window: the game starts as usual. Whatever fails in the launcher, the game still starts: a page that doesn't come up or a window that doesn't close in time is hidden, and the game starts anyway.
+- The framework's zip has it in `BepInEx/DragNWash.Installer/`, with the three WebView2 files it needs. Install.exe puts it in the game folder and sets the launch option (see Installer below).
+
+### Tool window 1.6.0
+
+- The Tool window (F1) draws its text on macOS. Unity 6 draws the window's text with its own text engine (TextCore), which couldn't load Hiragino Sans, so the window showed no text at all and wrote two lines to Player.log for every string. A font that engine can't load is now skipped, and Arial Unicode MS is used there. Thanks to 223n (#84).
+- Characters the window can't draw show as `?` everywhere in the window now, asked of the text engine the window really draws with, instead of a box. Text you type or paste into a field is left as it is. (#84)
+
+### Installer
+
+- Install.exe puts the launcher (`Launcher.exe` and its three WebView2 files) into `BepInEx\DragNWash.Installer` whenever it installs or updates the framework, from the framework's zip, whether or not the launch option is set: the game's Update button uses it too. The list of what Install will do says so. It goes through the same backup and putting back as every other file, an older launcher never replaces a newer one, and when the launcher installs an update itself, its files in use are renamed to `.old` and deleted by the next install.
+- New checkbox in the Install group: **Check for mod updates when the game starts (sets the Steam launch option)**, ticked to begin with, or unticked when the launcher is already in the game folder but not in the launch options (you left it out last time). It puts `"<game>\BepInEx\DragNWash.Installer\Launcher.exe" %command%` in front of the game's launch options in Steam, keeping whatever you had: `-force-d3d11` becomes `"...\Launcher.exe" %command% -force-d3d11`, and anything before `%command%` stays before it. Unticked while the launcher is in the launch options, Install takes it out again, and `-force-d3d11` comes back as it was. The list of what Install will do has a line for either.
+- It writes each Steam account's `localconfig.vdf` (the accounts that have played the game and the one that signed in last): only that one value changes, the rest of the file stays byte for byte, the file as it was is kept as `localconfig.vdf.dnw-backup`, and the new one replaces it in one step. A file that can't be read as expected is left alone, and the log says why.
+- Steam writes over that file while it runs, so when Steam is running, a window comes up after you press Install, Update or Uninstall, before the download question and before anything changes: **Close Steam for me** (asks Steam to exit and waits; after 90 seconds it says Steam hasn't closed), **I'll close it** (waits), or **Skip this option** (goes on without changing the launch options this time). It carries on by itself once Steam has closed, and the close box or Esc cancel the whole install. Steam is started again afterwards when the installer closed it.
+- Uninstall: when ModFramework itself goes, the launcher comes out of the launch options first (the same window if Steam is running), then `BepInEx\DragNWash.Installer` goes with it. While other mods still use the framework, the launcher and the launch option stay, and only the installer's backup is removed (before, any mod's uninstall removed the whole folder). A launch option that couldn't be taken out keeps the launcher in place, so the game still starts from Steam.
+- Command line: `--launch-option on|off|keep` (`on` is the default for `--install`; `--uninstall` takes it out when ModFramework goes, unless `keep`). It never closes Steam: while Steam runs, the launch options are left alone and the log says so.
+- `installer/tests`: checks of the launch option rules and the `localconfig.vdf` edits on made-up files (no apps block, the game without launch options, options you had, the launcher already there or from a moved game folder, escaped quotes, Windows line ends, several accounts). CI and `docker/checks.sh` run them.
+- Install.exe's window looks like the launcher's now: a borderless window in WebView2 with the same header and logo. The logo plays while it looks for the game folder (a click skips it), then one board at a time: setup, working, done, or what went wrong. The Steam question and the download question come up as sheets over the setup board instead of separate windows. It does everything the old window did, with the same rules and words in English, Japanese and Chinese, and the log stays in English. [docs/LAUNCHER_APP.md](docs/LAUNCHER_APP.md#installexes-window) has the details.
+- The working board ticks off each step with its own picture, the mod's icon and the progress bar, and Uninstall shows its real progress there too. When it's done, the same board shows what was done and the log, with **Start the game** (Steam starts it, then the installer closes). When something fails, the board says what happened and what to do, whether the game folder is as it was, and has **Copy details**, **Try again** and **Back**.
+- Install.exe is still one file. The WebView2 DLLs are inside it, and `WebView2Loader.dll` is written once to `%LOCALAPPDATA%\DragNWash ModFramework\Installer` and checked by its SHA-256 before every use; nothing is written next to the exe. It's about 1.8 MB now, and still built byte for byte the same from the same sources.
+- Without the WebView2 runtime, or when the new window can't come up, the old window opens as before and its log says why. `DNW_INSTALLER_CLASSIC=1` opens the old one on purpose. The command line hasn't changed and never shows a window.
+- A mod can give its own icon: `mod-install.json`'s optional `icon` (a relative path inside the payload, ending in `.png`, `.jpg` or `.jpeg`), checked the way `keep` already is. The framework writes the file it points to into `updates.json` for the launcher, and the same check `mod-install.json` uses is what a mod's `IconPath` goes through for the Mods screen.
+- New `ModIcon.DataUrl`, compiled into Install.exe and linked into the launcher like `Core.cs`: turns a PNG or JPEG file (checked by its own bytes, about 512 KB at most) into a data URL for a page to show, or `null` otherwise.
+- Uninstall reports its own progress now, the way Install always has: `UninstallSteps` lists only the steps a run will really do (the mod, its settings, the framework, the launcher, the installer's own backup, BepInEx), each with a short label for the window's checklist, and `Uninstall` takes an optional progress that reports each as it starts, then that it's done. The Steam launch option step is still the window's own to report, since Uninstall never touches Steam itself. `installer/tests` now checks the steps and the progress order on made-up game folders, keeping data or not, removing BepInEx or not, and with the framework shared with another mod or not.
+
 ## 2026-09-23: a whole new look
 
 The core, the preloader patcher and every library go to 1.5.0, so from here on one number says which release you have. For mods, everything is additive, as before: a mod built for 1.4.x keeps working.

@@ -4,6 +4,7 @@
 #   BepInEx/plugins/DragNWash.ModFramework/DragNWash.ModFramework.dll (+ LICENSE.txt, icon.png, ModsButton0.png, ModsButton1.png)
 #   BepInEx/plugins/DragNWash.ModFramework.<Library>/DragNWash.ModFramework.<Library>.dll
 #   BepInEx/patchers/DragNWash.ModFramework.Preloader.dll
+#   BepInEx/DragNWash.Installer/Launcher.exe (+ the three WebView2 DLLs it needs)
 #   installer/Install.exe, installer/install-steamdeck.sh, installer/mod-install.example.json
 #   README.md, README.ja.md, CHANGELOG.md, CREDITS.txt
 #
@@ -78,7 +79,7 @@ Copy-Item -LiteralPath (Join-Path $Root 'installer/bin/Release/Install.exe') -De
 Copy-Item -LiteralPath (Join-Path $Root 'installer/install-steamdeck.sh') -Destination $InstallerStage
 Copy-Item -LiteralPath (Join-Path $Root 'installer/mod-install.example.json') -Destination $InstallerStage
 $InstallerHash = (Get-FileHash -LiteralPath (Join-Path $InstallerStage 'Install.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
-Write-Host "Install.exe sha256 $InstallerHash (unchanged unless installer/ or the .NET SDK changed)"
+Write-Host "Install.exe sha256 $InstallerHash (unchanged unless installer/, webui/, the logo or the .NET SDK changed)"
 
 # The crash reporter the core starts on Windows (https://github.com/TomXV/dragnwash-modframework/wiki/Crash-reports), next to
 # the core DLL. Built deterministically, like Install.exe.
@@ -103,6 +104,21 @@ foreach ($file in 'CodeGraph.exe', 'Microsoft.Web.WebView2.Core.dll', 'Microsoft
 }
 $GraphHash = (Get-FileHash -LiteralPath (Join-Path $GraphStage 'CodeGraph.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
 Write-Host "CodeGraph.exe sha256 $GraphHash"
+
+# The launcher (docs/LAUNCHER_APP.md), with the WebView2 parts it needs, where it runs
+# from in the game folder: Steam's launch option points there. Built deterministically,
+# like Install.exe.
+$LauncherProject = Join-Path $Root 'launcher/DragNWash.Launcher.csproj'
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue (Join-Path $Root 'launcher/bin'), (Join-Path $Root 'launcher/obj')
+dotnet build $LauncherProject -c Release
+if ($LASTEXITCODE -ne 0) { throw 'Build of the launcher failed.' }
+$LauncherStage = Join-Path $Stage 'BepInEx/DragNWash.Installer'
+New-Item -ItemType Directory -Force -Path $LauncherStage | Out-Null
+foreach ($file in 'Launcher.exe', 'Microsoft.Web.WebView2.Core.dll', 'Microsoft.Web.WebView2.WinForms.dll', 'WebView2Loader.dll') {
+    Copy-Item -LiteralPath (Join-Path $Root "launcher/bin/Release/$file") -Destination $LauncherStage
+}
+$LauncherHash = (Get-FileHash -LiteralPath (Join-Path $LauncherStage 'Launcher.exe') -Algorithm SHA256).Hash.ToLowerInvariant()
+Write-Host "Launcher.exe sha256 $LauncherHash"
 
 foreach ($doc in 'README.md', 'README.ja.md', 'CHANGELOG.md', 'CREDITS.txt') {
     Copy-Item -LiteralPath (Join-Path $Root $doc) -Destination $Stage

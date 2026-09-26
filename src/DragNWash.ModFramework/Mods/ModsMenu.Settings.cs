@@ -89,6 +89,7 @@ namespace DragNWash.ModFramework.Mods
             _settingRows.Clear();
             _sectionHeads.Clear();
             _noSettingsMatch = null;
+            _launchOptionRow = null;
             RectTransform content = ScrollArea(_body);
             content.GetComponent<VerticalLayoutGroup>().spacing = 8f;
             _settingsContent = content;
@@ -120,6 +121,10 @@ namespace DragNWash.ModFramework.Mods
                         heads.Add(LastChild(content));
                     }
                     _sectionHeads[section ?? ""] = heads;
+                    if (entry.IsFramework && section == Updates.LauncherUpdate.Section)
+                    {
+                        BuildLaunchOptionRow(content, item.SectionTitle);
+                    }
                 }
                 _settingRows[item] = BuildSettingRow(content, item);
             }
@@ -179,6 +184,16 @@ namespace DragNWash.ModFramework.Mods
                 {
                     shown++;
                     sections.Add(pair.Key.Section ?? "");
+                }
+            }
+            if (_launchOptionRow != null)
+            {
+                bool match = LaunchOptionMatches();
+                _launchOptionRow.SetActive(match);
+                if (match)
+                {
+                    shown++;
+                    sections.Add(Updates.LauncherUpdate.Section);
                 }
             }
             foreach (KeyValuePair<string, List<GameObject>> pair in _sectionHeads)

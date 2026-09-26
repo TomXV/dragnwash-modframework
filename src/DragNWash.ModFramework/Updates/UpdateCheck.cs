@@ -24,9 +24,16 @@ namespace DragNWash.ModFramework.Updates
     // draft or a pre-release, and compares its tag with the installed version.
     // The request carries nothing about the player or the game. Results are kept
     // in BepInEx/config so a restart does not ask again, and a failed request is
-    // only logged and tried again an hour later. Nothing is downloaded or
-    // changed: the Mods screen shows the new version and opens the release page.
-    internal static class UpdateCheck
+    // only logged and tried again an hour later. The game downloads and changes
+    // nothing: the Mods screen shows the new version and opens the release page,
+    // and for a mod the installer put in, Update hands it to the launcher, which
+    // updates it after the game has closed (LauncherUpdate.cs).
+    //
+    // What the answer says about the release (its notes, its files and their
+    // hashes) is written to BepInEx/cache for a launcher that starts before the
+    // game, so it can show updates without going online itself; see
+    // UpdateCheck.Launcher.cs and docs/LAUNCHER.md.
+    internal static partial class UpdateCheck
     {
         internal sealed class Release
         {
@@ -35,16 +42,27 @@ namespace DragNWash.ModFramework.Updates
             public Version Version;
             public DateTime CheckedUtc;
 
+            // From the same answer, for the launcher. HasDetails is false for a
+            // result kept by 1.5.0, which saved only the tag, until it is checked
+            // again.
+            public bool HasDetails;
+            public string HtmlUrl = "";
+            public string PublishedAt = "";
+            public string Body = "";
+            public bool BodyTruncated;
+            public List<Asset> Assets = new List<Asset>();
+
             public string Url => "https://github.com/" + Repository + "/releases/tag/" + Uri.EscapeDataString(Tag);
         }
 
-        // Filled by JsonUtility from GitHub's answer.
-        [Serializable]
-        internal sealed class GitHubRelease
+        // A file attached to a release. Sha256 is empty when GitHub gives no
+        // digest, as for files uploaded before it started to.
+        internal sealed class Asset
         {
-#pragma warning disable CS0649
-            public string tag_name;
-#pragma warning restore CS0649
+            public string Name;
+            public long Size;
+            public string Url;
+            public string Sha256;
         }
 
         internal const string Section = "Updates";
@@ -55,9 +73,16 @@ namespace DragNWash.ModFramework.Updates
         private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(24);
         private static readonly TimeSpan RetryInterval = TimeSpan.FromHours(1);
 
+        // Release notes longer than this (GitHub allows about twice as much) are
+        // cut, and so are files past the first MaxAssets, so one release cannot
+        // make the launcher's file huge.
+        private const int MaxBodyChars = 64 * 1024;
+        private const int MaxAssets = 50;
+
         // GitHub's rules for owner and repository names.
         private static readonly Regex RepositoryPattern = new Regex(@"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9._-]{1,100}$");
         private static readonly Regex TagPattern = new Regex(@"^[vV]?(\d+)\.(\d+)(?:\.(\d+))?$");
+        private static readonly Regex Sha256Pattern = new Regex(@"^[0-9a-f]{64}$");
 
         private static readonly Dictionary<string, Release> Releases = new Dictionary<string, Release>(StringComparer.OrdinalIgnoreCase);
         private static readonly Dictionary<string, DateTime> RetryAfter = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
@@ -73,8 +98,13 @@ namespace DragNWash.ModFramework.Updates
             try
             {
                 _enabled = config.Bind(Section, Key, true, KeyDescription);
-                _enabled.SettingChanged += (_, __) => Revision++;
+                _enabled.SettingChanged += (_, __) =>
+                {
+                    Revision++;
+                    WriteLauncherFile();
+                };
                 LoadCache();
+                LoadLauncherFile();
                 host.StartCoroutine(Run());
             }
             catch (Exception ex)
@@ -101,8 +131,13 @@ namespace DragNWash.ModFramework.Updates
             {
                 return null;
             }
+            return IsNewer(release, installedVersion) ? release : null;
+        }
+
+        private static bool IsNewer(Release release, string installedVersion)
+        {
             Version installed = ParseVersion(installedVersion);
-            return installed != null && Normalize(release.Version) > Normalize(installed) ? release : null;
+            return release?.Version != null && installed != null && Normalize(release.Version) > Normalize(installed);
         }
 
         // How many installed mods have a newer release.
@@ -122,6 +157,9 @@ namespace DragNWash.ModFramework.Updates
             // Screens drawn before every mod registered (the title screen) show
             // the saved results now, even when nothing is due.
             Revision++;
+            // And the launcher gets this session's installed versions.
+            _modsRegistered = true;
+            WriteLauncherFile();
             while (true)
             {
                 if (Enabled)
@@ -144,7 +182,10 @@ namespace DragNWash.ModFramework.Updates
                 .Select(i => i.UpdateRepository)
                 .Where(IsValidRepository)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Where(r => !(Releases.TryGetValue(r, out Release known) && now - known.CheckedUtc < CheckInterval && known.CheckedUtc <= now))
+                // A release known only by its tag (kept by 1.5.0, or its details
+                // lost with the cache folder) is asked for once more.
+                .Where(r => !(Releases.TryGetValue(r, out Release known) && (known.HasDetails || known.Tag.Length == 0) &&
+                              now - known.CheckedUtc < CheckInterval && known.CheckedUtc <= now))
                 .Where(r => !(RetryAfter.TryGetValue(r, out DateTime retry) && now < retry))
                 .ToList();
         }
@@ -164,12 +205,12 @@ namespace DragNWash.ModFramework.Updates
                     if (request.responseCode == 404)
                     {
                         // No release published yet: remember that, like a result.
-                        release = new Release { Repository = repository, Tag = "", CheckedUtc = DateTime.UtcNow };
+                        release = new Release { Repository = repository, Tag = "", CheckedUtc = DateTime.UtcNow, HasDetails = true };
                     }
                     else if (request.result == UnityWebRequest.Result.Success)
                     {
-                        string tag = JsonUtility.FromJson<GitHubRelease>(request.downloadHandler.text)?.tag_name ?? "";
-                        release = new Release { Repository = repository, Tag = tag, Version = ParseTag(tag), CheckedUtc = DateTime.UtcNow };
+                        release = ReadRelease(repository, request.downloadHandler.text);
+                        string tag = release.Tag;
                         if (release.Version == null)
                         {
                             ModFramework.Log.LogInfo($"Update check: {repository} tags its latest release \"{tag}\", which is not a version number; not compared.");
@@ -187,6 +228,7 @@ namespace DragNWash.ModFramework.Updates
                         RetryAfter.Remove(repository);
                         SaveCache();
                         Revision++;
+                        WriteLauncherFile();
                         if (release.Version != null)
                         {
                             ModFramework.Log.LogInfo($"Update check: latest release of {repository} is {release.Tag}");
@@ -199,6 +241,95 @@ namespace DragNWash.ModFramework.Updates
                     ModFramework.Log.LogWarning($"Update check for {repository} failed: {ex.Message}");
                 }
             }
+        }
+
+        // GitHub's answer, read with Json: JsonUtility left lists of objects
+        // empty in the game, and the files are one. Only the fields below are
+        // kept; the notes and the files are for the launcher.
+        private static Release ReadRelease(string repository, string json)
+        {
+            var o = Json.Parse(json) as Dictionary<string, object>;
+            string tag = Json.String(o, "tag_name") ?? "";
+            var release = new Release
+            {
+                Repository = repository,
+                Tag = tag,
+                Version = ParseTag(tag),
+                CheckedUtc = DateTime.UtcNow,
+                HasDetails = true,
+                PublishedAt = Json.String(o, "published_at") ?? "",
+            };
+
+            // The launcher opens and downloads these, so only GitHub's own
+            // addresses are kept, and only files of this repository.
+            string htmlUrl = Json.String(o, "html_url");
+            release.HtmlUrl = IsGitHubUrl(htmlUrl) ? htmlUrl : tag.Length > 0 ? release.Url : "";
+
+            string body = Json.String(o, "body") ?? "";
+            release.Body = CutBody(body);
+            release.BodyTruncated = release.Body.Length < body.Length;
+
+            if (o != null && o.TryGetValue("assets", out object assets) && assets is List<object> list)
+            {
+                foreach (Dictionary<string, object> a in list.OfType<Dictionary<string, object>>().Take(MaxAssets))
+                {
+                    string url = Json.String(a, "browser_download_url");
+                    string name = Json.String(a, "name");
+                    if (string.IsNullOrEmpty(name) || !IsAssetUrl(repository, url))
+                    {
+                        continue;
+                    }
+                    release.Assets.Add(new Asset
+                    {
+                        Name = name,
+                        Size = SizeOf(a),
+                        Url = url,
+                        Sha256 = Sha256Of(Json.String(a, "digest")),
+                    });
+                }
+            }
+            return release;
+        }
+
+        // Not in the middle of a character that takes two.
+        private static string CutBody(string body)
+        {
+            if (body.Length <= MaxBodyChars)
+            {
+                return body;
+            }
+            return body.Substring(0, char.IsHighSurrogate(body[MaxBodyChars - 1]) ? MaxBodyChars - 1 : MaxBodyChars);
+        }
+
+        // Json reads numbers as double; a size that is missing, negative or not
+        // a number is 0.
+        private static long SizeOf(Dictionary<string, object> asset)
+        {
+            return asset.TryGetValue("size", out object size) && size is double d && d >= 0 && d <= long.MaxValue ? (long)d : 0;
+        }
+
+        private static bool IsGitHubUrl(string url)
+        {
+            return url != null && url.StartsWith("https://github.com/", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // A file of this repository's releases, not of some other repository.
+        private static bool IsAssetUrl(string repository, string url)
+        {
+            return url != null && url.StartsWith("https://github.com/" + repository + "/releases/download/", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // "sha256:<64 hex digits>", as GitHub writes a digest, as lowercase hex;
+        // anything else (no digest, another algorithm) as "".
+        private static string Sha256Of(string digest)
+        {
+            const string prefix = "sha256:";
+            if (digest == null || !digest.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return "";
+            }
+            string hex = digest.Substring(prefix.Length).ToLowerInvariant();
+            return Sha256Pattern.IsMatch(hex) ? hex : "";
         }
 
         internal static Version ParseTag(string tag)

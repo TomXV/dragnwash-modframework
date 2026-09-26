@@ -15,7 +15,8 @@ namespace DragNWash.Installer
             "Install.exe                    the window\n" +
             "Install.exe --install [--game-dir <folder>] [--choice <id>=<value>]...\n" +
             "            [--bepinex-zip <file>] [--framework-zip <file>] [--no-download] [--keep-framework]\n" +
-            "Install.exe --uninstall [--game-dir <folder>] [--remove-data] [--remove-bepinex]\n" +
+            "            [--launch-option on|off|keep]\n" +
+            "Install.exe --uninstall [--game-dir <folder>] [--remove-data] [--remove-bepinex] [--launch-option keep]\n" +
             "\n" +
             "  --bepinex-zip <file>    use this BepInEx zip instead of downloading it (checked against the pinned SHA-256)\n" +
             "  --framework-zip <file>  use this ModFramework zip instead of downloading it (checked against the size\n" +
@@ -24,6 +25,13 @@ namespace DragNWash.Installer
             "                          would have to be downloaded\n" +
             "  --keep-framework        keep the installed ModFramework when it meets the mod's minimums, and install\n" +
             "                          only the mod\n" +
+            "  --launch-option on|off|keep\n" +
+            "                          the update launcher in the game's launch options in Steam. on (the default\n" +
+            "                          for --install) puts it in front of %command% and keeps what is there, off\n" +
+            "                          takes it out, keep leaves the launch options alone. --uninstall takes it out\n" +
+            "                          when ModFramework goes, unless keep. Steam must be closed: while it runs, the\n" +
+            "                          launch options are left as they are and the log says so. Steam is never closed\n" +
+            "                          from the command line.\n" +
             "  --log <file>            also append the log to a file\n" +
             "  --help                  this text\n";
 
@@ -35,18 +43,35 @@ namespace DragNWash.Installer
             {
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                ModManifest manifest;
+                ModManifest manifest = null;
+                InstallerException startError = null;
                 try
                 {
                     manifest = LoadManifest(here);
                 }
                 catch (InstallerException ex)
                 {
-                    MessageBox.Show(ex.Text() + (ex.Detail == null ? "" : Environment.NewLine + Environment.NewLine + ex.Detail),
+                    startError = ex;
+                }
+                // The window in WebView2 when it can be had (WebUi.cs); otherwise the WinForms one
+                // as before, which then says in its log why.
+                string note = null;
+                if (WebUi.Wanted())
+                {
+                    string why = WebUi.Run(manifest, startError, here);
+                    if (why == null)
+                    {
+                        return startError == null ? 0 : 1;
+                    }
+                    note = "The WebView2 window couldn't be shown (" + why + "), so this is the classic one.";
+                }
+                if (startError != null)
+                {
+                    MessageBox.Show(startError.Text() + (startError.Detail == null ? "" : Environment.NewLine + Environment.NewLine + startError.Detail),
                         "Drag'n Wash Mod Installer", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return 1;
                 }
-                Application.Run(new MainForm(manifest, here));
+                Application.Run(new MainForm(manifest, here, note));
                 return 0;
             }
             return RunCommandLine(args, here);
@@ -71,7 +96,7 @@ namespace DragNWash.Installer
 
         private static int RunCommandLine(string[] args, string here)
         {
-            string action = null, game = null, logFile = null;
+            string action = null, game = null, logFile = null, launchOption = null;
             var options = new InstallOptions();
             bool removeData = false, removeBepInEx = false;
             var choices = new Dictionary<string, string>();
@@ -96,6 +121,14 @@ namespace DragNWash.Installer
                     case "--log": logFile = Next(); break;
                     case "--remove-data": removeData = true; break;
                     case "--remove-bepinex": removeBepInEx = true; break;
+                    case "--launch-option":
+                        launchOption = Next();
+                        if (launchOption != "on" && launchOption != "off" && launchOption != "keep")
+                        {
+                            Console.Error.WriteLine("--launch-option takes on, off or keep");
+                            return 2;
+                        }
+                        break;
                     case "--choice":
                         string pair = Next();
                         int eq = pair.IndexOf('=');
@@ -137,10 +170,32 @@ namespace DragNWash.Installer
                         }
                     }
                     core.Install(game, choices, options);
+                    // Never waits for Steam or closes it: while it runs, the launch options stay as they are.
+                    if (launchOption == "keep")
+                    {
+                        Log("Steam launch option: left alone (--launch-option keep)");
+                    }
+                    else
+                    {
+                        Steam.Apply(game, launchOption != "off", Log);
+                    }
                 }
                 else if (action == "uninstall")
                 {
-                    core.Uninstall(game, !removeData, removeBepInEx);
+                    if (launchOption == "on")
+                    {
+                        Console.Error.WriteLine("--launch-option on is for --install; --uninstall takes off or keep");
+                        return 2;
+                    }
+                    // Out of the launch options before the launcher goes; the launcher stays
+                    // while they still start it (Steam running, or keep).
+                    InstallerCore.CheckReady(game);
+                    bool framework = core.RemovesFramework(game);
+                    if (framework && launchOption != "keep")
+                    {
+                        Steam.Apply(game, false, Log);
+                    }
+                    core.Uninstall(game, !removeData, removeBepInEx, framework && Steam.State(game).AnyHas);
                 }
                 else
                 {

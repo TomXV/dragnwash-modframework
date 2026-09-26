@@ -1,0 +1,84 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Launcher.exe: runs before the game from the Steam launch options
+    ("...\BepInEx\DragNWash.Installer\Launcher.exe" %command%), shows the updates the
+    game's own update check found last time, installs the ones the player picks,
+    and starts the game. It stays the game's parent until the game exits, so it can
+    also install an update the player asked for in the game and start it again.
+    See docs/LAUNCHER_APP.md.
+
+    The window is a page in WebView2 (part of Windows 10 and 11), embedded in the
+    exe. Downloading, checking, backing up and installing are Install.exe's own
+    code: the files below are compiled into both, so the two cannot drift apart.
+
+    Built deterministically, like Install.exe: antivirus reputation is tied to the
+    file's hash, so the file must not change unless the code does.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>Launcher</AssemblyName>
+    <RootNamespace>DragNWash.Launcher</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildProjectDirectory)=/launcher</PathMap>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <GenerateSupportedRuntime>false</GenerateSupportedRuntime>
+    <!-- x64 only: the game is 64-bit, and one WebView2Loader.dll then sits next to the exe. -->
+    <PlatformTarget>x64</PlatformTarget>
+    <!-- DataContract fields are filled by the JSON serializer. -->
+    <NoWarn>$(NoWarn);CS0649</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Runtime.Serialization" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4191.47" />
+  </ItemGroup>
+
+  <!-- Install.exe's download, check, backup, install and roll-back, shared as source. -->
+  <ItemGroup>
+    <Compile Include="..\installer\Core.cs" Link="Installer\Core.cs" />
+    <Compile Include="..\installer\Download.cs" Link="Installer\Download.cs" />
+    <Compile Include="..\installer\InstallJournal.cs" Link="Installer\InstallJournal.cs" />
+    <Compile Include="..\installer\Manifest.cs" Link="Installer\Manifest.cs" />
+    <Compile Include="..\installer\ModIcon.cs" Link="Installer\ModIcon.cs" />
+    <Compile Include="..\installer\Strings.cs" Link="Installer\Strings.cs" />
+  </ItemGroup>
+
+  <!-- And its Steam side, for the launch option switched from the game's Mods screen:
+       closing Steam, and changing localconfig.vdf with nothing else in it touched. -->
+  <ItemGroup>
+    <Compile Include="..\installer\Steam.cs" Link="Installer\Steam.cs" />
+    <Compile Include="..\installer\SteamConfig.cs" Link="Installer\SteamConfig.cs" />
+  </ItemGroup>
+
+  <!-- The borderless window's frame and the page's lock-down, shared with Install.exe's window. -->
+  <ItemGroup>
+    <Compile Include="..\installer\Chrome.cs" Link="Installer\Chrome.cs" />
+  </ItemGroup>
+
+  <!-- The page, served to WebView2 from the exe itself: nothing is read from disk. The parts Install.exe's page
+       shares with it (webui/) sit next to its own files, so their names must not clash. -->
+  <ItemGroup>
+    <EmbeddedResource Include="web\*" LogicalName="web/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\webui\*" LogicalName="web/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\images\logo-notagames.png" LogicalName="web/logo-notagames.png" />
+  </ItemGroup>
+
+</Project>

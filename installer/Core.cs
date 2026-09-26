@@ -44,6 +44,16 @@ namespace DragNWash.Installer
         // last install replaced. BepInEx loads nothing from it.
         internal const string InstallerFolder = "DragNWash.Installer";
 
+        // The launcher (docs/LAUNCHER_APP.md) lives in the installer's folder, next to the
+        // WebView2 files it needs; the framework's zip has them all there. Steam's launch
+        // option starts it: "<game>\BepInEx\DragNWash.Installer\Launcher.exe" %command%.
+        internal const string LauncherExe = "Launcher.exe";
+
+        // The first framework release whose zip has the launcher.
+        internal static readonly Version LauncherSince = new Version(1, 6, 0);
+
+        internal static string Launcher(string game) => Path.Combine(game, "BepInEx", InstallerFolder, LauncherExe);
+
         // What Doorstop (winhttp.dll) starts for BepInEx 5, relative to the game folder.
         internal const string BepInExPreloader = @"BepInEx\core\BepInEx.Preloader.dll";
 
@@ -121,8 +131,22 @@ namespace DragNWash.Installer
             return null;
         }
 
-        private static IEnumerable<string> SteamRoots()
+#if DEBUG
+        // DNW_INSTALLER_STEAM=<folder>: a Debug build takes that folder for Steam's, to
+        // test finding the game and the launch option without the real Steam. A Release
+        // build never reads it.
+        internal static readonly string SteamOverride = Environment.GetEnvironmentVariable("DNW_INSTALLER_STEAM") is string s && s.Length > 0 ? Path.GetFullPath(s) : null;
+#endif
+
+        internal static IEnumerable<string> SteamRoots()
         {
+#if DEBUG
+            if (SteamOverride != null)
+            {
+                yield return SteamOverride;
+                yield break;
+            }
+#endif
             foreach (var (hive, key, value) in new[]
             {
                 (Registry.CurrentUser, @"Software\Valve\Steam", "SteamPath"),
@@ -286,7 +310,7 @@ namespace DragNWash.Installer
             return ConfigFile.Get(Path.Combine(game, "BepInEx", "config", target.File), target.Section, target.Key);
         }
 
-        private void CheckReady(string game)
+        internal static void CheckReady(string game)
         {
             if (!IsGameFolder(game))
             {
@@ -447,10 +471,12 @@ namespace DragNWash.Installer
             if (staged != null)
             {
                 PutFramework(journal, game, framework, staged, result);
+                PutLauncher(journal, game, staged, result);
             }
             else if (framework == null)
             {
                 InstallFramework(journal, game, result);
+                PutLauncher(journal, game, _payload, result);
             }
 
             progress?.Report(InstallProgress.At(InstallStage.Put));
@@ -606,6 +632,69 @@ namespace DragNWash.Installer
                     result.Updated.Add(FrameworkPart.PreloaderName);
                 }
             }
+        }
+
+        // The launcher and the files it needs, from the framework's zip (or this mod's,
+        // when it brings the framework) into BepInEx/DragNWash.Installer, whether or not
+        // Steam's launch option is set: the Update button in the game uses it too. Never
+        // an older launcher over a newer one. A file in use, when the launcher itself is
+        // installing an update, is moved aside first (InstallJournal.CopyFileInUse).
+        private void PutLauncher(InstallJournal journal, string game, string source, InstallResult result)
+        {
+            string from = Path.Combine(source, "BepInEx", Paths.InstallerFolder);
+            string exe = Path.Combine(from, Paths.LauncherExe);
+            if (!File.Exists(exe))
+            {
+                return;
+            }
+            string to = Path.Combine(game, "BepInEx", Paths.InstallerFolder);
+            Version offered = DllVersion(exe), have = DllVersion(Path.Combine(to, Paths.LauncherExe));
+            if (have != null && offered != null && have > offered)
+            {
+                _log($"Launcher: kept {ShortVersion(have)} (newer than {ShortVersion(offered)})");
+                return;
+            }
+            InstallJournal.DeleteMovedAside(to);
+            int copied = 0;
+            foreach (string file in Directory.GetFiles(from))
+            {
+                string target = Path.Combine(to, Path.GetFileName(file));
+                if (!InstallJournal.SameBytes(file, target))
+                {
+                    journal.CopyFileInUse(file, target);
+                    copied++;
+                }
+            }
+            result.Launcher = copied > 0;
+            _log(copied == 0 ? $"Launcher: {ShortVersion(offered)} already in place" : $"Launcher: {ShortVersion(offered)} -> BepInEx\\{Paths.InstallerFolder} ({copied} files)");
+        }
+
+        // Whether Install puts the launcher in place: this mod's zip brings it with the
+        // framework, or the framework is fetched from a release that has it. Reads the
+        // folder only.
+        internal bool PutsLauncher(string game)
+        {
+            FrameworkPlan plan = PlanFramework(game);
+            if (plan != null)
+            {
+                return plan.Download && plan.Pin.Pinned >= Paths.LauncherSince;
+            }
+            string from = Path.Combine(_payload, "BepInEx", Paths.InstallerFolder);
+            string exe = Path.Combine(from, Paths.LauncherExe);
+            if (!File.Exists(exe))
+            {
+                return false;
+            }
+            string to = Path.Combine(game, "BepInEx", Paths.InstallerFolder);
+            Version offered = DllVersion(exe), have = DllVersion(Path.Combine(to, Paths.LauncherExe));
+            return !(have != null && offered != null && have > offered)
+                   && Directory.GetFiles(from).Any(f => !InstallJournal.SameBytes(f, Path.Combine(to, Path.GetFileName(f))));
+        }
+
+        // Whether the launcher is there after Install: already, or put by it.
+        internal bool LauncherAfterInstall(string game)
+        {
+            return File.Exists(Paths.Launcher(game)) || PutsLauncher(game);
         }
 
         // ---- the framework from its GitHub release (schema 2) ----
@@ -799,6 +888,11 @@ namespace DragNWash.Installer
                     others.Add(path[2]);
                     return false;
                 }
+                // The launcher's files, directly in BepInEx/DragNWash.Installer.
+                if (path.Length == 3 && path[0] == "BepInEx" && path[1] == Paths.InstallerFolder)
+                {
+                    return path[2].Length > 0;
+                }
                 return name == "BepInEx/patchers/" + Paths.FrameworkPatcher;
             });
             result.NotInstalled = others.Select(FrameworkPart.ShortName).ToList();
@@ -900,13 +994,25 @@ namespace DragNWash.Installer
 
         // ---- uninstall ----
 
-        internal void Uninstall(string game, bool keepData, bool removeBepInEx)
+        // keepLauncher: Steam's launch option still starts the launcher (it could not be
+        // taken out), so the launcher stays even when the framework goes; without it the
+        // game would not start from Steam.
+        //
+        // progress hears each step as it starts, then Done. It never hears LaunchOption:
+        // Uninstall doesn't touch Steam's launch options at all (launch is only a
+        // UninstallSteps parameter, for the checklist); the caller does that (Steam.Apply,
+        // called before this) and reports that step itself.
+        internal void Uninstall(string game, bool keepData, bool removeBepInEx, bool keepLauncher = false, IProgress<UninstallStage> progress = null)
         {
             CheckReady(game);
             _log($"Game: {game}");
             string plugins = Path.Combine(game, "BepInEx", "plugins");
             var keptPaths = new List<string>();
 
+            if (_manifest.Plugins.Any(p => Directory.Exists(Path.Combine(plugins, p))))
+            {
+                progress?.Report(UninstallStage.Mod);
+            }
             foreach (string plugin in _manifest.Plugins)
             {
                 string dir = Path.Combine(plugins, plugin);
@@ -929,6 +1035,10 @@ namespace DragNWash.Installer
                 }
             }
 
+            if (_manifest.ConfigFiles.Any(f => File.Exists(Path.Combine(game, "BepInEx", "config", f))))
+            {
+                progress?.Report(UninstallStage.Settings);
+            }
             foreach (string file in _manifest.ConfigFiles)
             {
                 if (TryDelete(Path.Combine(game, "BepInEx", "config", file)))
@@ -937,14 +1047,11 @@ namespace DragNWash.Installer
                 }
             }
 
-            // The staging folder and the backup of the last install go with any mod's uninstall.
-            string installer = Path.Combine(game, "BepInEx", Paths.InstallerFolder);
-            if (Directory.Exists(installer))
-            {
-                InstallJournal.DeleteTree(installer);
-                _log($"BepInEx\\{Paths.InstallerFolder}: removed");
-            }
-
+            // The framework goes before the installer folder below (which the launcher is
+            // part of): RemovesFramework/the launch options the caller worked out from
+            // still describe this game folder either way, since neither block reads what
+            // the other changes; keeping the two in the checklist's order (UninstallSteps)
+            // just makes the window's progress match what it showed beforehand.
             bool othersLeft = OtherMods(game).Any();
             if (othersLeft)
             {
@@ -952,7 +1059,52 @@ namespace DragNWash.Installer
             }
             else
             {
+                bool frameworkThere = Directory.Exists(plugins) && Directory.EnumerateDirectories(plugins, Paths.FrameworkPrefix + "*").Any();
+                bool historyThere = Directory.Exists(Path.Combine(game, "BepInEx", "SaveHistory"));
+                if (frameworkThere || (!keepData && historyThere))
+                {
+                    progress?.Report(UninstallStage.Framework);
+                }
                 RemoveFramework(game, keepData);
+            }
+
+            // The staging folder and the backup of the last install go with any mod's
+            // uninstall; the launcher goes with the framework.
+            string installer = Path.Combine(game, "BepInEx", Paths.InstallerFolder);
+            if (Directory.Exists(installer))
+            {
+                bool hasBackupOrStaging = Directory.Exists(Path.Combine(installer, "backup")) || Directory.Exists(Path.Combine(installer, "staging"));
+                if (!othersLeft && !keepLauncher)
+                {
+                    // One DeleteTree does both (the launcher's own files and the backup
+                    // and staging folders together), but UninstallSteps lists them as the
+                    // separate things they are to the player, so both are reported here.
+                    progress?.Report(UninstallStage.Launcher);
+                    if (hasBackupOrStaging)
+                    {
+                        progress?.Report(UninstallStage.InstallerBackup);
+                    }
+                    InstallJournal.DeleteTree(installer);
+                    _log($"BepInEx\\{Paths.InstallerFolder}: removed");
+                }
+                else
+                {
+                    if (hasBackupOrStaging)
+                    {
+                        progress?.Report(UninstallStage.InstallerBackup);
+                    }
+                    InstallJournal.DeleteTree(Path.Combine(installer, "backup"));
+                    InstallJournal.DeleteTree(Path.Combine(installer, "staging"));
+                    if (File.Exists(Paths.Launcher(game)))
+                    {
+                        _log($"BepInEx\\{Paths.InstallerFolder}: backup removed; the launcher kept, {(othersLeft ? "other mods use the framework" : "it is still in Steam's launch options")}");
+                    }
+                    else if (!Directory.EnumerateFileSystemEntries(installer).Any())
+                    {
+                        Directory.Delete(installer);
+                        _log($"BepInEx\\{Paths.InstallerFolder}: removed");
+                    }
+                }
             }
 
             if (removeBepInEx && HasBepInEx(game))
@@ -963,10 +1115,18 @@ namespace DragNWash.Installer
                 }
                 else
                 {
-                    RemoveBepInEx(game, keepData && (keptPaths.Count > 0 || Directory.Exists(Path.Combine(game, "BepInEx", "SaveHistory"))));
+                    progress?.Report(UninstallStage.BepInEx);
+                    RemoveBepInEx(game, keepData && (keptPaths.Count > 0 || Directory.Exists(Path.Combine(game, "BepInEx", "SaveHistory"))), keepLauncher);
                 }
             }
             _log($"{_manifest.Name}: uninstalled");
+            progress?.Report(UninstallStage.Done);
+        }
+
+        // Whether uninstalling this mod removes the framework too: no other mod is left.
+        internal bool RemovesFramework(string game)
+        {
+            return !OtherMods(game).Any();
         }
 
         // Plugins that are neither the framework nor this mod.
@@ -1014,7 +1174,7 @@ namespace DragNWash.Installer
             }
         }
 
-        private void RemoveBepInEx(string game, bool keepData)
+        private void RemoveBepInEx(string game, bool keepData, bool keepLauncher)
         {
             bool ours = File.Exists(Path.Combine(game, "BepInEx", Paths.Marker)) || File.Exists(Path.Combine(game, "BepInEx", Paths.OldMarker));
             // Doorstop's files at the top of the game folder go only when they start
@@ -1038,19 +1198,27 @@ namespace DragNWash.Installer
                 TryDelete(changelog);
             }
             string bep = Path.Combine(game, "BepInEx");
-            if (keepData)
+            if (keepData || keepLauncher)
             {
-                // The player's data lives inside BepInEx; take BepInEx apart around it.
+                // The player's data lives inside BepInEx, and so does the launcher; take
+                // BepInEx apart around them.
                 foreach (string entry in Directory.EnumerateFileSystemEntries(bep).ToList())
                 {
                     string name = Path.GetFileName(entry);
-                    if (name == "plugins" || name == "SaveHistory")
+                    if (keepData && (name == "plugins" || name == "SaveHistory") || keepLauncher && name == Paths.InstallerFolder)
                     {
                         continue;
                     }
                     DeletePath(entry);
                 }
-                _log("BepInEx: removed; your data stays in BepInEx/plugins and BepInEx/SaveHistory");
+                if (keepData)
+                {
+                    _log("BepInEx: removed; your data stays in BepInEx/plugins and BepInEx/SaveHistory");
+                }
+                if (keepLauncher)
+                {
+                    _log($"BepInEx: removed; the launcher stays in BepInEx/{Paths.InstallerFolder}, it is still in Steam's launch options");
+                }
             }
             else
             {
@@ -1101,7 +1269,8 @@ namespace DragNWash.Installer
 
         // The steps Install takes in this game folder with these choices, in the
         // installer's language, for the window to show before anything runs.
-        internal List<string> InstallPlan(string game, IDictionary<string, string> choices)
+        // launch: what happens to the game's launch options in Steam, decided by the window.
+        internal List<string> InstallPlan(string game, IDictionary<string, string> choices, LaunchOptionChange launch = LaunchOptionChange.None)
         {
             var (loader, found) = OtherLoader(game);
             if (found != null)
@@ -1160,6 +1329,15 @@ namespace DragNWash.Installer
                 {
                     steps.Add(Strings.Get(Strings.Key.PlanSet, choice.LabelFor(Strings.Current), option.Name ?? option.Value, choice.Config.File));
                 }
+            }
+            if (PutsLauncher(game))
+            {
+                steps.Add(Strings.Get(Strings.Key.PlanLauncher));
+            }
+            string launchLine = LaunchOptionPlan(launch);
+            if (launchLine != null)
+            {
+                steps.Add(launchLine);
             }
             steps.Add(Strings.Get(Strings.Key.PlanNothingElse));
             return steps;
@@ -1251,6 +1429,10 @@ namespace DragNWash.Installer
             {
                 lines.Add((false, Strings.Get(Strings.Key.DoneNotInstalled, JoinList(result.NotInstalled))));
             }
+            if (result.Launcher)
+            {
+                lines.Add((true, Strings.Get(Strings.Key.DoneLauncher)));
+            }
             var mod = new List<string>
             {
                 _manifest.Name + " " + (result.OldMod != null && result.OldMod != _manifest.Version ? result.OldMod + " → " + _manifest.Version : _manifest.Version),
@@ -1264,6 +1446,22 @@ namespace DragNWash.Installer
                 }
             }
             lines.Add((true, string.Join(Strings.Get(Strings.Key.ListComma), mod)));
+            switch (result.LaunchOption)
+            {
+                case LaunchOptionOutcome.Added:
+                    lines.Add((true, Strings.Get(Strings.Key.DoneLaunchOptionAdded)));
+                    break;
+                case LaunchOptionOutcome.Removed:
+                    lines.Add((true, Strings.Get(Strings.Key.DoneLaunchOptionRemoved)));
+                    break;
+                case LaunchOptionOutcome.SteamRunning:
+                case LaunchOptionOutcome.Skipped:
+                    lines.Add((false, Strings.Get(Strings.Key.DoneLaunchOptionSkipped)));
+                    break;
+                case LaunchOptionOutcome.Failed:
+                    lines.Add((false, Strings.Get(Strings.Key.DoneLaunchOptionFailed)));
+                    break;
+            }
             if (result.OtherMods > 0)
             {
                 lines.Add((true, result.OtherMods == 1 ? Strings.Get(Strings.Key.DoneOtherModsOne) : Strings.Get(Strings.Key.DoneOtherMods, result.OtherMods)));
@@ -1275,8 +1473,24 @@ namespace DragNWash.Installer
             return lines;
         }
 
+        private static string LaunchOptionPlan(LaunchOptionChange launch)
+        {
+            switch (launch)
+            {
+                case LaunchOptionChange.Add:
+                    return Strings.Get(Strings.Key.PlanLaunchOptionAdd);
+                case LaunchOptionChange.AlreadySet:
+                    return Strings.Get(Strings.Key.PlanLaunchOptionHave);
+                case LaunchOptionChange.Remove:
+                    return Strings.Get(Strings.Key.PlanLaunchOptionRemove);
+                default:
+                    return null;
+            }
+        }
+
         // The same decisions Uninstall makes below, taken from the folder as it is now.
-        internal List<string> UninstallPlan(string game, bool keepData, bool removeBepInEx)
+        // launch: Remove when the launcher is in the game's launch options and goes.
+        internal List<string> UninstallPlan(string game, bool keepData, bool removeBepInEx, LaunchOptionChange launch = LaunchOptionChange.None)
         {
             var steps = new List<string>();
             string plugins = Path.Combine(game, "BepInEx", "plugins");
@@ -1305,11 +1519,6 @@ namespace DragNWash.Installer
                 }
             }
 
-            if (Directory.Exists(Path.Combine(game, "BepInEx", Paths.InstallerFolder)))
-            {
-                steps.Add(Strings.Get(Strings.Key.PlanRemoveInstallerFolder));
-            }
-
             List<string> others = OtherMods(game).ToList();
             bool framework = Directory.Exists(plugins) && Directory.EnumerateDirectories(plugins, Paths.FrameworkPrefix + "*").Any();
             string history = Path.Combine(game, "BepInEx", "SaveHistory");
@@ -1332,6 +1541,22 @@ namespace DragNWash.Installer
                 }
             }
 
+            // The launcher belongs to the framework: it leaves the launch options and the
+            // game folder with it.
+            if (launch == LaunchOptionChange.Remove)
+            {
+                steps.Add(Strings.Get(Strings.Key.PlanLaunchOptionRemove));
+            }
+            string installer = Path.Combine(game, "BepInEx", Paths.InstallerFolder);
+            if (others.Count == 0 && File.Exists(Paths.Launcher(game)))
+            {
+                steps.Add(Strings.Get(Strings.Key.PlanRemoveLauncher));
+            }
+            if (Directory.Exists(Path.Combine(installer, "backup")) || Directory.Exists(Path.Combine(installer, "staging")))
+            {
+                steps.Add(Strings.Get(Strings.Key.PlanRemoveInstallerFolder));
+            }
+
             if (HasBepInEx(game))
             {
                 string patchers = Path.Combine(game, "BepInEx", "patchers");
@@ -1351,6 +1576,115 @@ namespace DragNWash.Installer
                 }
             }
             return steps;
+        }
+
+        // The window's checklist while Uninstall runs: each line that will actually do
+        // something, with the stage that does it, in the order Uninstall goes through
+        // them (see ProgressSteps for the install side). Lines for what is only kept are
+        // left out, the same as ProgressSteps leaves out a framework part that is kept.
+        // Text is the plan's own line (UninstallPlan), for the done board's list; Step and
+        // Small are the checklist's short label and its small second line (or null).
+        // launch: LaunchOptionChange.Remove adds the LaunchOption line, for the checklist
+        // only; Uninstall itself never touches Steam's launch options (see its own
+        // comment), so the caller reports that step.
+        internal List<(UninstallStage Stage, string Text, string Step, string Small)> UninstallSteps(string game, bool keepData, bool removeBepInEx, LaunchOptionChange launch = LaunchOptionChange.None)
+        {
+            var steps = new List<(UninstallStage, string, string, string)>();
+            void Add(UninstallStage stage, string text, Strings.Key step, string small, params object[] args) => steps.Add((stage, text, Strings.Get(step, args), small));
+            string plugins = Path.Combine(game, "BepInEx", "plugins");
+            bool keptAny = false;
+            foreach (string plugin in _manifest.Plugins)
+            {
+                string dir = Path.Combine(plugins, plugin);
+                if (!Directory.Exists(dir))
+                {
+                    continue;
+                }
+                string[] keep = keepData
+                    ? _manifest.Keep.Where(k => k.StartsWith(plugin + "/", StringComparison.OrdinalIgnoreCase)).Select(k => k.Substring(plugin.Length + 1))
+                        .Where(k => File.Exists(Path.Combine(dir, k)) || Directory.Exists(Path.Combine(dir, k))).ToArray()
+                    : new string[0];
+                keptAny |= keep.Length > 0;
+                string kept = JoinList(keep.Select(k => k.Replace('/', '\\')));
+                // The mod's own name when it is one folder; each folder's name when it is several.
+                Add(UninstallStage.Mod, keep.Length == 0 ? Strings.Get(Strings.Key.PlanRemovePlugin, plugin) : Strings.Get(Strings.Key.PlanRemovePluginKeep, plugin, kept),
+                    Strings.Key.WebStepRemoveMod, keep.Length == 0 ? @"BepInEx\plugins\" + plugin : Strings.Get(Strings.Key.WebStepRemoveModKeeps, kept),
+                    _manifest.Plugins.Length == 1 ? _manifest.Name : plugin);
+            }
+
+            foreach (string file in _manifest.ConfigFiles)
+            {
+                if (File.Exists(Path.Combine(game, "BepInEx", "config", file)))
+                {
+                    Add(UninstallStage.Settings, Strings.Get(Strings.Key.PlanRemoveConfig, file), Strings.Key.WebStepRemoveConfig, @"BepInEx\config\" + file);
+                }
+            }
+
+            List<string> others = OtherMods(game).ToList();
+            bool framework = Directory.Exists(plugins) && Directory.EnumerateDirectories(plugins, Paths.FrameworkPrefix + "*").Any();
+            string history = Path.Combine(game, "BepInEx", "SaveHistory");
+            if (others.Count == 0)
+            {
+                if (framework)
+                {
+                    Add(UninstallStage.Framework, Strings.Get(Strings.Key.PlanRemoveFramework), Strings.Key.WebStepRemoveFramework, Strings.Get(Strings.Key.WebStepRemoveFrameworkSmall));
+                }
+                if (!keepData && Directory.Exists(history))
+                {
+                    Add(UninstallStage.Framework, Strings.Get(Strings.Key.PlanRemoveSaveHistory), Strings.Key.WebStepRemoveHistory, @"BepInEx\SaveHistory");
+                }
+            }
+
+            if (launch == LaunchOptionChange.Remove)
+            {
+                Add(UninstallStage.LaunchOption, Strings.Get(Strings.Key.PlanLaunchOptionRemove), Strings.Key.WebStepLaunchRemove, Strings.Get(Strings.Key.WebStepLaunchRemoveSmall));
+            }
+            string installer = Path.Combine(game, "BepInEx", Paths.InstallerFolder);
+            if (others.Count == 0 && File.Exists(Paths.Launcher(game)))
+            {
+                Add(UninstallStage.Launcher, Strings.Get(Strings.Key.PlanRemoveLauncher), Strings.Key.WebStepRemoveLauncher, @"BepInEx\" + Paths.InstallerFolder);
+            }
+            if (Directory.Exists(Path.Combine(installer, "backup")) || Directory.Exists(Path.Combine(installer, "staging")))
+            {
+                Add(UninstallStage.InstallerBackup, Strings.Get(Strings.Key.PlanRemoveInstallerFolder), Strings.Key.WebStepRemoveBackup, @"BepInEx\" + Paths.InstallerFolder + @"\backup");
+            }
+
+            if (removeBepInEx && HasBepInEx(game))
+            {
+                string patchers = Path.Combine(game, "BepInEx", "patchers");
+                bool patchersLeft = Directory.Exists(patchers) && Directory.EnumerateFileSystemEntries(patchers)
+                    .Any(e => !string.Equals(Path.GetFileName(e), Paths.FrameworkPatcher, StringComparison.OrdinalIgnoreCase));
+                if (others.Count == 0 && !patchersLeft)
+                {
+                    bool keeps = keepData && (keptAny || Directory.Exists(history));
+                    Add(UninstallStage.BepInEx, Strings.Get(keeps ? Strings.Key.PlanRemoveBepInExKeep : Strings.Key.PlanRemoveBepInEx), Strings.Key.WebStepRemoveBepInEx,
+                        keeps ? Strings.Get(Strings.Key.WebStepRemoveBepInExKeep) : null);
+                }
+            }
+            return steps;
+        }
+
+        // The mod's own icon (mod-install.json's optional "icon"), under root: the
+        // payload folder when installing or updating, the game folder when uninstalling
+        // (read before Uninstall deletes anything, since the same relative path resolves
+        // in both). Null when the manifest names none, or the file isn't there.
+        internal string ModIconPath(string root)
+        {
+            if (string.IsNullOrEmpty(_manifest.Icon))
+            {
+                return null;
+            }
+            string full;
+            try
+            {
+                full = Path.GetFullPath(Path.Combine(root, _manifest.Icon.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar)));
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+            string prefix = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            return full.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && File.Exists(full) ? full : null;
         }
 
         internal static string ShortVersion(Version v)
@@ -1496,6 +1830,29 @@ namespace DragNWash.Installer
         }
     }
 
+    // What Install or Uninstall is to do with the game's launch options in Steam. Steam.cs
+    // does it, after Install (or before Uninstall takes the launcher out); the launcher's
+    // own updates never touch them.
+    internal enum LaunchOptionChange
+    {
+        None,
+        Add,
+        AlreadySet,
+        Remove,
+    }
+
+    // What became of them.
+    internal enum LaunchOptionOutcome
+    {
+        None,
+        Added,
+        Removed,
+        Unchanged,
+        SteamRunning,
+        Skipped,
+        Failed,
+    }
+
     // The steps of an install as the window lists them while it runs, in their order.
     internal enum InstallStage
     {
@@ -1506,6 +1863,21 @@ namespace DragNWash.Installer
         Backup,
         Put,
         Settings,
+        Done,
+    }
+
+    // The steps of an uninstall, in the order Uninstall goes through them. LaunchOption
+    // is never reported by Uninstall itself (see its own comment); it is here only so
+    // UninstallSteps can place that line in the checklist where it belongs.
+    internal enum UninstallStage
+    {
+        LaunchOption,
+        Mod,
+        Settings,
+        Framework,
+        Launcher,
+        InstallerBackup,
+        BepInEx,
         Done,
     }
 
@@ -1575,6 +1947,11 @@ namespace DragNWash.Installer
 
         internal bool BepInEx;
         internal int OtherMods;
+
+        // The launcher was put in BepInEx/DragNWash.Installer; and what became of the
+        // game's launch options in Steam (set by the window or the command line).
+        internal bool Launcher;
+        internal LaunchOptionOutcome LaunchOption;
         internal int Replaced;
         internal string Backup;
         internal Dictionary<string, string> Choices = new Dictionary<string, string>();
