@@ -24,8 +24,16 @@ namespace DragNWash.ModFramework
     // uploaded once, at the end of the frame. A glyph added this frame may be
     // drawn blank for that one frame. Other graphics APIs keep the engines' own
     // behaviour. [Direct3D12] BatchFontAtlasUploads switches it off.
+    //
+    // Many different atlases in one frame crash it the same way: the first
+    // time the Tool window checked every character mods had prepared (about
+    // 870 for the Localization mod), glyphs went into the window font and six
+    // OS fallback fonts, and one frame uploaded 35 atlases. So at most
+    // MaxPerFrame atlases go up in a frame; the rest wait for the next ones,
+    // oldest first, and a glyph in them may be blank for a few frames.
     internal static class FontAtlasUploads
     {
+        private const int MaxPerFrame = 4;
         private static ConfigEntry<bool> _enabled;
         private static readonly List<Texture2D> Pending = new List<Texture2D>();
         private static readonly HashSet<int> PendingIds = new HashSet<int>();
@@ -118,8 +126,10 @@ namespace DragNWash.ModFramework
                 {
                     continue;
                 }
-                foreach (Texture2D texture in Pending)
+                int count = Math.Min(MaxPerFrame, Pending.Count);
+                for (int i = 0; i < count; i++)
                 {
+                    Texture2D texture = Pending[i];
                     try
                     {
                         if (texture != null)
@@ -135,10 +145,19 @@ namespace DragNWash.ModFramework
                 }
                 if (CrashReports.Recording)
                 {
-                    CrashReports.Write("d3d12", $"font atlas: {Pending.Count} upload(s) this frame for {_batched} request(s) so far ({_uploaded} uploads in all)");
+                    CrashReports.Write("d3d12", $"font atlas: {count} upload(s) this frame, {Pending.Count - count} left for the next frames, for {_batched} request(s) so far ({_uploaded} uploads in all)");
                 }
-                Pending.Clear();
-                PendingIds.Clear();
+                // An atlas that changes again while it waits is still one
+                // upload, and it goes up with what it has by then.
+                for (int i = 0; i < count; i++)
+                {
+                    Texture2D done = Pending[i];
+                    if (done != null)
+                    {
+                        PendingIds.Remove(done.GetInstanceID());
+                    }
+                }
+                Pending.RemoveRange(0, count);
             }
         }
     }
