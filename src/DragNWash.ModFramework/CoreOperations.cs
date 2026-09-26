@@ -96,8 +96,9 @@ namespace DragNWash.ModFramework
             Operations.Register(g, "diagnostics.stacks.get", "Where each managed thread is now, main thread first. Frames are Type.Method, innermost first, with (+IL offset) where Mono knows it.", OperationKind.Read,
                 "a list of { id, name, main, frames: [ text ] }", args =>
                 {
-                    List<Diagnostics.ThreadStack> threads = Diagnostics.ManagedStacks.Capture(out string reason);
-                    if (threads == null) throw new InvalidOperationException("Managed stacks could not be read: " + reason);
+                    string reason;
+                    List<Diagnostics.ThreadStack> threads = args.Bool("native") ? Diagnostics.NativeStacks.CaptureAll(out reason) : Diagnostics.ManagedStacks.Capture(out reason);
+                    if (threads == null) throw new InvalidOperationException("Stacks could not be read: " + reason);
                     bool mainOnly = (args.String("thread") ?? "all").Equals("main", StringComparison.OrdinalIgnoreCase);
                     int max = Math.Max(0, args.Int("frames", 0));
                     return threads.Where(t => !mainOnly || t.IsMain).Select(t => (object)new Dictionary<string, object>
@@ -109,7 +110,58 @@ namespace DragNWash.ModFramework
                     }).ToList();
                 },
                 Operations.Parameter("thread", OperationType.String, "main for the main thread only; all when left out.", false, "main", "all"),
-                Operations.Parameter("frames", OperationType.Number, "At most this many frames per thread; all when left out."));
+                Operations.Parameter("frames", OperationType.Number, "At most this many frames per thread; all when left out."),
+                Operations.Parameter("native", OperationType.Boolean, "Every thread with native frames too (64-bit Windows only; ids are then Windows thread ids)."));
+            Operations.Register(g, "diagnostics.sampler.start", "Starts sampling where the main thread is, 5 or 10 times a second, clearing earlier samples. Each sample stops the main thread for well under a millisecond.", OperationKind.Write,
+                "{ running, per_second, native }", args =>
+                {
+                    Diagnostics.MainThreadSampler.Start(args.Int("per_second", 10), args.Bool("native"));
+                    return new Dictionary<string, object> { ["running"] = true, ["per_second"] = Diagnostics.MainThreadSampler.PerSecond, ["native"] = Diagnostics.MainThreadSampler.Native };
+                },
+                Operations.Parameter("per_second", OperationType.Number, "5 or 10 (10 when left out)."),
+                Operations.Parameter("native", OperationType.Boolean, "With native frames (64-bit Windows only)."));
+            Operations.Register(g, "diagnostics.sampler.stop", "Stops the main-thread sampler; the samples stay for diagnostics.sampler.report.", OperationKind.Write,
+                "{ samples }", args =>
+                {
+                    Diagnostics.MainThreadSampler.Stop();
+                    return new Dictionary<string, object> { ["samples"] = Diagnostics.MainThreadSampler.Count };
+                });
+            Operations.Register(g, "diagnostics.sampler.report", "Where the main-thread sampler found the main thread most: self (innermost) or total (anywhere on the stack), optionally only mods' code.", OperationKind.Read,
+                "{ running, samples, per_second, native, rows: [ { frame, self, total } ] } with self and total as sample counts", args =>
+                {
+                    var rows = Diagnostics.MainThreadSampler.Report(args.Bool("total"), args.Bool("mods_only"), Math.Max(1, Math.Min(200, args.Int("max", 30))))
+                        .Select(r => (object)new Dictionary<string, object> { ["frame"] = r.Frame, ["self"] = r.Self, ["total"] = r.Total }).ToList();
+                    return new Dictionary<string, object>
+                    {
+                        ["running"] = Diagnostics.MainThreadSampler.Running,
+                        ["samples"] = Diagnostics.MainThreadSampler.Count,
+                        ["per_second"] = Diagnostics.MainThreadSampler.PerSecond,
+                        ["native"] = Diagnostics.MainThreadSampler.Native,
+                        ["rows"] = rows,
+                    };
+                },
+                Operations.Parameter("total", OperationType.Boolean, "Sort by total instead of self."),
+                Operations.Parameter("mods_only", OperationType.Boolean, "Only frames in mods' code (BepInEx/plugins)."),
+                Operations.Parameter("max", OperationType.Number, "How many rows (30 when left out, at most 200)."));
+            Operations.Register(g, "diagnostics.types.count", "Experimental: counts the managed objects reachable from static fields, by type. The whole game stops while it walks (a tenth of a second to a second).", OperationKind.Write,
+                "{ time, objects, bytes, seconds, truncated, types: [ { name, assembly, count, bytes, change } ] }", args =>
+                {
+                    Diagnostics.HeapCount c = Diagnostics.HeapTypes.Count();
+                    bool mods = args.Bool("mods_only");
+                    var types = c.Types.Where(t => !mods || Diagnostics.HeapTypes.IsModAssembly(t.Assembly)).Take(Math.Max(1, Math.Min(500, args.Int("top", 50))))
+                        .Select(t => (object)new Dictionary<string, object> { ["name"] = t.Name, ["assembly"] = t.Assembly, ["count"] = t.Count, ["bytes"] = t.Bytes, ["change"] = t.Change }).ToList();
+                    return new Dictionary<string, object>
+                    {
+                        ["time"] = c.Time.ToString("HH:mm:ss"),
+                        ["objects"] = c.Objects,
+                        ["bytes"] = c.Bytes,
+                        ["seconds"] = c.Seconds,
+                        ["truncated"] = c.Truncated,
+                        ["types"] = types,
+                    };
+                },
+                Operations.Parameter("top", OperationType.Number, "How many types, the most bytes first (50 when left out, at most 500)."),
+                Operations.Parameter("mods_only", OperationType.Boolean, "Only types from mods' assemblies (BepInEx/plugins)."));
             Operations.Register(g, "diagnostics.snapshot", "Writes a snapshot into BepInEx/CrashReports: a memory dump (Windows), every managed thread's stack, the memory numbers and the loaded modules. Holds the game for a second or two.", OperationKind.Write,
                 "{ folder, summary }", args =>
                 {

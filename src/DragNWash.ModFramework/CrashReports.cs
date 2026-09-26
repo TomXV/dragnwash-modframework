@@ -286,7 +286,15 @@ namespace DragNWash.ModFramework
 
         // A normal minidump with thread info and unloaded modules: every thread's
         // stack, a few MB. Returns null on success, else the reason.
+        // DbgHelp is not thread-safe: dumps and NativeStacks' symbol lookups take turns.
+        internal static readonly object DbgHelpGate = new object();
+
         internal static string WriteDump(string path)
+        {
+            lock (DbgHelpGate) return WriteDumpNow(path);
+        }
+
+        private static string WriteDumpNow(string path)
         {
             if (Environment.OSVersion.Platform != PlatformID.Win32NT)
             {

@@ -35,6 +35,7 @@ namespace DragNWash.ModFramework.Inspector
         public bool Hidden;          // HideFlags keep it out of Unity's own windows
         public string Fact;          // one short fact, filled when the row is first drawn
         public bool Gone;            // Unity destroyed it since the list was made
+        public long Size = InspectorSizes.NotEstimated; // estimated bytes (textures, meshes, sounds); -1 unknown
     }
 
     internal sealed class ObjectRow
@@ -44,6 +45,8 @@ namespace DragNWash.ModFramework.Inspector
         public string Group;         // a sub-folder's type, or null
         public string Key;           // the folder's key, for opening and closing it
         public int Shown, Total;     // a heading's counts: matching the search, and all
+        public long Bytes;           // a folder's estimated size, of what is shown
+        public int Unknown;          // how many shown in it have no estimate
         public int Depth;
     }
 
@@ -187,7 +190,7 @@ namespace DragNWash.ModFramework.Inspector
         // and Other), and the objects of the open ones. With a search, a folder
         // shows how many match, only folders with a match are listed, and they
         // are open unless closed while searching.
-        internal List<ObjectRow> Rows(Query q, bool hidden, ICollection<string> open, ICollection<string> closedWhileSearching)
+        internal List<ObjectRow> Rows(Query q, bool hidden, ICollection<string> open, ICollection<string> closedWhileSearching, bool bySize = false)
         {
             // One pass: what matches, in list order (already by folder and type),
             // and the counts. Entries of a type sit together, so a sub-folder's
@@ -195,6 +198,8 @@ namespace DragNWash.ModFramework.Inspector
             var matching = new List<ObjectEntry>(q.Active ? 256 : All.Count);
             var folderTotal = new int[FolderNames.Length];
             var folderShown = new int[FolderNames.Length];
+            var folderBytes = new long[FolderNames.Length];
+            var folderUnknown = new int[FolderNames.Length];
             var totals = new Dictionary<string, int>();
             var shown = new Dictionary<string, int>();
             ObjectType current = null;
@@ -222,9 +227,24 @@ namespace DragNWash.ModFramework.Inspector
                 if (!q.Matches(e)) continue;
                 matching.Add(e);
                 folderShown[k]++;
+                if (e.Size >= 0) folderBytes[k] += e.Size;
+                else if (e.Size == InspectorSizes.Unknown) folderUnknown[k]++;
                 typeShown++;
             }
             Flush();
+            if (bySize)
+            {
+                // The biggest first in each folder that has estimates; folders
+                // with sub-folders keep their order. Stable, so equal sizes stay by name.
+                var order = new Dictionary<ObjectEntry, int>(matching.Count);
+                for (int i = 0; i < matching.Count; i++) order[matching[i]] = i;
+                matching.Sort((a, b) =>
+                {
+                    int c = a.Type.Kind.CompareTo(b.Type.Kind);
+                    if (c == 0 && !HasGroups(a.Type.Kind)) c = b.Size.CompareTo(a.Size);
+                    return c != 0 ? c : order[a].CompareTo(order[b]);
+                });
+            }
             bool IsOpen(string key) => q.Active ? !closedWhileSearching.Contains(key) : open.Contains(key);
 
             var rows = new List<ObjectRow>();
@@ -234,7 +254,7 @@ namespace DragNWash.ModFramework.Inspector
                 var kind = (ObjectKind)k;
                 string folder = FolderNames[k];
                 if (q.Active && folderShown[k] == 0) continue;
-                rows.Add(new ObjectRow { Kind = kind, Key = folder, Shown = folderShown[k], Total = folderTotal[k] });
+                rows.Add(new ObjectRow { Kind = kind, Key = folder, Shown = folderShown[k], Total = folderTotal[k], Bytes = folderBytes[k], Unknown = folderUnknown[k] });
                 bool folderOpen = IsOpen(folder);
                 string lastGroup = null;
                 bool groupOpen = false;

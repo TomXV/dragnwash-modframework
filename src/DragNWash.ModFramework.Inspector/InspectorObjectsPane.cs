@@ -30,6 +30,7 @@ namespace DragNWash.ModFramework.Inspector
 
         // The rows drawn, rebuilt only when the search, a folder, Show hidden or the list changes.
         private static List<ObjectRow> _objectRows;
+        private static bool _bySize;
         private static string _objectRowsKey;
         private static int _openVersion;
         private static string _lastObjectsSearch = "";
@@ -177,6 +178,10 @@ namespace DragNWash.ModFramework.Inspector
             {
                 _showHidden = !_showHidden;
             }
+            if (FlowButton(ref bx, ref y, x, w, ButtonWidth(s, "By size"), "By size", _bySize, s, row))
+            {
+                _bySize = !_bySize;
+            }
             if (FlowButton(ref bx, ref y, x, w, ButtonWidth(s, "Close all"), "Close all", false, s, row))
             {
                 OpenFolders.Clear();
@@ -195,11 +200,11 @@ namespace DragNWash.ModFramework.Inspector
                 _scrollObjects = Vector2.zero;
             }
             ObjectList.Query query = ObjectList.Query.Parse(search);
-            string key = search + "|" + _showHidden + "|" + _openVersion + "|" + InspectorObjects.Version;
+            string key = search + "|" + _showHidden + "|" + _openVersion + "|" + InspectorObjects.Version + "|" + _bySize;
             if (_objectRows == null || key != _objectRowsKey)
             {
                 _objectRowsKey = key;
-                _objectRows = list.Rows(query, _showHidden, OpenFolders, ClosedWhileSearching);
+                _objectRows = list.Rows(query, _showHidden, OpenFolders, ClosedWhileSearching, _bySize);
             }
             List<ObjectRow> rows = _objectRows;
 
@@ -249,7 +254,11 @@ namespace DragNWash.ModFramework.Inspector
                     }
                     // The name is cut to leave the count in view.
                     GUIStyle titleStyle = r.Group == null ? _cell : _mutedCell;
-                    string countText = "   " + count;
+                    // Folders with estimates: their shown objects' estimated size.
+                    string sizeText = r.Group == null && (r.Bytes > 0 || r.Unknown > 0)
+                        ? "   " + (r.Bytes > 0 ? InspectorSizes.Text(r.Bytes) + " est." : "") + (r.Unknown > 0 ? $" ({r.Unknown.ToString("N0", CultureInfo.InvariantCulture)} ?)" : "")
+                        : "";
+                    string countText = "   " + count + sizeText;
                     float countWidth = TextWidth(countText, titleStyle);
                     var titleRect = new Rect(indent + 20, ry, Mathf.Max(0, inner - indent - 20 - countWidth), row);
                     GUIContent title = Fit(Drawable(r.Group == null ? name.ToUpperInvariant() : name), titleStyle, titleRect);
@@ -265,8 +274,10 @@ namespace DragNWash.ModFramework.Inspector
                     TW.Fill(new Rect(0, ry, 2, row), TW.AccentColor);
                 }
                 string fact = InspectorObjects.Fact(e);
+                string size = InspectorSizes.Text(e.Size);
+                if (size.Length > 0) fact = string.IsNullOrEmpty(fact) ? size : fact + "  " + size;
                 string factShown = string.IsNullOrEmpty(fact) ? "" : Drawable(fact);
-                float factWidth = factShown.Length == 0 ? 0 : Mathf.Min(inner * 0.4f, TextWidth(factShown, _mutedCell) + 8);
+                float factWidth = factShown.Length == 0 ? 0 : Mathf.Min(inner * 0.45f, TextWidth(factShown, _mutedCell) + 8);
                 var label = new Rect(indent, ry, inner - indent - factWidth, row);
                 GUIStyle style = selected ? _accentCell : e.Gone || e.Hidden ? _mutedCell : _cell;
                 string text = string.IsNullOrEmpty(e.Name) ? "(no name) " + e.Type.Name

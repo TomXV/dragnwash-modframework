@@ -14,6 +14,7 @@ namespace DragNWash.ModFramework
             // First, so it sees every log line from here to the title screen.
             StartupTiming.Install(Logger);
             Diagnostics.ManagedStacks.MainThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+            Diagnostics.NativeStacks.NoteMainThread();
             ModFramework.Initialize(Logger);
             DeveloperTools.Install(Config);
             // Only with developer tools on: it costs a few tens of milliseconds.

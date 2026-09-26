@@ -447,20 +447,61 @@ namespace DragNWash.ModFramework.ToolWindow
                 }
                 return Diagnostics.MemoryWatch.Describe(Diagnostics.MemoryWatch.Now());
             }, args => Options(args, 0, "counters", "collect"));
-            Register(ToolWindow.Guid, "stacks", "Where the main thread is now | stacks all: every managed thread | stacks <id> | add full for every frame", args =>
+            Register(ToolWindow.Guid, "stacks", "Where the main thread is now | stacks all: every managed thread | stacks <id> | add full for every frame, native for native frames (Windows)", args =>
             {
-                List<Diagnostics.ThreadStack> threads = Diagnostics.ManagedStacks.Capture(out string reason);
-                if (threads == null) return "Managed stacks could not be read: " + reason;
+                bool native = Array.Exists(args, a => a.Equals("native", StringComparison.OrdinalIgnoreCase));
+                string reason;
+                List<Diagnostics.ThreadStack> threads = native ? Diagnostics.NativeStacks.CaptureAll(out reason) : Diagnostics.ManagedStacks.Capture(out reason);
+                if (threads == null) return "Stacks could not be read: " + reason;
                 bool full = Array.Exists(args, a => a.Equals("full", StringComparison.OrdinalIgnoreCase));
-                string which = Array.Find(args, a => !a.Equals("full", StringComparison.OrdinalIgnoreCase)) ?? "main";
+                string which = Array.Find(args, a => !a.Equals("full", StringComparison.OrdinalIgnoreCase) && !a.Equals("native", StringComparison.OrdinalIgnoreCase)) ?? "main";
                 List<Diagnostics.ThreadStack> shown;
                 if (which.Equals("all", StringComparison.OrdinalIgnoreCase)) shown = threads;
                 else if (which.Equals("main", StringComparison.OrdinalIgnoreCase)) shown = threads.FindAll(t => t.IsMain);
                 else if (int.TryParse(which.TrimStart('t', 'T'), out int id)) shown = threads.FindAll(t => t.Id == id);
                 else return $"\"{which}\" is not main, all or a thread id. {threads.Count} managed threads: " + string.Join(", ", threads.ConvertAll(t => t.IsMain ? "main" : "t" + t.Id).ToArray());
                 if (shown.Count == 0) return "No such managed thread.";
-                return $"{threads.Count} managed threads\n" + Diagnostics.ManagedStacks.Text(shown, full ? 0 : 10);
-            }, args => args.Length == 1 ? new[] { "main", "all", "full" } : args.Length == 2 ? new[] { "full" } : new string[0]);
+                return $"{threads.Count} {(native ? "" : "managed ")}threads\n" + Diagnostics.ManagedStacks.Text(shown, full ? 0 : 10);
+            }, args => args.Length == 1 ? new[] { "main", "all", "full", "native" } : new[] { "full", "native" });
+            Register(ToolWindow.Guid, "sampler", "sampler start [5|10] [native] | sampler stop | sampler [total] [mods]: where the main thread was found most", args =>
+            {
+                string first = args.Length > 0 ? args[0].ToLowerInvariant() : "";
+                bool Has(string word) => Array.Exists(args, a => a.Equals(word, StringComparison.OrdinalIgnoreCase));
+                if (first == "start")
+                {
+                    Diagnostics.MainThreadSampler.Start(Has("5") ? 5 : 10, Has("native"));
+                    return $"Sampling the main thread {Diagnostics.MainThreadSampler.PerSecond} times a second{(Diagnostics.MainThreadSampler.Native ? ", with native frames" : "")}. sampler stop to stop, sampler to see.";
+                }
+                if (first == "stop")
+                {
+                    Diagnostics.MainThreadSampler.Stop();
+                    return $"Stopped with {Diagnostics.MainThreadSampler.Count} samples.";
+                }
+                int count = Diagnostics.MainThreadSampler.Count;
+                if (count == 0) return "No samples. sampler start first.";
+                var sb = new StringBuilder();
+                sb.Append($"{count} samples{(Diagnostics.MainThreadSampler.Running ? " (still sampling)" : "")}, by {(Has("total") ? "total" : "self")}{(Has("mods") ? ", mods only" : "")}:\n");
+                foreach (Diagnostics.SampleRow r in Diagnostics.MainThreadSampler.Report(Has("total"), Has("mods"), 15))
+                {
+                    sb.Append($"{100.0 * r.Self / count,5:0.0}% {100.0 * r.Total / count,5:0.0}%  {r.Frame}\n");
+                }
+                return sb.ToString().TrimEnd('\n');
+            }, args => args.Length == 1 ? new[] { "start", "stop", "total", "mods" } : args.Length >= 2 && args[0] == "start" ? new[] { "5", "10", "native" } : new[] { "total", "mods" });
+            Register(ToolWindow.Guid, "types", "Experimental: counts managed objects by type (stops the game for a moment) | types mods", args =>
+            {
+                Diagnostics.HeapCount c = Diagnostics.HeapTypes.Count();
+                bool mods = Array.Exists(args, a => a.Equals("mods", StringComparison.OrdinalIgnoreCase));
+                var sb = new StringBuilder();
+                sb.Append($"{c.Objects:N0} objects, {Diagnostics.MemoryWatch.Size(c.Bytes)}; the game was stopped {c.Seconds * 1000:0} ms{(c.Truncated ? " (too many to note them all: the counts are low)" : "")}\n");
+                int shown = 0;
+                foreach (Diagnostics.TypeCount t in c.Types)
+                {
+                    if (mods && !Diagnostics.HeapTypes.IsModAssembly(t.Assembly)) continue;
+                    sb.Append($"{t.Count,10:N0} {Diagnostics.MemoryWatch.Size(t.Bytes),9} {(t.Change.HasValue ? (t.Change.Value >= 0 ? "+" : "") + t.Change.Value.ToString("N0") : ""),9}  {t.Name}\n");
+                    if (++shown >= 20) break;
+                }
+                return sb.ToString().TrimEnd('\n');
+            }, args => Options(args, 0, "mods"));
             Register(ToolWindow.Guid, "snapshot", "Writes a memory dump (Windows), every managed thread's stack, the memory numbers and the loaded modules into BepInEx/CrashReports", args =>
             {
                 return Diagnostics.Snapshot.Write(out _);

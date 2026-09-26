@@ -89,6 +89,7 @@ namespace DragNWash.ModFramework.Inspector
                         Name = name,
                         Type = type,
                         Hidden = (o.hideFlags & (HideFlags.HideInHierarchy | HideFlags.HideInInspector)) != 0,
+                        Size = InspectorSizes.Estimate(o, type.Kind),
                     });
                 }
                 catch (Exception)

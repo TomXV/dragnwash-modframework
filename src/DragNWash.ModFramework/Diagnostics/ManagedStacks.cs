@@ -20,6 +20,9 @@ namespace DragNWash.ModFramework.Diagnostics
         /// <summary>Unity's main thread.</summary>
         public bool IsMain { get; internal set; }
 
+        /// <summary>True when the frames came from <see cref="NativeStacks"/> (native and managed, the id a Windows thread id).</summary>
+        public bool Native { get; internal set; }
+
         /// <summary>Innermost first: "Type.Method", with " (+0x3a)" when Mono knows the IL offset.</summary>
         public IReadOnlyList<string> Frames { get; internal set; }
     }
