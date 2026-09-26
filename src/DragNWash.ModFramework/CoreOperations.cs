@@ -93,7 +93,7 @@ namespace DragNWash.ModFramework
                     };
                 },
                 Operations.Parameter("history", OperationType.Number, "How many seconds of past readings, newest last (0 to 300; none when left out)."));
-            Operations.Register(g, "diagnostics.stacks.get", "Where each managed thread is now, main thread first. Frames are Type.Method (+IL offset), innermost first.", OperationKind.Read,
+            Operations.Register(g, "diagnostics.stacks.get", "Where each managed thread is now, main thread first. Frames are Type.Method, innermost first, with (+IL offset) where Mono knows it.", OperationKind.Read,
                 "a list of { id, name, main, frames: [ text ] }", args =>
                 {
                     List<Diagnostics.ThreadStack> threads = Diagnostics.ManagedStacks.Capture(out string reason);

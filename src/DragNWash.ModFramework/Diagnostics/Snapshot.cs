@@ -45,10 +45,17 @@ namespace DragNWash.ModFramework.Diagnostics
             }
             CrashReports.Note(ModFramework.Guid, "snapshot", "written: " + folder);
             ModFramework.Log.LogInfo($"[snapshot] {folder}: {string.Join(", ", written.ToArray())}");
-            return $"Written: {folder}\n  {string.Join(", ", written.ToArray())}" + (dumpNote != null ? "\n  " + dumpNote : "");
+            return $"Written: {Shown(folder)}\n  {string.Join(", ", written.ToArray())}" + (dumpNote != null ? "\n  " + dumpNote : "");
         }
 
         internal static readonly UTF8Encoding Utf8 = new UTF8Encoding(false);
+
+        // BepInEx/CrashReports/..., the way people find it from the game folder.
+        private static string Shown(string folder)
+        {
+            string root = BepInEx.Paths.GameRootPath.TrimEnd('\\', '/') + Path.DirectorySeparatorChar;
+            return (folder.StartsWith(root, StringComparison.OrdinalIgnoreCase) ? folder.Substring(root.Length) : folder).Replace('\\', '/');
+        }
 
         // memory.txt: the numbers, then (when asked) every counter this Unity has.
         internal static string MemoryText(MemorySample sample, bool counters)
@@ -75,7 +82,7 @@ namespace DragNWash.ModFramework.Diagnostics
         internal static string StacksText(List<ThreadStack> threads, string reason)
         {
             if (threads == null) return $"Managed stacks could not be read: {reason}\n";
-            return $"Managed threads at {DateTime.Now:yyyy-MM-dd HH:mm:ss}, main thread first ({threads.Count}). Frames are Type.Method (+IL offset), innermost first.\n\n"
+            return $"Managed threads at {DateTime.Now:yyyy-MM-dd HH:mm:ss}, main thread first ({threads.Count}). Frames are Type.Method, innermost first, with (+IL offset) where Mono knows it.\n\n"
                 + ManagedStacks.Text(threads, 0) + "\n";
         }
 

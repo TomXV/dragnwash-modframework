@@ -19,7 +19,7 @@ namespace DragNWash.ModFramework.ToolWindow
         private static string _threadsNote;
         private static string _result;
         private static Vector2 _stackScroll;
-        private static GUIStyle _chipOn, _chipOff, _small, _mono;
+        private static GUIStyle _chipOn, _chipOff, _small, _mono, _value;
 
         internal static void Install()
         {
@@ -33,6 +33,7 @@ namespace DragNWash.ModFramework.ToolWindow
             _chipOff = new GUIStyle(s.MutedLabel) { alignment = TextAnchor.MiddleCenter, wordWrap = false, padding = new RectOffset(8, 8, 0, 0) };
             _small = new GUIStyle(s.MutedLabel) { wordWrap = false };
             _mono = new GUIStyle(s.LogLabel) { wordWrap = false, padding = new RectOffset(4, 4, 0, 0) };
+            _value = new GUIStyle(s.Label) { wordWrap = false, alignment = TextAnchor.MiddleRight, clipping = TextClipping.Clip };
         }
 
         private static void Draw(Rect area)
@@ -157,13 +158,20 @@ namespace DragNWash.ModFramework.ToolWindow
             }
             else
             {
+                var empty = new List<ThreadStack>();
                 foreach (ThreadStack t in _threads)
                 {
                     if (!_allThreads && !t.IsMain) continue;
+                    if (t.Frames.Count == 0 && !t.IsMain)
+                    {
+                        empty.Add(t);
+                        continue;
+                    }
                     lines.Add(ManagedStacks.Label(t));
                     foreach (string f in t.Frames) lines.Add("  at " + f);
                     if (t.Frames.Count == 0) lines.Add("  (no managed frames)");
                 }
+                if (empty.Count > 0) lines.Add(ManagedStacks.EmptyLine(empty));
             }
             float lh = row - 8, width = box.width - 20;
             foreach (string l in lines) width = Mathf.Max(width, _mono.CalcSize(new GUIContent(l)).x + 8);
@@ -224,8 +232,8 @@ namespace DragNWash.ModFramework.ToolWindow
         private static void Pair(Rect r, (string label, string value) p, ToolWindowStyles s)
         {
             GUI.Label(r, p.label, _small);
-            float vw = s.Label.CalcSize(new GUIContent(p.value)).x;
-            GUI.Label(new Rect(r.xMax - vw, r.y, vw, r.height), p.value, s.Label);
+            float lw = _small.CalcSize(new GUIContent(p.label)).x + 8;
+            GUI.Label(new Rect(r.x + lw, r.y, r.width - lw, r.height), p.value, _value);
         }
     }
 }
