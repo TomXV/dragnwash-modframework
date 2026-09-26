@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -67,7 +68,71 @@ namespace DragNWash.ModFramework
                     }
                     return new Dictionary<string, object> { ["active"] = SceneManager.GetActiveScene().name, ["loaded"] = loaded, ["build"] = build };
                 });
+            RegisterDiagnostics(g);
             RegisterEvents(g);
+        }
+
+        // Memory and managed stacks (experimental, core 1.7).
+        private static void RegisterDiagnostics(string g)
+        {
+            Operations.Register(g, "diagnostics.memory.get", "The game's memory now (managed heap, Unity's totals), and optionally the readings of the last minutes (taken while Developer tools are on).", OperationKind.Read,
+                "{ now: sample, gc_mode, history: [ sample ] } where a sample is { time, gc_used, gc_reserved, collections, gc_ran, unity_allocated, unity_reserved, system_used, audio, video } in bytes (-1: not known)", args =>
+                {
+                    int seconds = Math.Max(0, Math.Min(Diagnostics.MemoryWatch.Capacity, args.Int("history", 0)));
+                    var history = new List<object>();
+                    if (seconds > 0)
+                    {
+                        IReadOnlyList<Diagnostics.MemorySample> h = Diagnostics.MemoryWatch.History;
+                        for (int i = Math.Max(0, h.Count - seconds); i < h.Count; i++) history.Add(Sample(h[i]));
+                    }
+                    return new Dictionary<string, object>
+                    {
+                        ["now"] = Sample(Diagnostics.MemoryWatch.Now()),
+                        ["gc_mode"] = Diagnostics.MemoryWatch.GcMode(),
+                        ["history"] = history,
+                    };
+                },
+                Operations.Parameter("history", OperationType.Number, "How many seconds of past readings, newest last (0 to 300; none when left out)."));
+            Operations.Register(g, "diagnostics.stacks.get", "Where each managed thread is now, main thread first. Frames are Type.Method (+IL offset), innermost first.", OperationKind.Read,
+                "a list of { id, name, main, frames: [ text ] }", args =>
+                {
+                    List<Diagnostics.ThreadStack> threads = Diagnostics.ManagedStacks.Capture(out string reason);
+                    if (threads == null) throw new InvalidOperationException("Managed stacks could not be read: " + reason);
+                    bool mainOnly = (args.String("thread") ?? "all").Equals("main", StringComparison.OrdinalIgnoreCase);
+                    int max = Math.Max(0, args.Int("frames", 0));
+                    return threads.Where(t => !mainOnly || t.IsMain).Select(t => (object)new Dictionary<string, object>
+                    {
+                        ["id"] = t.Id,
+                        ["name"] = t.Name,
+                        ["main"] = t.IsMain,
+                        ["frames"] = (max > 0 ? t.Frames.Take(max) : t.Frames).Cast<object>().ToList(),
+                    }).ToList();
+                },
+                Operations.Parameter("thread", OperationType.String, "main for the main thread only; all when left out.", false, "main", "all"),
+                Operations.Parameter("frames", OperationType.Number, "At most this many frames per thread; all when left out."));
+            Operations.Register(g, "diagnostics.snapshot", "Writes a snapshot into BepInEx/CrashReports: a memory dump (Windows), every managed thread's stack, the memory numbers and the loaded modules. Holds the game for a second or two.", OperationKind.Write,
+                "{ folder, summary }", args =>
+                {
+                    string summary = Diagnostics.Snapshot.Write(out string folder);
+                    return new Dictionary<string, object> { ["folder"] = folder, ["summary"] = summary };
+                });
+        }
+
+        private static Dictionary<string, object> Sample(Diagnostics.MemorySample s)
+        {
+            return new Dictionary<string, object>
+            {
+                ["time"] = s.Time.ToString("HH:mm:ss"),
+                ["gc_used"] = s.GcUsed,
+                ["gc_reserved"] = s.GcReserved,
+                ["collections"] = s.Collections,
+                ["gc_ran"] = s.GcRan,
+                ["unity_allocated"] = s.UnityAllocated,
+                ["unity_reserved"] = s.UnityReserved,
+                ["system_used"] = s.SystemUsed,
+                ["audio"] = s.Audio,
+                ["video"] = s.Video,
+            };
         }
 
         // The core's events, handed to the registry so anything built on it (a

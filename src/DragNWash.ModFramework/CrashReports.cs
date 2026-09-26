@@ -223,9 +223,20 @@ namespace DragNWash.ModFramework
                             string dump = Path.Combine(dir, "hang.dmp");
                             string result = WriteDump(dump);
                             Write("hang", result == null ? $"memory dump written: {dump}" : $"memory dump failed: {result}");
+                            // Where each managed thread was, main thread first
+                            // (Linux too), and the last memory reading; no Unity
+                            // call here, the main thread is the one that is stuck.
+                            List<Diagnostics.ThreadStack> stacks = Diagnostics.ManagedStacks.CaptureWithin(5000, out string why);
+                            File.WriteAllText(Path.Combine(dir, "stacks.txt"), Diagnostics.Snapshot.StacksText(stacks, why), Diagnostics.Snapshot.Utf8);
+                            Diagnostics.MemorySample memory = Diagnostics.MemoryWatch.Latest;
+                            File.WriteAllText(Path.Combine(dir, "memory.txt"), memory != null
+                                ? Diagnostics.Snapshot.MemoryText(memory, false)
+                                : $"No memory reading (they are taken while Developer tools are on). Managed heap: {Diagnostics.MemoryWatch.Size(GC.GetTotalMemory(false))}.\n", Diagnostics.Snapshot.Utf8);
+                            Write("hang", stacks != null ? $"managed stacks written ({stacks.Count} threads)" : $"managed stacks failed: {why}");
                             File.WriteAllText(Path.Combine(dir, "report.txt"),
                                 $"The game froze: no frame for {seconds:0} s while in front, at {DateTime.Now:yyyy-MM-dd HH:mm:ss} (frame {_frame}).{Environment.NewLine}" +
-                                $"hang.dmp is a memory dump taken then; open it in WinDbg or Visual Studio with the game's PDB files. It holds part of the game's memory: share it privately.{Environment.NewLine}",
+                                $"hang.dmp is a memory dump taken then; open it in WinDbg or Visual Studio with the game's PDB files. It holds part of the game's memory: share it privately.{Environment.NewLine}" +
+                                $"stacks.txt says where each managed thread was (the main thread first), memory.txt the last memory reading.{Environment.NewLine}",
                                 new UTF8Encoding(false));
                         }
                     }
@@ -275,7 +286,7 @@ namespace DragNWash.ModFramework
 
         // A normal minidump with thread info and unloaded modules: every thread's
         // stack, a few MB. Returns null on success, else the reason.
-        private static string WriteDump(string path)
+        internal static string WriteDump(string path)
         {
             if (Environment.OSVersion.Platform != PlatformID.Win32NT)
             {
