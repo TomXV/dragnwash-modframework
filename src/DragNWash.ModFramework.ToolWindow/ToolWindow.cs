@@ -23,11 +23,18 @@ namespace DragNWash.ModFramework.ToolWindow
     /// On Direct3D 12, a texture upload at the wrong moment can crash the game
     /// (Unity UUM-140564), and drawing a character for the first time adds it
     /// to a font atlas that has to be uploaded. The core uploads those atlases
-    /// once per frame, so the window can draw any text; a non-ASCII character
-    /// the window has not shown before comes out as "?" for one frame. Still
-    /// pass the non-ASCII characters a tab shows to
-    /// <see cref="PrepareCharacters"/> from Awake or Update, never from the
-    /// draw callback: without the core's batching they are rasterized then.
+    /// once per frame, so the window can draw any text. In text drawn through
+    /// GUI's and GUILayout's string overloads (<c>GUI.Label(Rect, string)</c>,
+    /// say), a non-ASCII character the window has neither shown nor been
+    /// given to prepare before comes out as "?" for one frame. Pass the
+    /// non-ASCII characters a tab shows to <see cref="PrepareCharacters"/>
+    /// from Awake or Update, never from the draw callback: they are then drawn
+    /// from the first frame that shows them (as "?" where the window has no
+    /// glyph for them; with the core's batching, one prepared in the Update of
+    /// that same frame can be blank in it, as the atlas is uploaded at the end
+    /// of the frame), and without the core's batching they are rasterized
+    /// then. Text in a <c>GUIContent</c> is drawn and measured as it is, with
+    /// no "?": pass it through <see cref="Drawable"/> first.
     /// </para>
     /// </remarks>
     public static class ToolWindow
@@ -79,8 +86,11 @@ namespace DragNWash.ModFramework.ToolWindow
 
         /// <summary>
         /// The font the window draws with, or null for the IMGUI skin's font. It is
-        /// made when the window first opens; read before that from Awake or Update,
-        /// it is made then, and from a draw callback it is null until the next frame.
+        /// made the first time the window's key (F1 by default) is pressed or
+        /// <see cref="Open"/> is called, or at startup on Direct3D 12 without the
+        /// core's atlas batching; read before
+        /// that from Awake or Update, it is made then, and from a draw callback it
+        /// is null until the next frame.
         /// </summary>
         public static Font Font => MenuFont.Needed();
 
@@ -415,9 +425,26 @@ namespace DragNWash.ModFramework.ToolWindow
         }
 
         /// <summary>
-        /// Prepares these characters for the window: <see cref="Drawable"/> draws
-        /// them as they are from then on. On Direct3D 12 without the core's atlas
-        /// batching they are also rasterized into the window font now, so drawing
+        /// Prepares these characters for the window: <see cref="Drawable"/> leaves
+        /// them as they are from then on (except on Direct3D 12 without the core's
+        /// atlas batching, where it shows every non-ASCII character as "?"), and
+        /// text drawn through GUI's and GUILayout's string overloads shows them
+        /// from the first frame, as "?" where the window has no glyph for them
+        /// (see <see cref="CanDraw"/>, which checks them the same way; with the
+        /// core's batching, characters prepared in the Update of the frame that
+        /// first shows them can be blank in that frame, as the atlas is uploaded
+        /// at the end of it). They are checked now, or when the window font is
+        /// made if that is later: the first time the window's key is pressed or
+        /// <see cref="Open"/> is called, when <see cref="Font"/> or
+        /// <see cref="CanDraw"/> is read before that (from Awake or Update; from
+        /// a draw callback, on the next Update), or at startup on Direct3D 12
+        /// without the core's atlas batching. On Unity 6
+        /// that check adds each character's glyph to the window font's TextCore
+        /// atlas, so preparing hundreds of characters (a whole translation's,
+        /// say) can make the game pause once, when the window font is made or
+        /// when they are prepared after that; drawing them later adds nothing to
+        /// the atlas. On Direct3D 12 without the core's atlas batching they are
+        /// also rasterized into the window font as they are prepared, so drawing
         /// them later uploads nothing. Call from Awake or Update. Called from a
         /// draw callback, the characters are prepared on the next Update instead.
         /// </summary>
@@ -427,10 +454,16 @@ namespace DragNWash.ModFramework.ToolWindow
         }
 
         /// <summary>
-        /// True when every character of <paramref name="text"/> has a glyph in the
-        /// window font. Characters it cannot draw are shown as "?". From a draw
-        /// callback, a character not checked before counts as not drawable for
-        /// that one frame, and is checked on the next Update.
+        /// True when the window draws every character of <paramref name="text"/>
+        /// with a glyph of its own: on Unity 6, when Unity's text engine (TextCore)
+        /// finds one in the window font or the fallback fonts it looks in; on older
+        /// Unity, when the window font has one. A character outside the Basic
+        /// Multilingual Plane (an emoji, say) counts as not drawable, as the window
+        /// asks about one UTF-16 unit at a time; a variation selector right after a
+        /// character is not counted, as the window leaves it out. Characters it
+        /// cannot draw are shown as "?". From a draw callback, a character not
+        /// checked before counts as not drawable for that one frame, and is checked
+        /// on the next Update.
         /// </summary>
         public static bool CanDraw(string text)
         {

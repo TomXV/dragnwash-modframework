@@ -76,6 +76,7 @@ namespace DragNWash.ModFramework.ToolWindow
         {
             Log = Logger;
             Instance = this;
+            MenuText.NoteMainThread();
             ModFramework.Register(new ModInfo
             {
                 Guid = ToolWindow.Guid,
@@ -107,7 +108,7 @@ namespace DragNWash.ModFramework.ToolWindow
             _windowRect = ParseRect(_rectSetting.Value) ?? DefaultRect;
             _wantedTab = string.IsNullOrEmpty(_lastTab.Value) ? null : _lastTab.Value;
             _fontMode = Config.Bind("General", "FontMode", "auto",
-                new ConfigDescription("Font for the tool window: auto (an OS font with Japanese and Chinese, else the bundled one), builtin (Unity's built-in font, ASCII only), skin (the IMGUI skin's font).",
+                new ConfigDescription("Font for the tool window: auto (an OS font with Japanese and Chinese, else the bundled one), builtin (Unity's built-in font; on Unity 6, other writing systems only where the OS fallback fonts have them), skin (the IMGUI skin's font).",
                     new AcceptableValueList<string>("auto", "builtin", "skin"), new SettingMeta { DisplayName = "Font", Advanced = true, RequiresRestart = true }));
 
             // Built now rather than when the window first opens: Texture2D.Apply
@@ -116,7 +117,8 @@ namespace DragNWash.ModFramework.ToolWindow
             _background = new Texture2D(1, 1);
             _background.SetPixel(0, 0, new Color(0.06f, 0.06f, 0.08f, 0.95f));
             _background.Apply();
-            // The font itself is made when the window first opens.
+            // The font itself is made the first time the window opens, or here
+            // on Direct3D 12 without the core's atlas batching (see MenuFont).
             MenuFont.Configure(_fontMode.Value);
 
             var harmony = new Harmony(ToolWindow.Guid);
@@ -306,6 +308,13 @@ namespace DragNWash.ModFramework.ToolWindow
 
         private void Update()
         {
+            // What is prepared here (FlushQueued, and the console's own in
+            // Tick) is checked for the '?' swap as MenuFont notes it, so this
+            // frame's window draws it whichever of these runs first (on
+            // Direct3D 12 with the core's batching, a glyph added here reaches
+            // the GPU at the end of this frame, so it can be blank until the
+            // next).
+            // CheckQueued checks what the last frame drew that nobody prepared.
             MenuFont.FlushQueued();
             MenuText.CheckQueued();
             ConsoleTab.Tick();
@@ -611,18 +620,22 @@ namespace DragNWash.ModFramework.ToolWindow
             // (Steam Deck) become clicks in VirtualClick.
             VirtualClick.Observe(Event.current);
             Color color = GUI.color, background = GUI.backgroundColor, content = GUI.contentColor;
+            bool swapping = false;
             try
             {
                 GUI.color = Color.white;
                 GUI.backgroundColor = Color.white;
                 GUI.contentColor = Color.white;
-                MenuText.Begin(MenuFont.Font, MenuFont.Size);
+                swapping = MenuText.Begin(MenuFont.Font, MenuFont.Size);
                 // Overlays (outlines, gizmos, pick modes) live in the game's
                 // screen space, under the window.
                 ToolWindow.DrawOverlays(_windowRect);
+                // DrawWindow turns the swap on for itself: IMGUI calls it
+                // later, from GUI.EndWindows, after this OnGUI has returned.
                 _windowRect = GUI.Window(GetInstanceID(), _windowRect, DrawWindow, string.Empty, _windowStyle);
-                MenuText.End();
-                // GUI.Window returns its own rectangle after the callback; apply a
+                MenuText.End(swapping);
+                // GUI.Window returns the rectangle IMGUI keeps for the window,
+                // which its last callback (a drag, say) may have moved; apply a
                 // resize afterwards so that cannot undo it.
                 if (_requestedRect.HasValue)
                 {
@@ -639,7 +652,7 @@ namespace DragNWash.ModFramework.ToolWindow
             }
             finally
             {
-                MenuText.End();
+                MenuText.End(swapping);
                 GUI.color = color;
                 GUI.backgroundColor = background;
                 GUI.contentColor = content;
@@ -653,10 +666,11 @@ namespace DragNWash.ModFramework.ToolWindow
             EnsureStyles();
             ToolWindowStyles s = ToolWindow.Styles;
             Color color = GUI.color;
+            bool swapping = false;
             try
             {
                 GUI.color = Color.white;
-                MenuText.Begin(MenuFont.Font, MenuFont.Size);
+                swapping = MenuText.Begin(MenuFont.Font, MenuFont.Size);
                 Rect at = Clamp(_windowRect, Screen.width, Screen.height);
                 float w = Mathf.Min(470f, Screen.width - at.x);
                 var box = new Rect(at.x, at.y, w, 56);
@@ -674,7 +688,7 @@ namespace DragNWash.ModFramework.ToolWindow
             }
             finally
             {
-                MenuText.End();
+                MenuText.End(swapping);
                 GUI.color = color;
             }
         }
@@ -687,7 +701,23 @@ namespace DragNWash.ModFramework.ToolWindow
             }
         }
 
+        // IMGUI calls this from GUI.EndWindows, after OnGUI has returned and
+        // turned MenuText's swap off, so it turns it on for the window's text
+        // (the tabs' included) and puts it back as it was.
         private void DrawWindow(int id)
+        {
+            bool swapping = MenuText.Begin(MenuFont.Font, MenuFont.Size);
+            try
+            {
+                DrawWindowContents();
+            }
+            finally
+            {
+                MenuText.End(swapping);
+            }
+        }
+
+        private void DrawWindowContents()
         {
             ToolWindowStyles styles = ToolWindow.Styles;
             float width = _windowRect.width;
