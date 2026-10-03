@@ -61,11 +61,7 @@ namespace DragNWash.ModFramework.Diagnostics
                 reason = "native stacks need 64-bit Windows";
                 return null;
             }
-            var ids = new List<uint>();
-            using (Process me = Process.GetCurrentProcess())
-            {
-                foreach (ProcessThread t in me.Threads) ids.Add((uint)t.Id);
-            }
+            List<uint> ids = ThreadIds();
             var list = new List<ThreadStack>();
             foreach (uint id in ids)
             {
@@ -283,6 +279,47 @@ namespace DragNWash.ModFramework.Diagnostics
                 }
             }
         }
+
+        // The process's threads from a Toolhelp snapshot: Mono's Process.Threads
+        // is empty on Windows.
+        private static List<uint> ThreadIds()
+        {
+            var ids = new List<uint>();
+            IntPtr snapshot = CreateToolhelp32Snapshot(0x4, 0); // TH32CS_SNAPTHREAD
+            if (snapshot == IntPtr.Zero || snapshot == new IntPtr(-1)) return ids;
+            try
+            {
+                uint me = GetCurrentProcessId();
+                var entry = new ThreadEntry { Size = (uint)Marshal.SizeOf(typeof(ThreadEntry)) };
+                for (bool more = Thread32First(snapshot, ref entry); more; more = Thread32Next(snapshot, ref entry))
+                {
+                    if (entry.OwnerProcessId == me) ids.Add(entry.ThreadId);
+                    entry.Size = (uint)Marshal.SizeOf(typeof(ThreadEntry));
+                }
+            }
+            finally
+            {
+                CloseHandle(snapshot);
+            }
+            return ids;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct ThreadEntry
+        {
+            public uint Size;
+            public uint Usage;
+            public uint ThreadId;
+            public uint OwnerProcessId;
+            public int BasePriority;
+            public int DeltaPriority;
+            public uint Flags;
+        }
+
+        [DllImport("kernel32.dll")] private static extern IntPtr CreateToolhelp32Snapshot(uint flags, uint processId);
+        [DllImport("kernel32.dll")] private static extern bool Thread32First(IntPtr snapshot, ref ThreadEntry entry);
+        [DllImport("kernel32.dll")] private static extern bool Thread32Next(IntPtr snapshot, ref ThreadEntry entry);
+        [DllImport("kernel32.dll")] private static extern uint GetCurrentProcessId();
 
         private static string ThreadName(uint id)
         {
